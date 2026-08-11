@@ -59,7 +59,7 @@ export function SidebarHeader({
             href="/chat"
             className={cn(
               "shrink-0 object-contain",
-              "dark:brightness-0 dark:invert",
+              !organizationLogoUrl && "dark:brightness-0 dark:invert",
               collapsed ? "size-6" : "h-7 w-auto",
             )}
             label="Deodis chat"

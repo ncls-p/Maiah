@@ -11,12 +11,23 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("settings page", () => {
   test("loads settings page", async ({ page }) => {
+    const workspaces = (await (
+      await page.request.get("/api/workspaces")
+    ).json()) as Array<{ workspace: { name: string } }>;
+    const projectName = workspaces[0]?.workspace.name;
     await page.goto("/en/settings");
     await expect(page).toHaveURL(/\/en\/settings/);
 
     await expect(
       page.getByRole("heading", { name: /Settings/i }).first(),
     ).toBeVisible({ timeout: 10_000 });
+    if (projectName) {
+      await expect(
+        page.locator("header.app-shell__header").getByText(projectName, {
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
   });
 
   test("shows language preference in the account menu", async ({ page }) => {
@@ -66,6 +77,13 @@ test.describe("settings page", () => {
       await expect(branding).toBeVisible();
 
       await branding.getByRole("button", { name: "Forest" }).click();
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-brand-theme",
+        "ocean",
+      );
+      await expect(
+        branding.locator('[data-theme-preview="light"]'),
+      ).toHaveAttribute("data-preview-primary", "#28765a");
       await branding.getByRole("button", { name: "Save branding" }).click();
       await expect(page.locator("html")).toHaveAttribute(
         "data-brand-theme",
@@ -106,6 +124,13 @@ test.describe("settings page", () => {
       await branding
         .getByLabel("light primary", { exact: true })
         .fill("#123456");
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-brand-theme",
+        "ocean",
+      );
+      await expect(
+        branding.locator('[data-theme-preview="light"]'),
+      ).toHaveAttribute("data-preview-primary", "#123456");
       await branding.locator("summary").filter({ hasText: "Dark" }).click();
       await branding
         .getByLabel("dark primary", { exact: true })

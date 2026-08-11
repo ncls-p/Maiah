@@ -29,6 +29,18 @@ export function latestConversationIdFromList(
   );
 }
 
+export function touchConversation(
+  current: ChatConversation[],
+  conversationId: string,
+  updatedAt: string,
+) {
+  return current.map((conversation) =>
+    conversation.id === conversationId
+      ? { ...conversation, updatedAt }
+      : conversation,
+  );
+}
+
 export function normalizeConversationList(
   payload: ConversationListPayload,
 ): ConversationListPage {

@@ -2253,6 +2253,7 @@
         "custom": "Personnalisé"
       },
       "customHint": "Personnalisez chaque couleur de la plateforme séparément pour les modes clair et sombre.",
+      "preview": "Aperçu en direct — appliqué uniquement après enregistrement",
       "light": "Palette claire",
       "dark": "Palette sombre",
       "hero": {

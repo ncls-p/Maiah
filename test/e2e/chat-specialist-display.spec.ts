@@ -46,7 +46,11 @@ async function createConversationWithSpecialistTrace() {
       metadata: {
         toolCallId: "sandbox-call",
         toolName: "run_code_sandbox",
-        input: { language: "python", code: "make_chart()" },
+        input: {
+          language: "python",
+          code: "make_chart()",
+          showToUser: true,
+        },
         agentContext: childContext,
       },
     },

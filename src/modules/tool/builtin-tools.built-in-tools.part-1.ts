@@ -151,7 +151,7 @@ export const builtInToolsPart1 = [
     name: "run_code_sandbox",
     displayName: "Code sandbox",
     description:
-      "Run Python, Node.js, or Bash in a wiped sandbox with broad data/science/document libraries and safe uploaded-document access.",
+      "Run Python, Node.js, or Bash in a wiped sandbox with broad data/science/document libraries and safe uploaded-document access. Choose showToUser only when the execution itself is useful to the user.",
     riskLevel: "high",
     category: "Code",
     inputSchema: codeSandboxInputSchema,

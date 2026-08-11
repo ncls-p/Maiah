@@ -96,7 +96,6 @@ describe("code sandbox result rendering", () => {
     for (const toolName of [
       "render_html_artifact",
       "generate_image",
-      "run_code_sandbox",
       "code_workspace_write_file",
       "github_publish_code_workspace",
     ]) {
@@ -114,6 +113,32 @@ describe("code sandbox result rendering", () => {
         content: JSON.stringify({ toolName: "web_search" }),
       }),
     ).toBe(false);
+  });
+
+  it("shows a sandbox standalone only when the model explicitly requests it", () => {
+    expect(
+      toolPartHasStandaloneRendering({
+        type: "tool-call",
+        content: JSON.stringify({
+          toolName: "run_code_sandbox",
+          input: { language: "python", code: "print(1)" },
+        }),
+      }),
+    ).toBe(false);
+
+    expect(
+      toolPartHasStandaloneRendering({
+        type: "tool-call",
+        content: JSON.stringify({
+          toolName: "run_code_sandbox",
+          input: {
+            language: "python",
+            code: "print(1)",
+            showToUser: true,
+          },
+        }),
+      }),
+    ).toBe(true);
   });
 
   it("keeps every child-agent visual tool inside the specialist trace", () => {

@@ -2254,6 +2254,7 @@
         "custom": "Custom"
       },
       "customHint": "Customize every platform color independently for light and dark mode.",
+      "preview": "Live preview — applied only after saving",
       "light": "Light palette",
       "dark": "Dark palette",
       "hero": {

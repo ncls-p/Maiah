@@ -39,6 +39,7 @@ export function uploadPathForFile(file: File) {
 export {
   latestConversationIdFromList,
   normalizeConversationList,
+  touchConversation,
   type ConversationListPage,
   type ConversationListPayload,
 } from "./chat-conversation-list";

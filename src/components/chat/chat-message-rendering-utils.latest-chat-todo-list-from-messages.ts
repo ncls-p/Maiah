@@ -110,6 +110,7 @@ export type CodeSandboxOutput = {
 export type CodeSandboxInputPreview = {
   language: CodeSandboxLanguage | null;
   code: string;
+  showToUser: boolean;
   files: Array<{ path: string }>;
   attachments: Array<{ id: string; path?: string }>;
 };

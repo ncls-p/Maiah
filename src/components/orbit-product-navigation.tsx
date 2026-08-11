@@ -20,7 +20,6 @@ import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { isNavItemActive, type WorkspaceShellState } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
-import Image from "next/image";
 import { useLinkStatus } from "next/link";
 
 const primaryDestinations = [
@@ -43,23 +42,15 @@ function NavigationLinkFeedback() {
 }
 
 export function OrbitWordmark({ section }: { section: string }) {
-  const { organizationLogoUrl, organizationName } = useWorkspace();
+  const { workspaceId, workspaces } = useWorkspace();
+  const projectName =
+    workspaces.find((workspace) => workspace.id === workspaceId)?.name ??
+    "Maiah";
   return (
     <div className="flex min-w-0 items-baseline gap-2 sm:min-w-32">
-      {organizationLogoUrl ? (
-        <Image
-          src={organizationLogoUrl}
-          alt={organizationName ?? "Organization"}
-          width={120}
-          height={40}
-          unoptimized
-          className="h-5 w-auto max-w-20 object-contain sm:h-6 sm:max-w-28"
-        />
-      ) : (
-        <span className="text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-foreground sm:text-[0.72rem] sm:tracking-[0.16em]">
-          Maiah
-        </span>
-      )}
+      <span className="max-w-36 truncate text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-foreground sm:max-w-48 sm:text-[0.72rem] sm:tracking-[0.16em]">
+        {projectName}
+      </span>
       <span className="hidden font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary sm:inline">
         {section}
       </span>

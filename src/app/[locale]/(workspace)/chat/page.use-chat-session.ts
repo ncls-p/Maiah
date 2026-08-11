@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
@@ -27,6 +27,7 @@ import {
 import {
   conversationTitleFromFirstMessage,
   latestCodeWorkspaceArtifact,
+  touchConversation,
   upsertConversation,
 } from "./chat-page-helpers";
 
@@ -198,7 +199,24 @@ export function useChatSession(c: SessionContext) {
     },
     onConversationsRefresh: refreshConversations,
   });
-  const { messages, setMessages, sending, handleSubmit } = stream;
+  const {
+    messages,
+    setMessages,
+    sending,
+    handleSubmit: submitToStream,
+  } = stream;
+  const handleSubmit = useCallback(
+    (...args: Parameters<typeof submitToStream>) => {
+      if (activeConversationId) {
+        const updatedAt = new Date().toISOString();
+        setConversations((current) =>
+          touchConversation(current, activeConversationId, updatedAt),
+        );
+        notifyWorkspaceHistoryChanged();
+      }
+      return submitToStream(...args);
+    }, [activeConversationId, setConversations, submitToStream],
+  );
   const latestTodoList = useMemo(
     () => latestChatTodoListFromMessages(messages),
     [messages],
@@ -407,6 +425,7 @@ export function useChatSession(c: SessionContext) {
   ]);
   return {
     ...stream,
+    handleSubmit,
     activeVersion,
     setActiveVersion,
     loadingMessages,

@@ -23,6 +23,7 @@ import {
   isHtmlArtifactOutput,
   knowledgeContextChunkCount,
   knowledgeSearchResultsFromUnknown,
+  shouldShowCodeSandboxToUser,
   summarizeToolBody,
 } from "@/components/chat/chat-message-rendering-utils";
 import {
@@ -163,6 +164,10 @@ export const ToolPartCard = memo(function ToolPartCard({
         : null,
     [parsed.inputText, parsed.toolName],
   );
+  const showSandboxToUser = useMemo(
+    () => shouldShowCodeSandboxToUser(parsed.input, parsed.inputText),
+    [parsed.input, parsed.inputText],
+  );
   const summaryText = useMemo(() => {
     if (isDelegation && status === "completed") {
       const output = parsed.output;
@@ -283,7 +288,7 @@ export const ToolPartCard = memo(function ToolPartCard({
     );
   } else if (fileAttachment) {
     specializedContent = <ChatFileAttachmentCard attachment={fileAttachment} />;
-  } else if (sandboxOutput) {
+  } else if (sandboxOutput && showSandboxToUser) {
     specializedContent = (
       <CodeSandboxResultCard
         result={sandboxOutput}
@@ -333,7 +338,11 @@ export const ToolPartCard = memo(function ToolPartCard({
     specializedContent = (
       <HtmlArtifactCard artifact={inputArtifact} isLive embedded />
     );
-  } else if (parsed.streamingInput && parsed.inputText !== undefined) {
+  } else if (
+    parsed.streamingInput &&
+    parsed.inputText !== undefined &&
+    (!isCodeSandboxToolName(parsed.toolName) || showSandboxToUser)
+  ) {
     specializedContent = (
       <LiveToolInputCard
         toolName={friendlyName}

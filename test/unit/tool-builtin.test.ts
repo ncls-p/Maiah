@@ -66,13 +66,22 @@ describe("built-in tool registry", () => {
     expect(webSearch!.riskLevel).toBe("medium");
   });
 
-  it("supports Bash and attachment references in the code sandbox schema", () => {
+  it("supports model-controlled sandbox visibility", () => {
     const sandbox = getBuiltInToolByName("run_code_sandbox");
     expect(sandbox).not.toBeNull();
+
+    const hidden = sandbox!.inputSchema.safeParse({
+      language: "bash",
+      code: "echo ok",
+    });
+    expect(hidden.success).toBe(true);
+    if (hidden.success) expect(hidden.data).toMatchObject({ showToUser: false });
+
     expect(
       sandbox!.inputSchema.safeParse({
         language: "bash",
         code: "echo ok",
+        showToUser: true,
         attachments: [
           {
             id: "00000000-0000-4000-8000-000000000001",
@@ -81,6 +90,12 @@ describe("built-in tool registry", () => {
         ],
       }).success,
     ).toBe(true);
+    expect(
+      sandbox!.inputSchema.safeParse({
+        language: "python",
+        code: "x".repeat(100_001),
+      }).success,
+    ).toBe(false);
   });
 
   it("returns null for unknown tool name", () => {

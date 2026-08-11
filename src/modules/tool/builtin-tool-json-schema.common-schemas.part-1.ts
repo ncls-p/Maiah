@@ -78,6 +78,12 @@ export const commonSchemasPart1 = {
         description:
           "Python, Node.js, or Bash code to run. Print values you want in stdout.",
       },
+      showToUser: {
+        type: "boolean",
+        default: false,
+        description:
+          "Set true only when showing the sandbox result, logs, or generated files directly in chat helps the user. Leave false for internal checks and intermediate work so the execution stays in the collapsed tool trace.",
+      },
       stdin: {
         type: "string",
         description: "Optional standard input passed to the program.",
