@@ -16,7 +16,7 @@ Maiah provides a full stack — from authentication and workspace isolation to a
 | **Cache**      | DragonflyDB / Redis                                          |
 | **Storage**    | S3-compatible (RustFS)                                       |
 | **AI**         | AI SDK 7 — `streamText`, tool calling, OPA policy gates      |
-| **Sandbox**    | Custom sandbox runner (Unix-socket code execution)           |
+| **Sandbox**    | Custom sandbox runner with governed web egress               |
 | **MCP**        | Model Context Protocol client and server registry            |
 | **Search**     | SearXNG-backed web search tool                               |
 | **Client**     | Responsive installable PWA with native App Router manifest   |

@@ -108,7 +108,11 @@ services:
       target: sandbox-runner
     image: ${AI_HUB_SANDBOX_IMAGE:-ai-hub-sandbox-runner:local}
     restart: unless-stopped
-    network_mode: none
+    depends_on:
+      sandbox-egress-proxy:
+        condition: service_healthy
+    networks:
+      - sandbox-egress
     read_only: true
     tmpfs:
       - /tmp:rw,nosuid,nodev,size=32m,mode=1777
@@ -120,11 +124,13 @@ services:
       SANDBOX_RUN_ROOT: /sandbox-runs
       SANDBOX_DEFAULT_TIMEOUT_MS: 15000
       SANDBOX_MAX_TIMEOUT_MS: 30000
-      SANDBOX_MAX_PROCESSES: 32
+      SANDBOX_MAX_PROCESSES: 0
       SANDBOX_MAX_CPU_SECONDS: 20
       SANDBOX_MAX_OUTPUT_FILE_SIZE_BYTES: 2000000
       SANDBOX_MAX_DOWNLOAD_TOTAL_BYTES: 3000000
       SANDBOX_SOCKET_GID: ${SANDBOX_SOCKET_GID:-1000}
+      HTTP_PROXY: http://sandbox-egress-proxy:3128
+      HTTPS_PROXY: http://sandbox-egress-proxy:3128
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -151,6 +157,42 @@ services:
       start_period: 30s
       retries: 5
 
+  sandbox-egress-proxy:
+    build:
+      context: .
+      target: sandbox-runner
+    image: ${AI_HUB_SANDBOX_IMAGE:-ai-hub-sandbox-runner:local}
+    command: ["node", "/opt/sandbox/sandbox-runner-egress-proxy.mjs"]
+    user: "10002:10002"
+    restart: unless-stopped
+    read_only: true
+    networks:
+      - default
+      - sandbox-egress
+    environment:
+      SANDBOX_EGRESS_MAX_TRANSFER_BYTES: 3000000
+      SANDBOX_EGRESS_REQUEST_TIMEOUT_MS: 20000
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cpus: "0.20"
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3128/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
   servicenow-mcp-gateway:
     build:
       context: services/servicenow-mcp-gateway
@@ -173,3 +215,7 @@ volumes:
   postgres-dev-data:
   dragonfly-dev-data:
   rustfs-dev-data:
+
+networks:
+  sandbox-egress:
+    internal: true

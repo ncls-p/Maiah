@@ -7,6 +7,7 @@ const registryBackedServices = [
   "app",
   "worker",
   "sandbox-runner",
+  "sandbox-egress-proxy",
   "servicenow-mcp-gateway",
   "searxng",
 ];

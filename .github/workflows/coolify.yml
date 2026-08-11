@@ -1152,7 +1152,7 @@ jobs:
             sleep 30
           fi
 
-          long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner", "servicenow-mcp-gateway"]'
+          long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner", "sandbox-egress-proxy", "servicenow-mcp-gateway"]'
           success=false
           for attempt in $(seq 1 60); do
             STATUS_JSON="$(api GET "/services/${SERVICE_UUID}")"

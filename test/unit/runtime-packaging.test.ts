@@ -106,8 +106,27 @@ describe("runtime packaging guardrails", () => {
       expect(sandbox).toContain("memswap_limit: 768m");
       expect(sandbox).toContain("pids_limit: 64");
       expect(sandbox).toContain("SANDBOX_MAX_TIMEOUT_MS: 30000");
-      expect(sandbox).toContain("SANDBOX_MAX_PROCESSES: 32");
+      expect(sandbox).toContain("SANDBOX_MAX_PROCESSES: 0");
       expect(sandbox).toContain("SANDBOX_MAX_CPU_SECONDS: 20");
+      expect(sandbox).toContain("HTTP_PROXY: http://sandbox-egress-proxy:3128");
+      expect(sandbox).toContain("sandbox-egress-proxy:");
     }
+  });
+
+  it("keeps sandbox web access on an isolated, bounded egress path", () => {
+    const dockerfile = projectFile("Dockerfile");
+    for (const composeFile of [
+      "docker-compose.dev.yml",
+      "docker-compose.prod.yml",
+      ".coolify/stack.compose.yml",
+    ]) {
+      const compose = projectFile(composeFile);
+      expect(compose).toContain("sandbox-egress:\n    internal: true");
+      expect(compose).toContain("SANDBOX_EGRESS_MAX_TRANSFER_BYTES");
+      expect(compose).toContain('user: "10002:10002"');
+      expect(compose).not.toMatch(/sandbox-runner:[\s\S]*?network_mode: none/);
+    }
+    expect(dockerfile).toContain("/usr/bin/pip /usr/bin/pip3");
+    expect(dockerfile).toContain("/usr/local/lib/node_modules/npm");
   });
 });

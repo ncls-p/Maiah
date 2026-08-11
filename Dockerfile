@@ -121,8 +121,14 @@ RUN npm init -y \
 
 COPY scripts/sandbox-runner*.mjs /opt/sandbox/
 
-RUN chmod 0755 /opt/sandbox/sandbox-runner*.mjs \
+RUN rm -rf /usr/lib/python3/dist-packages/pip* /usr/local/lib/python3.*/site-packages/pip* \
+    /usr/bin/pip /usr/bin/pip3 /usr/local/bin/pip* \
+    /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+    /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+    /usr/local/bin/pnpm /usr/local/bin/pnpx \
+  && chmod 0755 /opt/sandbox/sandbox-runner*.mjs \
   && SANDBOX_RUNNER_VALIDATE_ONLY=true node /opt/sandbox/sandbox-runner.mjs \
+  && SANDBOX_EGRESS_PROXY_VALIDATE_ONLY=true node /opt/sandbox/sandbox-runner-egress-proxy.mjs \
   && mkdir -p /run/sandbox /sandbox-runs \
   && chown root:1001 /run/sandbox \
   && chmod 0770 /run/sandbox \
