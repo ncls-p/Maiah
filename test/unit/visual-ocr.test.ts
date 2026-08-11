@@ -90,6 +90,36 @@ describe("visual OCR", () => {
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 
+  it("serializes PDF text and image inspection on the shared worker", async () => {
+    let resolveText: ((value: { pages: Array<{ num: number; text: string }> }) => void) | undefined;
+    mocks.getText.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveText = resolve;
+        }),
+    );
+    mocks.getImage.mockResolvedValue({ pages: [] });
+    mocks.getScreenshot.mockResolvedValue({ pages: [] });
+
+    const inspection = inspectPdfVisualCandidates({
+      bytes: new Uint8Array([1, 2, 3]),
+      minimumTextCharactersPerPage: 80,
+      maxVisualPages: 2,
+    });
+
+    await Promise.resolve();
+    expect(mocks.getImage).not.toHaveBeenCalled();
+
+    resolveText?.({ pages: [{ num: 1, text: "" }] });
+    await inspection;
+
+    expect(mocks.getImage).toHaveBeenCalledOnce();
+    expect(mocks.getScreenshot).toHaveBeenCalledWith(
+      expect.objectContaining({ partial: [1] }),
+    );
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+
   it("skips rendering when no PDF page needs visual extraction", async () => {
     mocks.getText.mockResolvedValue({
       pages: [{ num: 1, text: "Readable text ".repeat(20) }],

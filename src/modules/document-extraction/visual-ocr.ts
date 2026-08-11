@@ -46,10 +46,14 @@ export async function inspectPdfVisualCandidates(input: {
 }) {
   const parser = new PDFParse({ data: Buffer.from(input.bytes) });
   try {
-    const [text, images] = await Promise.all([
-      parser.getText({ first: 500 }),
-      parser.getImage({ first: 500, imageThreshold: 120 }),
-    ]);
+    // PDFParse shares a worker-backed document between these operations. Running
+    // them concurrently can make the worker transfer the same PDF object twice
+    // and fail with "Cannot transfer object of unsupported type" on scanned PDFs.
+    const text = await parser.getText({ first: 500 });
+    const images = await parser.getImage({
+      first: 500,
+      imageThreshold: 120,
+    });
     const pagesWithImages = new Set(
       images.pages
         .filter((page) => page.images.length > 0)
