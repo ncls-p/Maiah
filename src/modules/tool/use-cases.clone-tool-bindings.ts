@@ -164,17 +164,14 @@ export async function getMcpBindingContext(
         eq(mcpServers.id, tool.mcpServerId),
         workspaceId ? eq(mcpServers.workspaceId, workspaceId) : undefined,
         isNull(mcpServers.archivedAt),
-        userId
-          ? or(
-              eq(mcpServers.createdById, userId),
-              eq(mcpServers.isGlobal, true),
-            )
-          : undefined,
       ),
     )
     .limit(1);
 
-  return server ? { binding, tool, server } : null;
+  if (!server || (userId && !(await canViewMcpServer(server, userId)))) {
+    return null;
+  }
+  return { binding, tool, server };
 }
 
 export async function getAvailableMcpToolContext(

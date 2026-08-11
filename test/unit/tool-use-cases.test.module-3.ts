@@ -201,4 +201,54 @@ describe("getMcpBindingContext", () => {
     const result = await getMcpBindingContext("v1", "tool-1");
     expect(result?.server).toEqual(server);
   });
+
+  it("returns a private MCP binding to a directly shared recipient", async () => {
+    const binding = { toolSource: "mcp", toolId: "tool-1" };
+    const tool = { id: "tool-1", mcpServerId: "srv-1" };
+    const server = {
+      id: "srv-1",
+      name: "Shared Server",
+      createdById: "owner-1",
+      isGlobal: false,
+    };
+    dbModule._sc.limit
+      .mockResolvedValueOnce([binding])
+      .mockResolvedValueOnce([tool])
+      .mockResolvedValueOnce([server]);
+    vi.mocked(authorization.hasDirectPermission).mockResolvedValueOnce(true);
+
+    const result = await getMcpBindingContext(
+      "v1",
+      "tool-1",
+      "recipient-1",
+      "ws-1",
+    );
+
+    expect(result?.server).toEqual(server);
+    expect(authorization.hasDirectPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "recipient-1" },
+      "mcpServers.get",
+      "mcp_server",
+      "srv-1",
+    );
+  });
+
+  it("hides a private MCP binding from a recipient without a direct share", async () => {
+    const binding = { toolSource: "mcp", toolId: "tool-1" };
+    const tool = { id: "tool-1", mcpServerId: "srv-1" };
+    const server = {
+      id: "srv-1",
+      createdById: "owner-1",
+      isGlobal: false,
+    };
+    dbModule._sc.limit
+      .mockResolvedValueOnce([binding])
+      .mockResolvedValueOnce([tool])
+      .mockResolvedValueOnce([server]);
+    vi.mocked(authorization.hasDirectPermission).mockResolvedValueOnce(false);
+
+    await expect(
+      getMcpBindingContext("v1", "tool-1", "recipient-1", "ws-1"),
+    ).resolves.toBeNull();
+  });
 });
