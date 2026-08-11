@@ -190,10 +190,12 @@ export async function applyAgentAccessSelection(
         500,
       );
     }
-    const generatedTargets =
-      input.selection.scope === "team"
-        ? targets.filter(({ type }) => type !== "agent")
-        : targets;
+    const generatedTargets = targets.filter(
+      ({ type, id }) =>
+        input.selection.scope !== "team" ||
+        type !== "agent" ||
+        id !== input.agentId,
+    );
     if (generatedTargets.length > 0) {
       await executor
         .insert(roleBindings)
