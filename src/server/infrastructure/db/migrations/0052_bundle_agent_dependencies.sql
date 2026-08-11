@@ -1,3 +1,9 @@
+-- PostgreSQL 16 requires enum values introduced by earlier migrations to be
+-- committed before they can be referenced. Drizzle otherwise wraps the full
+-- migration batch in one transaction.
+COMMIT;
+BEGIN;
+
 -- Backfill scope-derived access grants for assistants that were already shared
 -- before dependency bundles were introduced. Credentials/tool connections are
 -- intentionally excluded and remain personal to each user.
