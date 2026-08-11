@@ -1,28 +1,22 @@
-import "pdf-parse/worker";
-
 import {
   generateText,
   Output,
   type LanguageModel,
   type ModelMessage,
 } from "ai";
-import { PDFParse } from "pdf-parse";
 
 import { logger, logHandledWarning } from "@/lib/logger";
+import { normalizeOcrCandidate } from "@/modules/document-extraction/ocr-image-normalization";
 import {
   parseVisualRegionsJson,
   visualRegionsSchema,
 } from "@/modules/document-extraction/visual-ocr-json";
-import type { VisualRegion } from "@/modules/document-extraction/types";
+import type {
+  VisualCandidate,
+  VisualRegion,
+} from "@/modules/document-extraction/types";
 import { resolveOcrModel } from "@/modules/knowledge/rag-config";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-
-export type VisualCandidate = {
-  sourceKind: VisualRegion["sourceKind"];
-  sourceRef: string;
-  mediaType: string;
-  data: Uint8Array;
-};
 
 type VisualOcrLogContext = {
   providerId: string;
@@ -59,6 +53,19 @@ function visualOcrMessages(
   candidate: VisualCandidate,
   describeDiagrams: boolean,
 ): ModelMessage[] {
+  const extractionInstructions =
+    candidate.sourceKind === "page"
+      ? [
+          "This image is an entire document page with insufficient native text extraction.",
+          "Transcribe all visible document text in reading order, including ordinary prose, headings, labels, footnotes, and form fields.",
+          "Do not omit prose on the assumption that another extractor already handled it.",
+          "Also describe diagrams, charts, and meaningful images when they add information.",
+        ]
+      : [
+          "Extract only information that requires visual understanding.",
+          "Return text embedded in pixels and describe diagrams, schemas, charts, and meaningful images.",
+          "Do not recreate ordinary document tables or prose already handled by AnyDoc.",
+        ];
   return [
     {
       role: "user",
@@ -66,9 +73,7 @@ function visualOcrMessages(
         {
           type: "text",
           text: [
-            "Extract only information that requires visual understanding.",
-            "Return text embedded in pixels and describe diagrams, schemas, charts, and meaningful images.",
-            "Do not recreate ordinary document tables or prose already handled by AnyDoc.",
+            ...extractionInstructions,
             describeDiagrams
               ? "For diagrams, explain nodes, arrows, labels, grouping, and reading order."
               : "Do not describe diagrams unless they contain otherwise unreadable text.",
@@ -150,100 +155,6 @@ export function isSupportedOcrImage(mimeType: string) {
   );
 }
 
-export async function inspectPdfVisualCandidates(input: {
-  bytes: Uint8Array;
-  minimumTextCharactersPerPage: number;
-  maxVisualPages: number;
-}) {
-  const startedAt = Date.now();
-  const parser = new PDFParse({ data: Buffer.from(input.bytes) });
-  try {
-    // PDFParse shares a worker-backed document between these operations. Running
-    // them concurrently can make the worker transfer the same PDF object twice
-    // and fail with "Cannot transfer object of unsupported type" on scanned PDFs.
-    const text = await parser.getText({ first: 500 });
-    const images = await parser.getImage({
-      first: 500,
-      imageThreshold: 120,
-      imageBuffer: true,
-      imageDataUrl: false,
-    });
-    const imageCandidates = images.pages.flatMap((page) =>
-      page.images.map((image): VisualCandidate => ({
-        sourceKind: "asset",
-        sourceRef: `page:${page.pageNumber}/image:${image.name}`,
-        mediaType: "image/png",
-        data: image.data,
-      })),
-    );
-    const pagesWithImages = new Set(
-      images.pages
-        .filter((page) => page.images.length > 0)
-        .map((page) => page.pageNumber),
-    );
-    const screenshotPages = text.pages
-      .filter(
-        (page) =>
-          page.text.replace(/\s/g, "").length <
-            input.minimumTextCharactersPerPage &&
-          !pagesWithImages.has(page.num),
-      )
-      .map((page) => page.num);
-    const remainingSlots = Math.max(
-      0,
-      input.maxVisualPages - imageCandidates.length,
-    );
-    const selectedScreenshotPages = screenshotPages.slice(0, remainingSlots);
-    if (imageCandidates.length === 0 && selectedScreenshotPages.length === 0) {
-      logger.info("PDF visual candidate inspection completed", {
-        pdfBytes: input.bytes.byteLength,
-        inspectedPageCount: text.pages.length,
-        selectedPageCount: 0,
-        durationMs: Date.now() - startedAt,
-      });
-      return [];
-    }
-    const screenshots =
-      selectedScreenshotPages.length > 0
-        ? await parser.getScreenshot({
-            partial: selectedScreenshotPages,
-            desiredWidth: 1600,
-            imageBuffer: true,
-            imageDataUrl: false,
-          })
-        : { pages: [] };
-    const screenshotCandidates = screenshots.pages.map(
-      (page): VisualCandidate => ({
-        sourceKind: "page",
-        sourceRef: `page:${page.pageNumber}`,
-        mediaType: "image/png",
-        data: page.data,
-      }),
-    );
-    const candidates = [...imageCandidates, ...screenshotCandidates].slice(
-      0,
-      input.maxVisualPages,
-    );
-    logger.info("PDF visual candidate inspection completed", {
-      pdfBytes: input.bytes.byteLength,
-      inspectedPageCount: text.pages.length,
-      pagesWithImagesCount: pagesWithImages.size,
-      selectedPageCount: candidates.length,
-      extractedImageCount: imageCandidates.length,
-      screenshotPageCount: screenshotCandidates.length,
-      selectedPages: selectedScreenshotPages,
-      renderedBytes: candidates.reduce(
-        (total, candidate) => total + candidate.data.byteLength,
-        0,
-      ),
-      durationMs: Date.now() - startedAt,
-    });
-    return candidates;
-  } finally {
-    await parser.destroy();
-  }
-}
-
 export async function runVisualOcr(input: {
   workspaceId: string;
   config: RagConfig;
@@ -264,19 +175,20 @@ export async function runVisualOcr(input: {
     input.config.extraction.ocr.maxVisualPages,
   )) {
     try {
+      const normalizedCandidate = await normalizeOcrCandidate(candidate);
       const generatedRegions = await generateVisualRegions(
         resolved.model,
         visualOcrMessages(
-          candidate,
+          normalizedCandidate,
           input.config.extraction.ocr.describeDiagrams,
         ),
         {
           providerId: resolved.providerId,
           modelId: input.config.extraction.ocr.modelId,
-          sourceKind: candidate.sourceKind,
-          sourceRef: candidate.sourceRef,
-          mediaType: candidate.mediaType,
-          imageBytes: candidate.data.byteLength,
+          sourceKind: normalizedCandidate.sourceKind,
+          sourceRef: normalizedCandidate.sourceRef,
+          mediaType: normalizedCandidate.mediaType,
+          imageBytes: normalizedCandidate.data.byteLength,
         },
       );
       for (const region of generatedRegions) {

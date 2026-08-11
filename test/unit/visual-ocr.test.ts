@@ -31,11 +31,11 @@ vi.mock("@/modules/knowledge/rag-config", () => ({
 }));
 
 import {
-  inspectPdfVisualCandidates,
   isSupportedOcrImage,
   runVisualOcr,
   visualRegionsMarkdown,
 } from "@/modules/document-extraction/visual-ocr";
+import { inspectPdfVisualCandidates } from "@/modules/document-extraction/pdf-visual-candidates";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";
 
 const ocrConfig = {
@@ -94,10 +94,45 @@ describe("visual OCR", () => {
       expect.objectContaining({ partial: [1] }),
     );
     expect(candidates.map((candidate) => candidate.sourceRef)).toEqual([
-      "page:2/image:img2",
       "page:1",
+      "page:2/image:img2",
     ]);
     expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("classifies a large embedded image on a textless page as a page scan", async () => {
+    mocks.getText.mockResolvedValue({
+      pages: [{ num: 1, text: "" }],
+    });
+    mocks.getImage.mockResolvedValue({
+      pages: [
+        {
+          pageNumber: 1,
+          images: [
+            {
+              name: "scan1",
+              width: 1275,
+              height: 1650,
+              data: new Uint8Array([1]),
+            },
+          ],
+        },
+      ],
+    });
+
+    const candidates = await inspectPdfVisualCandidates({
+      bytes: new Uint8Array([1]),
+      minimumTextCharactersPerPage: 80,
+      maxVisualPages: 2,
+    });
+
+    expect(candidates).toEqual([
+      expect.objectContaining({
+        sourceKind: "page",
+        sourceRef: "page:1/image:scan1",
+      }),
+    ]);
+    expect(mocks.getScreenshot).not.toHaveBeenCalled();
   });
 
   it("serializes PDF text and image inspection on the shared worker", async () => {
@@ -201,6 +236,9 @@ describe("visual OCR", () => {
         ],
       }),
     );
+    expect(
+      mocks.generateText.mock.calls[0]?.[0].messages[0].content[0].text,
+    ).toContain("Transcribe all visible document text in reading order");
   });
 
   it("reports missing models and per-candidate provider failures", async () => {

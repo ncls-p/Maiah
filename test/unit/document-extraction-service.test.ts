@@ -15,8 +15,11 @@ vi.mock("@/modules/document-extraction/anydoc-adapter", () => ({
   extractWithAnydoc: mocks.extractWithAnydoc,
 }));
 
-vi.mock("@/modules/document-extraction/visual-ocr", () => ({
+vi.mock("@/modules/document-extraction/pdf-visual-candidates", () => ({
   inspectPdfVisualCandidates: mocks.inspectPdfVisualCandidates,
+}));
+
+vi.mock("@/modules/document-extraction/visual-ocr", () => ({
   isSupportedOcrImage: mocks.isSupportedOcrImage,
   runVisualOcr: mocks.runVisualOcr,
   visualRegionsMarkdown: mocks.visualRegionsMarkdown,

@@ -1,7 +1,10 @@
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 
 export type VisualRegionKind =
-  "text" | "diagram" | "table" | "image-description";
+  | "text"
+  | "diagram"
+  | "table"
+  | "image-description";
 
 export type VisualRegion = {
   kind: VisualRegionKind;
@@ -10,6 +13,13 @@ export type VisualRegion = {
   text: string;
   description: string;
   confidence: number;
+};
+
+export type VisualCandidate = {
+  sourceKind: VisualRegion["sourceKind"];
+  sourceRef: string;
+  mediaType: string;
+  data: Uint8Array;
 };
 
 export type DocumentExtractionResult = {
