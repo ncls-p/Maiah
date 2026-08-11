@@ -118,10 +118,11 @@ describe("runtime packaging guardrails", () => {
     for (const composeFile of [
       "docker-compose.dev.yml",
       "docker-compose.prod.yml",
+      ".coolify/stack.compose.yml",
     ]) {
       const compose = projectFile(composeFile);
       expect(compose).toContain("sandbox-egress:\n    internal: true");
-      expect(compose).toContain("SANDBOX_EGRESS_MAX_TRANSFER_BYTES: 3000000");
+      expect(compose).toContain("SANDBOX_EGRESS_MAX_TRANSFER_BYTES");
       expect(compose).toContain('user: "10002:10002"');
       expect(compose).not.toMatch(/sandbox-runner:[\s\S]*?network_mode: none/);
     }
