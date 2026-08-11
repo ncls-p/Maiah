@@ -1,6 +1,11 @@
 import "pdf-parse/worker";
 
-import { generateText, Output } from "ai";
+import {
+  generateText,
+  Output,
+  type LanguageModel,
+  type ModelMessage,
+} from "ai";
 import { PDFParse } from "pdf-parse";
 import { z } from "zod";
 
@@ -32,6 +37,79 @@ const visualRegionsSchema = z.object({
     }),
   ),
 });
+
+function visualOcrMessages(
+  candidate: VisualCandidate,
+  describeDiagrams: boolean,
+): ModelMessage[] {
+  return [
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: [
+            "Extract only information that requires visual understanding.",
+            "Return text embedded in pixels and describe diagrams, schemas, charts, and meaningful images.",
+            "Do not recreate ordinary document tables or prose already handled by AnyDoc.",
+            describeDiagrams
+              ? "For diagrams, explain nodes, arrows, labels, grouping, and reading order."
+              : "Do not describe diagrams unless they contain otherwise unreadable text.",
+            "Coordinates use a 0..1000 plane relative to this image. Tight boxes are preferred.",
+            "Return a JSON object with a regions array and no surrounding prose or Markdown.",
+            "Return an empty regions array when the image adds no useful information.",
+          ].join("\n"),
+        },
+        {
+          type: "file",
+          // PDF screenshots can be backed by worker-specific typed arrays.
+          // Cross the provider boundary with plain base64 so runtimes never
+          // attempt to transfer the worker-owned object itself.
+          data: Buffer.from(candidate.data).toString("base64"),
+          mediaType: candidate.mediaType,
+          filename: candidate.sourceRef,
+        },
+      ],
+    },
+  ];
+}
+
+function parseVisualRegionsJson(value: string) {
+  const withoutFence = value
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  const start = withoutFence.indexOf("{");
+  const end = withoutFence.lastIndexOf("}");
+  const json =
+    start >= 0 && end >= start
+      ? withoutFence.slice(start, end + 1)
+      : withoutFence;
+  return visualRegionsSchema.parse(JSON.parse(json));
+}
+
+async function generateVisualRegions(
+  model: LanguageModel,
+  messages: ModelMessage[],
+) {
+  try {
+    const structured = await generateText({
+      model,
+      output: Output.object({ schema: visualRegionsSchema }),
+      messages,
+    });
+    return structured.output.regions;
+  } catch {
+    // Some OpenAI-compatible servers return 5xx for response_format schemas.
+    // Fall back to plain text while preserving local schema validation.
+    const plain = await generateText({
+      model,
+      output: Output.text(),
+      messages,
+    });
+    return parseVisualRegionsJson(plain.output).regions;
+  }
+}
 
 export function isSupportedOcrImage(mimeType: string) {
   return ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(
@@ -105,40 +183,14 @@ export async function runVisualOcr(input: {
     input.config.extraction.ocr.maxVisualPages,
   )) {
     try {
-      const result = await generateText({
-        model: resolved.model,
-        output: Output.object({ schema: visualRegionsSchema }),
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: [
-                  "Extract only information that requires visual understanding.",
-                  "Return text embedded in pixels and describe diagrams, schemas, charts, and meaningful images.",
-                  "Do not recreate ordinary document tables or prose already handled by AnyDoc.",
-                  input.config.extraction.ocr.describeDiagrams
-                    ? "For diagrams, explain nodes, arrows, labels, grouping, and reading order."
-                    : "Do not describe diagrams unless they contain otherwise unreadable text.",
-                  "Coordinates use a 0..1000 plane relative to this image. Tight boxes are preferred.",
-                  "Return no regions when the image adds no useful information.",
-                ].join("\n"),
-              },
-              {
-                type: "file",
-                // PDF screenshots can be backed by worker-specific typed arrays.
-                // Cross the provider boundary with plain base64 so runtimes never
-                // attempt to transfer the worker-owned object itself.
-                data: Buffer.from(candidate.data).toString("base64"),
-                mediaType: candidate.mediaType,
-                filename: candidate.sourceRef,
-              },
-            ],
-          },
-        ],
-      });
-      for (const region of result.output.regions) {
+      const generatedRegions = await generateVisualRegions(
+        resolved.model,
+        visualOcrMessages(
+          candidate,
+          input.config.extraction.ocr.describeDiagrams,
+        ),
+      );
+      for (const region of generatedRegions) {
         regions.push({
           ...region,
           sourceKind: candidate.sourceKind,

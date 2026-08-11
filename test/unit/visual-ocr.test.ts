@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("ai", () => ({
   generateText: mocks.generateText,
-  Output: { object: vi.fn((value) => value) },
+  Output: {
+    object: vi.fn((value) => value),
+    text: vi.fn(() => ({ type: "text" })),
+  },
 }));
 
 vi.mock("pdf-parse", () => ({
@@ -91,7 +94,9 @@ describe("visual OCR", () => {
   });
 
   it("serializes PDF text and image inspection on the shared worker", async () => {
-    let resolveText: ((value: { pages: Array<{ num: number; text: string }> }) => void) | undefined;
+    let resolveText:
+      | ((value: { pages: Array<{ num: number; text: string }> }) => void)
+      | undefined;
     mocks.getText.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -192,6 +197,49 @@ describe("visual OCR", () => {
     );
   });
 
+  it("falls back to locally validated JSON when structured output is unsupported", async () => {
+    mocks.resolveOcrModel.mockResolvedValue({ model: {}, providerId: "p1" });
+    mocks.generateText
+      .mockRejectedValueOnce(new Error("structured output unsupported"))
+      .mockResolvedValueOnce({
+        output: JSON.stringify({
+          regions: [
+            {
+              kind: "text",
+              boundingBox: { x: 10, y: 20, width: 300, height: 100 },
+              text: "Scanned text",
+              description: "",
+              confidence: 0.95,
+            },
+          ],
+        }),
+      });
+
+    const result = await runVisualOcr({
+      workspaceId: "22222222-2222-4222-8222-222222222222",
+      config: ocrConfig,
+      candidates: [
+        {
+          sourceKind: "page",
+          sourceRef: "page:1",
+          mediaType: "image/png",
+          data: new Uint8Array([1]),
+        },
+      ],
+    });
+
+    expect(mocks.generateText).toHaveBeenCalledTimes(2);
+    expect(result.warnings).toEqual([]);
+    expect(result.regions).toEqual([
+      expect.objectContaining({
+        kind: "text",
+        sourceKind: "page",
+        sourceRef: "page:1",
+        text: "Scanned text",
+      }),
+    ]);
+  });
+
   it("reports missing models and per-candidate provider failures", async () => {
     mocks.resolveOcrModel.mockResolvedValueOnce(null);
     await expect(
@@ -209,6 +257,7 @@ describe("visual OCR", () => {
       model: {},
       providerId: "p1",
     });
+    mocks.generateText.mockRejectedValueOnce(new Error("provider unavailable"));
     mocks.generateText.mockRejectedValueOnce(new Error("provider unavailable"));
     const failed = await runVisualOcr({
       workspaceId: "22222222-2222-4222-8222-222222222222",
