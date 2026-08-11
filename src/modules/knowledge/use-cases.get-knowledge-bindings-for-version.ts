@@ -41,7 +41,16 @@ export async function getKnowledgeBindingsForVersion(
     ? (
         await Promise.all(
           rows.map(async (row) =>
-            (await canViewKnowledgeBase(row, visibility.userId)) ? row : null,
+            (await canViewKnowledgeBase(
+              {
+                id: row.knowledgeBaseId,
+                createdById: row.createdById,
+                isGlobal: row.isGlobal,
+              },
+              visibility.userId,
+            ))
+              ? row
+              : null,
           ),
         )
       ).filter((row) => row !== null)

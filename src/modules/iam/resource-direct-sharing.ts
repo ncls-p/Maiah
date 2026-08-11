@@ -9,7 +9,7 @@ import {
   users,
 } from "@/server/infrastructure/db/schema";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { listResourceShareTargets } from "./resource-sharing";
 import {
   getWorkspaceScope,
@@ -208,14 +208,24 @@ export async function replaceDirectResourceSharing(input: {
     .delete(roleBindings)
     .where(
       and(
-        eq(roleBindings.resourceType, input.resourceType),
-        eq(roleBindings.resourceId, input.resourceId),
         eq(roleBindings.principalType, "user"),
-        inArray(
-          roleBindings.roleId,
+        or(
+          and(
+            eq(roleBindings.resourceType, input.resourceType),
+            eq(roleBindings.resourceId, input.resourceId),
+            inArray(
+              roleBindings.roleId,
+              input.resourceType === "agent"
+                ? [rootRole.id, viewerRole.id]
+                : [rootRole.id],
+            ),
+          ),
           input.resourceType === "agent"
-            ? [rootRole.id, viewerRole.id]
-            : [rootRole.id],
+            ? and(
+                sql`${roleBindings.conditionJson}->>'source' = 'agent_direct_share'`,
+                sql`${roleBindings.conditionJson}->>'rootAgentId' = ${input.resourceId}`,
+              )
+            : undefined,
         ),
       ),
     );
@@ -241,6 +251,13 @@ export async function replaceDirectResourceSharing(input: {
                 : viewerRole.id,
             resourceType: target.type,
             resourceId: target.id,
+            conditionJson:
+              input.resourceType === "agent"
+                ? {
+                    source: "agent_direct_share",
+                    rootAgentId: input.resourceId,
+                  }
+                : undefined,
             createdById: input.actorUserId,
           })),
         ),

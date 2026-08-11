@@ -9,6 +9,7 @@ import {
   searchBoundKnowledgeBases,
   searchKnowledgeBase,
 } from "@/modules/knowledge/use-cases";
+import { authorization } from "@/server/domain/services/authorization";
 import {
   dbModule,
   fakeDoc,
@@ -89,6 +90,40 @@ describe("getKnowledgeBindingsForVersion", () => {
 
     const result = await getKnowledgeBindingsForVersion("v1");
     expect(result).toHaveLength(0);
+  });
+
+  it("checks a recipient grant against the data source id, not the binding id", async () => {
+    dbModule._c.where.mockResolvedValueOnce([
+      {
+        id: "binding-1",
+        knowledgeBaseId: "kb-1",
+        name: "Shared KB",
+        description: null,
+        createdById: "owner-1",
+        isGlobal: false,
+      },
+    ]);
+    const directPermission = vi
+      .spyOn(authorization, "hasDirectPermission")
+      .mockResolvedValueOnce(true);
+
+    await expect(
+      getKnowledgeBindingsForVersion("v1", {
+        workspaceId: "ws-1",
+        userId: "recipient-1",
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "binding-1",
+        knowledgeBaseId: "kb-1",
+      }),
+    ]);
+    expect(directPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "recipient-1" },
+      "knowledgeBases.viewAllowed",
+      "knowledge_base",
+      "kb-1",
+    );
   });
 });
 

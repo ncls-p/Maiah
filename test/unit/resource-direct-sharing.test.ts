@@ -280,11 +280,19 @@ describe("direct resource sharing", () => {
           resourceType: "agent",
           resourceId: "agent-1",
           roleId: "agent-user-role",
+          conditionJson: {
+            source: "agent_direct_share",
+            rootAgentId: "agent-1",
+          },
         }),
         expect.objectContaining({
           resourceType: "mcp_server",
           resourceId: "mcp-1",
           roleId: "viewer-role",
+          conditionJson: {
+            source: "agent_direct_share",
+            rootAgentId: "agent-1",
+          },
         }),
       ]),
     );
