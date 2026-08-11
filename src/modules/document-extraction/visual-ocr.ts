@@ -7,9 +7,12 @@ import {
   type ModelMessage,
 } from "ai";
 import { PDFParse } from "pdf-parse";
-import { z } from "zod";
 
 import { logger, logHandledWarning } from "@/lib/logger";
+import {
+  parseVisualRegionsJson,
+  visualRegionsSchema,
+} from "@/modules/document-extraction/visual-ocr-json";
 import type { VisualRegion } from "@/modules/document-extraction/types";
 import { resolveOcrModel } from "@/modules/knowledge/rag-config";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
@@ -20,23 +23,6 @@ export type VisualCandidate = {
   mediaType: string;
   data: Uint8Array;
 };
-
-const visualRegionsSchema = z.object({
-  regions: z.array(
-    z.object({
-      kind: z.enum(["text", "diagram", "table", "image-description"]),
-      boundingBox: z.object({
-        x: z.number().int().min(0).max(1000),
-        y: z.number().int().min(0).max(1000),
-        width: z.number().int().min(1).max(1000),
-        height: z.number().int().min(1).max(1000),
-      }),
-      text: z.string(),
-      description: z.string(),
-      confidence: z.number().min(0).max(1),
-    }),
-  ),
-});
 
 type VisualOcrLogContext = {
   providerId: string;
@@ -86,11 +72,10 @@ function visualOcrMessages(
             describeDiagrams
               ? "For diagrams, explain nodes, arrows, labels, grouping, and reading order."
               : "Do not describe diagrams unless they contain otherwise unreadable text.",
-            "Coordinates use a 0..1000 plane relative to this image. Tight boxes are preferred.",
             "Return a JSON object with a regions array and no surrounding prose or Markdown.",
-            'Use exactly this shape for every item: {"kind":"text","boundingBox":{"x":0,"y":0,"width":1000,"height":1000},"text":"visible text","description":"","confidence":0.9}.',
+            'Use exactly this shape for every item: {"kind":"text","text":"visible text","description":"","confidence":0.9}.',
             'Allowed kind values are exactly "text", "diagram", "table", and "image-description".',
-            "Every region must include kind, boundingBox, text, description, and confidence, even when text or description is empty.",
+            "Every region must include kind, text, description, and confidence, even when text or description is empty.",
             "Return an empty regions array when the image adds no useful information.",
           ].join("\n"),
         },
@@ -106,20 +91,6 @@ function visualOcrMessages(
       ],
     },
   ];
-}
-
-function parseVisualRegionsJson(value: string) {
-  const withoutFence = value
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "");
-  const start = withoutFence.indexOf("{");
-  const end = withoutFence.lastIndexOf("}");
-  const json =
-    start >= 0 && end >= start
-      ? withoutFence.slice(start, end + 1)
-      : withoutFence;
-  return visualRegionsSchema.parse(JSON.parse(json));
 }
 
 async function generateVisualRegions(
@@ -158,6 +129,12 @@ async function generateVisualRegions(
       messages,
     });
     const parsed = parseVisualRegionsJson(plain.output);
+    if (parsed.regionKeys.length > 0) {
+      logger.warn("Visual OCR JSON text fallback normalized provider fields", {
+        ...context,
+        regionKeys: parsed.regionKeys,
+      });
+    }
     logger.info("Visual OCR JSON text fallback completed", {
       ...context,
       regionCount: parsed.regions.length,
@@ -188,21 +165,36 @@ export async function inspectPdfVisualCandidates(input: {
     const images = await parser.getImage({
       first: 500,
       imageThreshold: 120,
+      imageBuffer: true,
+      imageDataUrl: false,
     });
+    const imageCandidates = images.pages.flatMap((page) =>
+      page.images.map((image): VisualCandidate => ({
+        sourceKind: "asset",
+        sourceRef: `page:${page.pageNumber}/image:${image.name}`,
+        mediaType: "image/png",
+        data: image.data,
+      })),
+    );
     const pagesWithImages = new Set(
       images.pages
         .filter((page) => page.images.length > 0)
         .map((page) => page.pageNumber),
     );
-    const selectedPages = text.pages
+    const screenshotPages = text.pages
       .filter(
         (page) =>
           page.text.replace(/\s/g, "").length <
-            input.minimumTextCharactersPerPage || pagesWithImages.has(page.num),
+            input.minimumTextCharactersPerPage &&
+          !pagesWithImages.has(page.num),
       )
-      .slice(0, input.maxVisualPages)
       .map((page) => page.num);
-    if (selectedPages.length === 0) {
+    const remainingSlots = Math.max(
+      0,
+      input.maxVisualPages - imageCandidates.length,
+    );
+    const selectedScreenshotPages = screenshotPages.slice(0, remainingSlots);
+    if (imageCandidates.length === 0 && selectedScreenshotPages.length === 0) {
       logger.info("PDF visual candidate inspection completed", {
         pdfBytes: input.bytes.byteLength,
         inspectedPageCount: text.pages.length,
@@ -211,24 +203,35 @@ export async function inspectPdfVisualCandidates(input: {
       });
       return [];
     }
-    const screenshots = await parser.getScreenshot({
-      partial: selectedPages,
-      desiredWidth: 1600,
-      imageBuffer: true,
-      imageDataUrl: false,
-    });
-    const candidates = screenshots.pages.map((page): VisualCandidate => ({
-      sourceKind: "page",
-      sourceRef: `page:${page.pageNumber}`,
-      mediaType: "image/png",
-      data: page.data,
-    }));
+    const screenshots =
+      selectedScreenshotPages.length > 0
+        ? await parser.getScreenshot({
+            partial: selectedScreenshotPages,
+            desiredWidth: 1600,
+            imageBuffer: true,
+            imageDataUrl: false,
+          })
+        : { pages: [] };
+    const screenshotCandidates = screenshots.pages.map(
+      (page): VisualCandidate => ({
+        sourceKind: "page",
+        sourceRef: `page:${page.pageNumber}`,
+        mediaType: "image/png",
+        data: page.data,
+      }),
+    );
+    const candidates = [...imageCandidates, ...screenshotCandidates].slice(
+      0,
+      input.maxVisualPages,
+    );
     logger.info("PDF visual candidate inspection completed", {
       pdfBytes: input.bytes.byteLength,
       inspectedPageCount: text.pages.length,
       pagesWithImagesCount: pagesWithImages.size,
       selectedPageCount: candidates.length,
-      selectedPages,
+      extractedImageCount: imageCandidates.length,
+      screenshotPageCount: screenshotCandidates.length,
+      selectedPages: selectedScreenshotPages,
       renderedBytes: candidates.reduce(
         (total, candidate) => total + candidate.data.byteLength,
         0,
@@ -307,12 +310,10 @@ export function visualRegionsMarkdown(regions: VisualRegion[]) {
   return [
     "## Visual extraction",
     ...regions.map((region) => {
-      const box = region.boundingBox;
-      const coordinates = `x=${box.x}, y=${box.y}, width=${box.width}, height=${box.height}`;
       const body = [region.text.trim(), region.description.trim()]
         .filter(Boolean)
         .join("\n\n");
-      return `### ${region.sourceRef} · ${region.kind}\n\n<!-- visual-region ${coordinates}; confidence=${region.confidence.toFixed(2)} -->\n\n${body}`;
+      return `### ${region.sourceRef} · ${region.kind}\n\n<!-- visual-confidence=${region.confidence.toFixed(2)} -->\n\n${body}`;
     }),
   ].join("\n\n");
 }

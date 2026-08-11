@@ -81,7 +81,6 @@ describe("document extraction orchestration", () => {
         kind: "diagram" as const,
         sourceKind: "page" as const,
         sourceRef: "page:2",
-        boundingBox: { x: 1, y: 2, width: 3, height: 4 },
         text: "A → B",
         description: "diagram",
         confidence: 0.9,

@@ -7,8 +7,6 @@ export type VisualRegion = {
   kind: VisualRegionKind;
   sourceKind: "page" | "asset" | "image";
   sourceRef: string;
-  /** Coordinates normalized to a 0..1000 plane relative to the source image. */
-  boundingBox: { x: number; y: number; width: number; height: number };
   text: string;
   description: string;
   confidence: number;

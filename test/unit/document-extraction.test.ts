@@ -36,13 +36,12 @@ describe("shared document extraction", () => {
     });
   });
 
-  it("preserves region provenance and normalized coordinates", () => {
+  it("preserves region provenance without model-generated coordinates", () => {
     const markdown = visualRegionsMarkdown([
       {
         kind: "diagram",
         sourceKind: "page",
         sourceRef: "page:3",
-        boundingBox: { x: 120, y: 80, width: 700, height: 420 },
         text: "Service A → Service B",
         description: "A directed service dependency.",
         confidence: 0.94,
@@ -50,7 +49,7 @@ describe("shared document extraction", () => {
     ]);
 
     expect(markdown).toContain("page:3 · diagram");
-    expect(markdown).toContain("x=120, y=80, width=700, height=420");
+    expect(markdown).toContain("visual-confidence=0.94");
     expect(markdown).toContain("Service A → Service B");
   });
 });

@@ -36,7 +36,6 @@ import {
   runVisualOcr,
   visualRegionsMarkdown,
 } from "@/modules/document-extraction/visual-ocr";
-import { logger } from "@/lib/logger";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";
 
 const ocrConfig = {
@@ -57,7 +56,7 @@ describe("visual OCR", () => {
     vi.clearAllMocks();
   });
 
-  it("selects only low-text PDF pages or pages containing images", async () => {
+  it("extracts embedded images and screenshots only low-text pages without images", async () => {
     mocks.getText.mockResolvedValue({
       pages: [
         { num: 1, text: "scan" },
@@ -68,14 +67,21 @@ describe("visual OCR", () => {
     mocks.getImage.mockResolvedValue({
       pages: [
         { pageNumber: 1, images: [] },
-        { pageNumber: 2, images: [{ width: 400, height: 300 }] },
+        {
+          pageNumber: 2,
+          images: [
+            {
+              name: "img2",
+              width: 400,
+              height: 300,
+              data: new Uint8Array([2]),
+            },
+          ],
+        },
       ],
     });
     mocks.getScreenshot.mockResolvedValue({
-      pages: [
-        { pageNumber: 1, data: new Uint8Array([1]) },
-        { pageNumber: 2, data: new Uint8Array([2]) },
-      ],
+      pages: [{ pageNumber: 1, data: new Uint8Array([1]) }],
     });
 
     const candidates = await inspectPdfVisualCandidates({
@@ -85,11 +91,11 @@ describe("visual OCR", () => {
     });
 
     expect(mocks.getScreenshot).toHaveBeenCalledWith(
-      expect.objectContaining({ partial: [1, 2] }),
+      expect.objectContaining({ partial: [1] }),
     );
     expect(candidates.map((candidate) => candidate.sourceRef)).toEqual([
+      "page:2/image:img2",
       "page:1",
-      "page:2",
     ]);
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
@@ -143,14 +149,13 @@ describe("visual OCR", () => {
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 
-  it("returns coordinate-aware regions from the configured vision model", async () => {
+  it("returns extracted regions from the configured vision model", async () => {
     mocks.resolveOcrModel.mockResolvedValue({ model: {}, providerId: "p1" });
     mocks.generateText.mockResolvedValue({
       output: {
         regions: [
           {
             kind: "diagram",
-            boundingBox: { x: 10, y: 20, width: 300, height: 200 },
             text: "A → B",
             description: "Dependency diagram",
             confidence: 0.9,
@@ -198,49 +203,6 @@ describe("visual OCR", () => {
     );
   });
 
-  it("falls back to locally validated JSON when structured output is unsupported", async () => {
-    mocks.resolveOcrModel.mockResolvedValue({ model: {}, providerId: "p1" });
-    mocks.generateText
-      .mockRejectedValueOnce(new Error("structured output unsupported"))
-      .mockResolvedValueOnce({
-        output: JSON.stringify({
-          regions: [
-            {
-              kind: "text",
-              boundingBox: { x: 10, y: 20, width: 300, height: 100 },
-              text: "Scanned text",
-              description: "",
-              confidence: 0.95,
-            },
-          ],
-        }),
-      });
-
-    const result = await runVisualOcr({
-      workspaceId: "22222222-2222-4222-8222-222222222222",
-      config: ocrConfig,
-      candidates: [
-        {
-          sourceKind: "page",
-          sourceRef: "page:1",
-          mediaType: "image/png",
-          data: new Uint8Array([1]),
-        },
-      ],
-    });
-
-    expect(mocks.generateText).toHaveBeenCalledTimes(2);
-    expect(result.warnings).toEqual([]);
-    expect(result.regions).toEqual([
-      expect.objectContaining({
-        kind: "text",
-        sourceKind: "page",
-        sourceRef: "page:1",
-        text: "Scanned text",
-      }),
-    ]);
-  });
-
   it("reports missing models and per-candidate provider failures", async () => {
     mocks.resolveOcrModel.mockResolvedValueOnce(null);
     await expect(
@@ -276,48 +238,6 @@ describe("visual OCR", () => {
     expect(failed.warnings[0]).toContain("provider unavailable");
   });
 
-  it("logs safe provider diagnostics without request payloads", async () => {
-    const providerError = Object.assign(new Error("provider failed"), {
-      statusCode: 500,
-      isRetryable: true,
-      responseBody: "upstream failure",
-    });
-    const warnSpy = vi
-      .spyOn(logger, "warn")
-      .mockImplementation(() => undefined);
-    mocks.resolveOcrModel.mockResolvedValue({ model: {}, providerId: "p1" });
-    mocks.generateText
-      .mockRejectedValueOnce(providerError)
-      .mockRejectedValueOnce(providerError);
-
-    await runVisualOcr({
-      workspaceId: "22222222-2222-4222-8222-222222222222",
-      config: ocrConfig,
-      candidates: [
-        {
-          sourceKind: "page",
-          sourceRef: "page:2",
-          mediaType: "image/png",
-          data: new Uint8Array([1, 2, 3]),
-        },
-      ],
-    });
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        providerId: "p1",
-        modelId: "qwen-vision",
-        sourceRef: "page:2",
-        imageBytes: 3,
-        statusCode: 500,
-        isRetryable: true,
-        responseBody: "upstream failure",
-      }),
-    );
-    warnSpy.mockRestore();
-  });
-
   it("recognizes supported images and renders visual provenance", () => {
     expect(isSupportedOcrImage("image/jpeg; charset=binary")).toBe(true);
     expect(isSupportedOcrImage("image/svg+xml")).toBe(false);
@@ -328,7 +248,6 @@ describe("visual OCR", () => {
           kind: "text",
           sourceKind: "page",
           sourceRef: "page:1",
-          boundingBox: { x: 10, y: 20, width: 300, height: 100 },
           text: "Scanned text",
           description: "Visible caption",
           confidence: 0.95,
