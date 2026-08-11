@@ -369,14 +369,17 @@ test.describe("chat page", () => {
       await showPlan.click();
       await expect(todoDock).toBeVisible();
 
+      await todoDock.getByRole("button", { name: "Show task details" }).click();
       const transcriptViewport = page.locator(
         '[data-slot="message-scroller-viewport"]',
       );
       await transcriptViewport.hover();
       await page.mouse.wheel(0, -200);
-      await expect(todoDock).toBeHidden();
-      await expect(showPlan).toBeVisible();
-      await showPlan.click();
+      await expect(todoDock).toBeVisible();
+      await expect(
+        todoDock.getByRole("button", { name: "Show task details" }),
+      ).toBeVisible();
+      await expect(showPlan).toBeHidden();
 
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(todoDock).toBeVisible();
