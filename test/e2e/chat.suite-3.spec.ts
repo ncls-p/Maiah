@@ -300,7 +300,7 @@ test.describe("chat page", () => {
         transcript.getByText("Failed", { exact: true }),
       ).toBeVisible();
       await expect(
-        transcript.getByText("Completed", { exact: true }),
+        transcript.getByText("Completed", { exact: true }).first(),
       ).toBeVisible();
       const detailedReasoning = transcript.locator(
         '[data-reasoning-details="available"]',
