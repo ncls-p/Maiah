@@ -64,6 +64,9 @@ test.describe("members page", () => {
       await page.getByRole("option", { name: "Maiah", exact: true }).click();
     }
     await page.getByRole("tab", { name: "Resources" }).click();
+    await page
+      .getByRole("textbox", { name: "Search resources" })
+      .fill("Transfer preview assistant");
 
     const resourceRow = page.locator("tbody tr").filter({
       hasText: "Transfer preview assistant",
