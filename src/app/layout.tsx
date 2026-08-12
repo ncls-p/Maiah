@@ -76,7 +76,6 @@ export default async function RootLayout({
   return (
     <html
       lang={documentLanguage}
-      data-scroll-behavior="smooth"
       suppressHydrationWarning
       className={cn(
         "min-h-full bg-background text-foreground antialiased",

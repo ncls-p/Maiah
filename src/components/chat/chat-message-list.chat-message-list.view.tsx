@@ -86,7 +86,8 @@ export function ChatMessageListView({
   } = model;
   return (
     <MessageScrollerProvider
-      defaultScrollPosition="start"
+      key={conversationId ?? "empty"}
+      defaultScrollPosition="end"
       scrollMargin={24}
       scrollPreviousItemPeek={96}
     >
@@ -167,35 +168,43 @@ export function ChatMessageListView({
                   messageId={message.id}
                   scrollAnchor={shouldScrollAnchor}
                   id={`message-${message.id}`}
-                  className="scroll-mt-6 animate-in-up"
+                  className={cn(
+                    "scroll-mt-6",
+                    !isStreamingAssistant &&
+                      "animate-in-up [contain-intrinsic-size:auto_10rem] [content-visibility:auto]",
+                  )}
                   style={{ animationDelay: isLast ? "0s" : undefined }}
                 >
                   <MessagePrimitive align={align}>
                     <MessagePrimitiveContent
                       className={cn(
                         "transition-opacity duration-150",
-                        isUser && !hasFilePart
+                        isUser && !hasFilePart && !isEditing
                           ? "max-w-[82%]"
                           : "max-w-[min(100%,48rem)]",
+                        isEditing && "max-w-[min(100%,36rem)]",
                         isAssistant && hasWorkPart && "w-full",
-                        isLast && isAnimating && "animate-in-fade",
                       )}
                     >
                       <Bubble
                         align={align}
-                        variant={isUser ? "muted" : "ghost"}
+                        variant={
+                          isEditing ? "ghost" : isUser ? "muted" : "ghost"
+                        }
                         className={cn(
                           isAssistant && hasWorkPart && "w-full",
-                          isEditing && "ring-2 ring-primary/25",
+                          isEditing && "max-w-[min(100%,36rem)]",
                         )}
                       >
                         <BubbleContent
                           className={cn(
                             "transition-[background-color,box-shadow,color] duration-150 ease-out",
                             isAssistant && hasWorkPart && "w-full",
-                            isUser
-                              ? "msg-bubble--user"
-                              : "msg-bubble--assistant",
+                            isEditing
+                              ? "w-full max-w-full overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
+                              : isUser
+                                ? "msg-bubble--user"
+                                : "msg-bubble--assistant",
                           )}
                         >
                           <MessageContent
@@ -222,18 +231,21 @@ export function ChatMessageListView({
                             }
                             onSaveEdit={
                               isEditing
-                                ? async () => {
+                                ? () => {
+                                    const nextContent = editingContent.trim();
+                                    setEditingMessageId(null);
+                                    setEditingContent("");
                                     setSavingMessageId(message.id);
-                                    try {
-                                      await onEditMessage?.(
-                                        message,
-                                        editingContent.trim(),
-                                      );
-                                      setEditingMessageId(null);
-                                      setEditingContent("");
-                                    } finally {
-                                      setSavingMessageId(null);
-                                    }
+                                    void (async () => {
+                                      try {
+                                        await onEditMessage?.(
+                                          message,
+                                          nextContent,
+                                        );
+                                      } finally {
+                                        setSavingMessageId(null);
+                                      }
+                                    })();
                                   }
                                 : undefined
                             }
@@ -245,7 +257,7 @@ export function ChatMessageListView({
                         </BubbleContent>
                       </Bubble>
 
-                      {message.createdAt ? (
+                      {!isEditing && message.createdAt ? (
                         <MessageFooter className="mt-1.5 gap-2 text-[11px] text-muted-foreground/60">
                           <a
                             href={`#message-${message.id}`}
@@ -266,6 +278,7 @@ export function ChatMessageListView({
                         </MessageFooter>
                       ) : null}
 
+                      {!isEditing ? (
                       <MessageActionBar
                         message={message}
                         sending={sending}
@@ -290,6 +303,7 @@ export function ChatMessageListView({
                           void onContinueAssistant?.(message);
                         }}
                       />
+                      ) : null}
                     </MessagePrimitiveContent>
                   </MessagePrimitive>
                 </MessageScrollerItem>

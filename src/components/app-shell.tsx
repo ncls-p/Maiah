@@ -2,7 +2,15 @@
 
 import { usePathname } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AppHeader } from "@/components/app-header";
 import {
@@ -82,19 +90,28 @@ function useWorkspacePermissions(workspaceId: string | null | undefined) {
   const [permissions, setPermissions] = useState<WorkspacePermissions>(
     DEFAULT_WORKSPACE_PERMISSIONS,
   );
+  const [permissionsReady, setPermissionsReady] = useState(false);
 
   useEffect(() => {
     const currentWorkspaceId = workspaceId ?? "";
-    if (!currentWorkspaceId) return;
+    if (!currentWorkspaceId) {
+      setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
+      setPermissionsReady(false);
+      return;
+    }
     let cancelled = false;
 
     async function loadPermissions() {
       try {
         const data = await fetchWorkspacePermissions(currentWorkspaceId);
-        if (!cancelled) setPermissions(data);
+        if (!cancelled) {
+          setPermissions(data);
+          setPermissionsReady(true);
+        }
       } catch {
         if (!cancelled) {
           setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
+          setPermissionsReady(true);
         }
       }
     }
@@ -105,7 +122,7 @@ function useWorkspacePermissions(workspaceId: string | null | undefined) {
     };
   }, [workspaceId]);
 
-  return permissions;
+  return { permissions, permissionsReady };
 }
 
 function useShellRouteMetadata(pathname: string) {
@@ -138,7 +155,16 @@ export function AppShell({
   const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
   const { orbitSection } = useShellRouteMetadata(pathname);
   const pendingToolCount = usePendingToolCount(workspaceId);
-  const permissions = useWorkspacePermissions(workspaceId);
+  const { permissions, permissionsReady } =
+    useWorkspacePermissions(workspaceId);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // Keep chrome still: only reset the main pane scroll, never the window/shell.
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    if (!main || isChatRoute) return;
+    main.scrollTop = 0;
+  }, [pathname, isChatRoute]);
 
   const shellValue = useMemo(
     () => ({
@@ -147,6 +173,7 @@ export function AppShell({
       isAdmin,
       pendingToolCount,
       permissions,
+      permissionsReady,
       sidebarNavConfig,
     }),
     [
@@ -155,6 +182,7 @@ export function AppShell({
       isAdmin,
       pendingToolCount,
       permissions,
+      permissionsReady,
       sidebarNavConfig,
     ],
   );
@@ -182,6 +210,7 @@ export function AppShell({
               actions={<OrbitAccountMenu displayName={displayName} />}
             />
             <main
+              ref={mainRef}
               id="workspace-main"
               tabIndex={-1}
               className={cn(

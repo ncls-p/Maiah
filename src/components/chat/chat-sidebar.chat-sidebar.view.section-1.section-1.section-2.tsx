@@ -14,6 +14,7 @@ import {
   BUTTON_TYPE,
   GHOST_VARIANT,
 } from "./chat-sidebar.default-workspace-nav-open";
+
 export function ChatSidebarContentSection2({
   model,
 }: {
@@ -36,8 +37,11 @@ export function ChatSidebarContentSection2({
     setNewFolderName,
     t,
   } = model;
+  const searchPlaceholder = readOnly
+    ? t("searchCompactPlaceholder")
+    : t("searchPlaceholder");
   return (
-    <div className="flex shrink-0 flex-col gap-2 px-3 pb-2 pt-3">
+    <div className="@container flex shrink-0 flex-col gap-2 px-3 pb-2 pt-3">
       <div className="flex items-center gap-2">
         {onNewTemporaryConversation ? (
           <TemporaryConversationButton onSelect={onNewTemporaryConversation} />
@@ -45,20 +49,23 @@ export function ChatSidebarContentSection2({
         <Button
           type={BUTTON_TYPE}
           onClick={onNewConversation}
-          className="h-11 min-w-0 flex-1 justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
+          className="h-11 min-w-0 flex-1 justify-center gap-2 rounded-xl px-2.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)] @[16rem]:justify-start @[16rem]:gap-2.5 @[16rem]:px-3.5"
           aria-label={t("newConversation")}
         >
           <MessageSquarePlusIcon
             className="size-4 shrink-0"
             aria-hidden="true"
           />
-          <span className="min-w-0 truncate">{t("newConversation")}</span>
+          <span className="min-w-0 truncate @[16rem]:hidden">{t("new")}</span>
+          <span className="hidden min-w-0 truncate @[16rem]:inline">
+            {t("newConversation")}
+          </span>
         </Button>
       </div>
 
       <div className="relative flex items-center">
         <SearchIcon
-          className="pointer-events-none absolute left-3 size-3.5 shrink-0 text-muted-foreground"
+          className="pointer-events-none absolute left-3 z-10 size-3.5 shrink-0 text-muted-foreground"
           aria-hidden="true"
         />
         <Input
@@ -66,22 +73,41 @@ export function ChatSidebarContentSection2({
           name="conversation-search"
           autoComplete="off"
           aria-label={t("searchLabel")}
-          placeholder={
-            readOnly ? t("searchCompactPlaceholder") : t("searchPlaceholder")
-          }
+          placeholder={searchPlaceholder}
           value={searchQuery}
           onChange={(event) => onSearchQueryChange?.(event.target.value)}
           className={cn(
-            "h-11 min-w-0 rounded-xl border-sidebar-border/60 bg-card/60 pl-9 text-xs shadow-none",
+            "peer h-11 min-w-0 rounded-xl border-sidebar-border/60 bg-card/60 pl-9 text-xs shadow-none placeholder:truncate placeholder:opacity-0",
             searchActive ? "pr-11" : "pr-3",
           )}
         />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute top-1/2 left-9 z-10 -translate-y-1/2 truncate text-xs text-muted-foreground/80 opacity-0 peer-placeholder-shown:opacity-100",
+            searchActive ? "right-11" : "right-3",
+            readOnly ? null : "@[15rem]:hidden",
+          )}
+        >
+          {t("searchCompactPlaceholder")}
+        </span>
+        {readOnly ? null : (
+          <span
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute top-1/2 left-9 z-10 hidden -translate-y-1/2 truncate text-xs text-muted-foreground/80 opacity-0 peer-placeholder-shown:opacity-100 @[15rem]:block",
+              searchActive ? "right-11" : "right-3",
+            )}
+          >
+            {t("searchPlaceholder")}
+          </span>
+        )}
         {searchActive ? (
           <Button
             type={BUTTON_TYPE}
             size="icon-sm"
             variant={GHOST_VARIANT}
-            className="absolute right-0.5 size-10 shrink-0 rounded-[10px]"
+            className="absolute right-0.5 z-10 size-10 shrink-0 rounded-[10px]"
             aria-label={t("clearSearch")}
             onClick={() => onSearchQueryChange?.("")}
           >

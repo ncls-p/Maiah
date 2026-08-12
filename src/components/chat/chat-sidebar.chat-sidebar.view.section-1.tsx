@@ -8,7 +8,7 @@ export function ChatSidebarSection1({
 }) {
   const {} = model;
   return (
-    <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
+    <div className="flex min-h-0 flex-1 flex-col">
       <ChatSidebarBodySection1 model={model} />
     </div>
   );

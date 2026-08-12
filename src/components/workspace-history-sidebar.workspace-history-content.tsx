@@ -60,7 +60,7 @@ export function WorkspaceHistoryContent({
           createChatHref({ ...options, pathname: window.location.pathname }),
         );
       } else {
-        router.push(createChatHref(options));
+        router.push(createChatHref(options), { scroll: false });
       }
       onNavigate?.();
     },

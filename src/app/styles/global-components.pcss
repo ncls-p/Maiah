@@ -76,6 +76,13 @@
   .app-shell__main {
     @apply min-h-0 flex-1 overflow-y-auto bg-transparent;
     scrollbar-gutter: stable;
+    /* Isolate route swaps into their own paint layer: without this, the big
+       DOM swap on navigation invalidates the whole page's raster and Chromium
+       briefly presents blank (background-only) frames — a full-page white
+       flash including the header and sidebar. Note: this makes `main` the
+       containing block for `position: fixed` descendants, so full-screen
+       overlays rendered inside routes must portal to <body>. */
+    contain: paint;
   }
   .app-shell__main--chat {
     @apply overflow-hidden;

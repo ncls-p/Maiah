@@ -121,6 +121,7 @@ export function ChatNavLink({ item }: { item: NavItem }) {
   return (
     <Link
       href={item.href}
+      scroll={false}
       aria-current={active ? "page" : undefined}
       className={sidebarNavItemClassName({ active })}
     >

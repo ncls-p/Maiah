@@ -97,8 +97,16 @@ export function useChatMessageListController({
   // Scrolling up opts out immediately and preserves the reader's position.
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const shouldFollowStreamRef = useRef(false);
+  const shouldFollowStreamRef = useRef(true);
   const isDraggingScrollbarRef = useRef(false);
+
+  useLayoutEffect(() => {
+    setVisibleMessageCount(INITIAL_VISIBLE_MESSAGES);
+    setEditingMessageId(null);
+    setEditingContent("");
+    setSavingMessageId(null);
+    shouldFollowStreamRef.current = true;
+  }, [conversationId]);
 
   useLayoutEffect(() => {
     if (!hasTranscript) return;

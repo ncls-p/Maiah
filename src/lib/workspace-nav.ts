@@ -74,6 +74,7 @@ export type WorkspaceShellState = {
   isAdmin?: boolean;
   pendingToolCount: number;
   permissions: WorkspacePermissions;
+  permissionsReady: boolean;
   sidebarNavConfig?: {
     items: Array<{
       id: string;

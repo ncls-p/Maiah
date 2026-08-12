@@ -18,7 +18,7 @@ export type StoredChatStreamDraft = {
 const STREAM_DRAFT_PREFIX = "ai-hub-chat-stream-draft:";
 export const STREAM_DRAFT_EVENT = "ai-hub-chat-stream-draft-updated";
 const STREAM_DRAFT_TTL_MS = 30 * 60 * 1000;
-export const STREAM_RENDER_BATCH_MS = 48;
+export const STREAM_RENDER_BATCH_MS = 16;
 export const STREAM_DRAFT_WRITE_BATCH_MS = 750;
 export const TOOL_CALL_PART_TYPE = "tool-call";
 

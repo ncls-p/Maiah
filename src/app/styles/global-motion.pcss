@@ -60,8 +60,10 @@
     .animate-in-up,
     .animate-in-scale,
     .animate-in-slide-right,
-    .animate-in-slide-left {
-      animation: none;
+    .animate-in-slide-left,
+    [data-sd-animate="true"] {
+      animation: none !important;
+      opacity: 1 !important;
       transition-duration: 0.01ms;
     }
   }
@@ -73,7 +75,7 @@
   [data-sd-animate="true"] {
     display: inline;
     overflow-wrap: break-word;
-    animation: var(--sd-animation) var(--sd-duration, 220ms)
+    animation: var(--sd-animation) var(--sd-duration, 90ms)
       var(--sd-easing, cubic-bezier(0.2, 0, 0, 1)) both;
     animation-delay: var(--sd-delay, 0ms);
   }
@@ -87,7 +89,7 @@
 
   @keyframes sd-fadeIn {
     from {
-      opacity: 0;
+      opacity: 0.72;
     }
     to {
       opacity: 1;
@@ -96,7 +98,7 @@
 
   @keyframes sd-tokenFadeIn {
     from {
-      opacity: 0.55;
+      opacity: 0.72;
     }
     to {
       opacity: 1;
@@ -105,7 +107,7 @@
 
   @keyframes sd-blurIn {
     from {
-      opacity: 0.55;
+      opacity: 0.72;
     }
     to {
       opacity: 1;
@@ -114,7 +116,7 @@
 
   @keyframes sd-softReveal {
     from {
-      opacity: 0.55;
+      opacity: 0.72;
     }
     to {
       opacity: 1;
@@ -216,7 +218,7 @@
   }
 
   .page-content__body {
-    animation: animate-in-fade 0.2s cubic-bezier(0.2, 0, 0, 1) both;
+    min-width: 0;
   }
 
   .typing-dot {

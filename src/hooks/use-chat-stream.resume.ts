@@ -62,6 +62,8 @@ export function useChatStreamResume(input: {
     let completed = false;
     let resumeDraft = getStoredChatStreamDraft(activeConversationId);
     let resumeDraftWriteTimeout: number | null = null;
+    let assistantDraft: ChatMessage | null = null;
+    let renderFrame: number | null = null;
     queueMicrotask(() => setResuming(true));
 
     function cancelScheduledResumeDraftWrite() {
@@ -88,16 +90,61 @@ export function useChatStreamResume(input: {
       }, STREAM_DRAFT_WRITE_BATCH_MS);
     }
 
-    function updateAssistant(updater: (message: ChatMessage) => ChatMessage) {
+    function commitAssistantDraft() {
+      if (!assistantDraft) return;
+      const next = assistantDraft;
       setMessages((current) =>
         current.map((message) =>
-          message.id === activeStreamingMessageId ? updater(message) : message,
+          message.id === activeStreamingMessageId ? next : message,
         ),
       );
-      if (resumeDraft?.assistantMessage.id === activeStreamingMessageId) {
+    }
+
+    function cancelScheduledRender() {
+      if (renderFrame === null) return;
+      window.cancelAnimationFrame(renderFrame);
+      renderFrame = null;
+    }
+
+    function flushAssistantRender() {
+      if (renderFrame === null) return;
+      cancelScheduledRender();
+      commitAssistantDraft();
+    }
+
+    function scheduleAssistantRender() {
+      if (renderFrame !== null) return;
+      renderFrame = window.requestAnimationFrame(() => {
+        renderFrame = null;
+        commitAssistantDraft();
+      });
+    }
+
+    function updateAssistant(updater: (message: ChatMessage) => ChatMessage) {
+      if (assistantDraft) {
+        assistantDraft = updater(assistantDraft);
+        scheduleAssistantRender();
+      } else {
+        setMessages((current) => {
+          const existing = current.find(
+            (message) => message.id === activeStreamingMessageId,
+          );
+          if (!existing) return current;
+          assistantDraft = updater(existing);
+          return current.map((message) =>
+            message.id === activeStreamingMessageId
+              ? assistantDraft!
+              : message,
+          );
+        });
+      }
+      if (
+        assistantDraft &&
+        resumeDraft?.assistantMessage.id === activeStreamingMessageId
+      ) {
         resumeDraft = {
           ...resumeDraft,
-          assistantMessage: updater(resumeDraft.assistantMessage),
+          assistantMessage: assistantDraft,
           updatedAt: Date.now(),
         };
         persistResumeDraft();
@@ -210,6 +257,8 @@ export function useChatStreamResume(input: {
         clearPendingApprovals();
         clearStoredChatStreamDraft(activeConversationId);
       } finally {
+        flushAssistantRender();
+        cancelScheduledRender();
         cancelScheduledResumeDraftWrite();
         if (activeRequestControllerRef.current === controller) {
           activeRequestControllerRef.current = null;
@@ -222,6 +271,9 @@ export function useChatStreamResume(input: {
     void resumeStream();
     return () => {
       controller.abort();
+      flushAssistantRender();
+      cancelScheduledRender();
+      cancelScheduledResumeDraftWrite();
       if (activeRequestControllerRef.current === controller) {
         activeRequestControllerRef.current = null;
         activeConversationIdRef.current = null;

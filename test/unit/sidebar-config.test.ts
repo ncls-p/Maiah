@@ -72,6 +72,7 @@ describe("buildSidebarMenuGroups", () => {
     const groups = buildSidebarMenuGroups(
       {
         pendingToolCount: 0,
+        permissionsReady: true,
         permissions: {
           ...DEFAULT_WORKSPACE_PERMISSIONS,
           canManageAccess: true,
@@ -98,6 +99,7 @@ describe("buildSidebarMenuGroups", () => {
     const groups = buildSidebarMenuGroups(
       {
         pendingToolCount: 0,
+        permissionsReady: true,
         permissions: {
           ...DEFAULT_WORKSPACE_PERMISSIONS,
           canViewUsage: true,
@@ -132,6 +134,7 @@ describe("buildSidebarMenuGroups", () => {
     const groups = buildSidebarMenuGroups(
       {
         pendingToolCount: 0,
+        permissionsReady: true,
         permissions: {
           ...DEFAULT_WORKSPACE_PERMISSIONS,
           canViewUsage: true,

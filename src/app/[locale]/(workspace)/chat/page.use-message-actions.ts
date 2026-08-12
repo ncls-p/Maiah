@@ -41,6 +41,19 @@ export function useMessageActions(c: Context) {
   async function editMessage(message: ChatMessage, content: string) {
     if (!c.activeConversationId) return;
     const trimmed = content.trim();
+    const nextMessages = c.messages.map((item) =>
+      item.id === message.id
+        ? {
+            ...item,
+            status: "completed" as const,
+            parts: [
+              { type: "text" as const, content: trimmed },
+              ...item.parts.filter((part) => part.type === "file"),
+            ],
+          }
+        : item,
+    );
+    c.setMessages(nextMessages);
     await fetchJson(
       `/api/workspace/conversations/${c.activeConversationId}/messages/${message.id}`,
       {
@@ -48,20 +61,6 @@ export function useMessageActions(c: Context) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmed }),
       },
-    );
-    c.setMessages(
-      c.messages.map((item) =>
-        item.id === message.id
-          ? {
-              ...item,
-              status: "completed",
-              parts: [
-                { type: "text", content: trimmed },
-                ...item.parts.filter((part) => part.type === "file"),
-              ],
-            }
-          : item,
-      ),
     );
     if (message.role === "user" && trimmed && !c.sending)
       await c.handleSubmit(trimmed, {

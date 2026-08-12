@@ -17,6 +17,15 @@ import { cn } from "@/lib/utils";
 const streamdownMath = createMathPlugin({ singleDollarTextMath: true });
 const STREAMDOWN_PLUGINS = { code, math: streamdownMath };
 
+/** Sync path + light word reveal — avoids Streamdown's startTransition lag while streaming. */
+const STREAM_ANIMATE = {
+  animation: "fadeIn" as const,
+  duration: 90,
+  easing: "cubic-bezier(0.2, 0, 0, 1)",
+  sep: "word" as const,
+  stagger: 8,
+};
+
 function isTrustedInternalLink(url: string) {
   if (typeof window === "undefined") return false;
   try {
@@ -105,8 +114,11 @@ export function ChatMarkdown({
     <Streamdown
       plugins={STREAMDOWN_PLUGINS}
       linkSafety={STREAMDOWN_LINK_SAFETY}
-      caret="block"
+      mode={isAnimating ? "streaming" : "static"}
+      caret={isAnimating ? "block" : undefined}
+      animated={isAnimating ? STREAM_ANIMATE : false}
       isAnimating={isAnimating}
+      controls={!isAnimating}
       className={cn("streaming-markdown text-sm", className)}
     >
       {children}

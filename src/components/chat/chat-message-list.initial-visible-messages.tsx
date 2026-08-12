@@ -57,7 +57,7 @@ export function SavedMessageAnchorRestorer({
 }: {
   conversationId?: string | null;
 }) {
-  const { scrollToMessage } = useMessageScroller();
+  const { scrollToMessage, scrollToEnd } = useMessageScroller();
   const restoredConversationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -68,22 +68,27 @@ export function SavedMessageAnchorRestorer({
       return;
     }
     restoredConversationIdRef.current = conversationId;
+
+    // Deep-links keep their target message; history opens land at the latest.
     const hashMessageId = window.location.hash.startsWith("#message-")
       ? window.location.hash.slice("#message-".length)
       : null;
-    const savedMessageId =
-      hashMessageId ??
-      window.localStorage.getItem(chatAnchorStorageKey(conversationId));
-    if (!savedMessageId) return;
+
     const frame = window.requestAnimationFrame(() => {
-      scrollToMessage(savedMessageId, {
-        align: "start",
-        behavior: "auto",
-        scrollMargin: 24,
-      });
+      if (hashMessageId) {
+        scrollToMessage(hashMessageId, {
+          align: "start",
+          behavior: "auto",
+          scrollMargin: 24,
+        });
+        return;
+      }
+
+      window.localStorage.removeItem(chatAnchorStorageKey(conversationId));
+      scrollToEnd({ behavior: "auto" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [conversationId, scrollToMessage]);
+  }, [conversationId, scrollToEnd, scrollToMessage]);
 
   return null;
 }

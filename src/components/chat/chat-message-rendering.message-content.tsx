@@ -92,6 +92,13 @@ export const MessageContent = memo(function MessageContent({
     });
     return sequenceByIndex;
   }, [renderableParts]);
+  const streamingTextPartIndex = useMemo(() => {
+    if (!isAnimating) return -1;
+    for (let index = renderableParts.length - 1; index >= 0; index -= 1) {
+      if (renderableParts[index].type === "text") return index;
+    }
+    return -1;
+  }, [isAnimating, renderableParts]);
   const { approvalByPartIndex, standaloneApprovals } = useMemo(() => {
     const approvalByIndex = new Map<number, PendingToolApproval>();
     const matchedApprovalIds = new Set<string>();
@@ -238,7 +245,14 @@ export const MessageContent = memo(function MessageContent({
         />
       );
     }
-    return <ChatMarkdown key={key}>{part.content}</ChatMarkdown>;
+    return (
+      <ChatMarkdown
+        key={key}
+        isAnimating={isAnimating && partIndex === streamingTextPartIndex}
+      >
+        {part.content}
+      </ChatMarkdown>
+    );
   };
   return (
     <div className="flex flex-col gap-2">
@@ -281,7 +295,7 @@ export const MessageContent = memo(function MessageContent({
         })
       ) : standaloneApprovals.length === 0 ? (
         content ? (
-          <ChatMarkdown>{content}</ChatMarkdown>
+          <ChatMarkdown isAnimating={isAnimating}>{content}</ChatMarkdown>
         ) : isAnimating ? (
           <StreamingThinking />
         ) : null

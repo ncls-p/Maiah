@@ -50,11 +50,11 @@ export function OrbitWordmark({ section }: { section: string }) {
     workspaces.find((workspace) => workspace.id === workspaceId)?.name ??
     "Maiah";
   return (
-    <div className="flex min-w-0 items-baseline gap-2 sm:min-w-32">
+    <div className="flex min-w-0 items-baseline gap-2 sm:min-w-40">
       <span className="max-w-36 truncate text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-foreground sm:max-w-48 sm:text-[0.72rem] sm:tracking-[0.16em]">
         {projectName}
       </span>
-      <span className="hidden font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary sm:inline">
+      <span className="hidden min-w-16 font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary sm:inline">
         {section}
       </span>
     </div>
@@ -95,6 +95,7 @@ export function OrbitMobileNavigation({
             key={item.href}
             href={item.href}
             prefetch={true}
+            scroll={false}
             aria-current={active ? "page" : undefined}
             className={cn(
               "mobile-app-navigation__item",
@@ -166,6 +167,7 @@ export function OrbitProductNavigation({
               key={item.href}
               href={item.href}
               prefetch={true}
+              scroll={false}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "relative inline-flex h-10 shrink-0 items-center rounded-lg px-3 text-xs font-medium outline-none transition-[background-color,color,box-shadow,scale] duration-180 ease-out after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:opacity-0 after:transition-[scale,opacity] after:duration-180 focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]",
@@ -203,7 +205,11 @@ export function OrbitProductNavigation({
               const Icon = item.icon;
               return (
                 <DropdownMenuItem key={item.href} asChild>
-                  <Link href={item.href} className="min-h-10 gap-2.5">
+                  <Link
+                    href={item.href}
+                    scroll={false}
+                    className="min-h-10 gap-2.5"
+                  >
                     <Icon className="size-4" aria-hidden="true" />
                     <span className="min-w-0 flex-1 truncate">
                       {t(item.labelKey)}

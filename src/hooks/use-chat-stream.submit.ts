@@ -16,7 +16,6 @@ import {
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
 import {
   STREAM_DRAFT_WRITE_BATCH_MS,
-  STREAM_RENDER_BATCH_MS,
   applyStreamEvent,
   clearStoredChatStreamDraft,
   filterResolvedApprovals,
@@ -126,7 +125,7 @@ export function useChatSubmitHandler(input: {
 
     function cancelScheduledRender() {
       if (renderBatchTimeout === null) return;
-      window.clearTimeout(renderBatchTimeout);
+      window.cancelAnimationFrame(renderBatchTimeout);
       renderBatchTimeout = null;
     }
 
@@ -138,10 +137,11 @@ export function useChatSubmitHandler(input: {
 
     function scheduleAssistantRender() {
       if (renderBatchTimeout !== null) return;
-      renderBatchTimeout = window.setTimeout(() => {
+      // Align commits to the next paint so markdown updates feel continuous.
+      renderBatchTimeout = window.requestAnimationFrame(() => {
         renderBatchTimeout = null;
         commitAssistantDraft();
-      }, STREAM_RENDER_BATCH_MS);
+      });
     }
 
     function cancelScheduledDraftWrite() {

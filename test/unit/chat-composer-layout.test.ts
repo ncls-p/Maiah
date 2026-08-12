@@ -3,6 +3,25 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("chat composer layout", () => {
+  it("keeps the queued messages panel compact, collapsed, and themed", () => {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/chat/chat-composer.chat-composer.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain('data-slot="chat-composer-queued"');
+    expect(source).toContain("function QueuedMessagesPanel");
+    expect(source).toContain("useState(false)");
+    expect(source).toContain("composer-box overflow-hidden rounded-3xl");
+    expect(source).toContain("max-h-[min(32vh,14rem)]");
+    expect(source).toContain("field-sizing-fixed");
+    expect(source).toContain("max-h-24 min-h-9 resize-none overflow-y-auto");
+    expect(source).toContain("Math.min(\n                    3,");
+  });
+
   it("renders usage impact in a separate responsive row", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/chat/chat-composer-body.tsx"),

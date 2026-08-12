@@ -3,20 +3,16 @@
 import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useWorkspaceShell } from "@/components/app-shell";
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
 import { SkillManager } from "@/components/skills/skill-manager";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { fetchWorkspacePermissions } from "@/lib/api-client";
-import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  type WorkspacePermissions,
-} from "@/lib/workspace-nav";
+import type { WorkspacePermissions } from "@/lib/workspace-nav";
 
 import { BuiltinToolsPanel } from "./builtin-tools-panel";
 
@@ -74,11 +70,7 @@ export function ToolsHub() {
   const t = useTranslations("tools");
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
-  const [permissions, setPermissions] = useState<WorkspacePermissions>(
-    DEFAULT_WORKSPACE_PERMISSIONS,
-  );
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
-  const [permissionsError, setPermissionsError] = useState(false);
+  const { permissions, permissionsReady } = useWorkspaceShell();
   const hasResolvedInitialTab = useRef(false);
   const [activeTab, setActiveTab] = useState<ToolsTab>(() => {
     const requestedTab = searchParams.get("tab");
@@ -93,34 +85,9 @@ export function ToolsHub() {
   const fallbackTab = allowedTabValues[0] ?? "builtin";
   const tab = allowedTabValues.includes(activeTab) ? activeTab : fallbackTab;
 
-  const loadPermissions = useCallback(async () => {
-    if (!workspaceId) return;
-    setPermissionsLoading(true);
-    setPermissionsError(false);
-    try {
-      setPermissions(await fetchWorkspacePermissions(workspaceId));
-    } catch {
-      setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
-      setPermissionsError(true);
-    } finally {
-      setPermissionsLoading(false);
-    }
-  }, [workspaceId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timeout = window.setTimeout(() => {
-      if (!cancelled) void loadPermissions();
-    }, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, [loadPermissions]);
-
   useEffect(() => {
     if (
-      permissionsLoading ||
+      !permissionsReady ||
       allowedTabValues.length === 0 ||
       hasResolvedInitialTab.current
     ) {
@@ -135,7 +102,7 @@ export function ToolsHub() {
     activeTab,
     allowedTabValues,
     fallbackTab,
-    permissionsLoading,
+    permissionsReady,
     requestedTab,
   ]);
 
@@ -144,39 +111,8 @@ export function ToolsHub() {
     setActiveTab(value);
   }
 
-  if (workspaceLoading || !workspaceId || permissionsLoading) {
+  if (workspaceLoading || !workspaceId || !permissionsReady) {
     return <PageLoading label={t("permissionsLoading")} />;
-  }
-
-  if (permissionsError) {
-    return (
-      <WorkspacePage
-        title={t("orbitTitle")}
-        accentTitle={t("orbitAccent")}
-        eyebrow={t("orbitEyebrow")}
-        description={t("orbitDescription")}
-        width="wide"
-      >
-        <div
-          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
-          role="alert"
-        >
-          <h2 className="text-base font-semibold">{t("loadFailed")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("loadFailedDescription")}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => void loadPermissions()}
-          >
-            {t("retry")}
-          </Button>
-        </div>
-      </WorkspacePage>
-    );
   }
 
   if (allowedTabs.length === 0) {
