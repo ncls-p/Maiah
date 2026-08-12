@@ -1141,10 +1141,24 @@ jobs:
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
           echo "Using sandbox runner image ${AI_HUB_SANDBOX_IMAGE}"
           echo "Using ServiceNow MCP gateway image ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}"
-          # The current Coolify service restart API is asynchronous and returns
-          # only a message (no deployment UUID). Pull the versioned images, then
-          # verify the release identity through the public health endpoint below.
-          api POST "/services/${SERVICE_UUID}/restart?latest=true" >/dev/null
+          # Updating a running service and restarting its containers does not
+          # apply Coolify's pending configuration. Trigger a real resource
+          # deployment, then verify the release identity through health below.
+          DEPLOY_RESPONSE="$(
+            api POST "/deploy" \
+              "$(jq -nc --arg uuid "${SERVICE_UUID}" '{uuid: $uuid, force: true}')"
+          )"
+          DEPLOY_MESSAGE="$(
+            jq -r --arg uuid "${SERVICE_UUID}" \
+              '.deployments[]? | select(.resource_uuid == $uuid) | .message // empty' \
+              <<<"${DEPLOY_RESPONSE}"
+          )"
+          if [[ -z "${DEPLOY_MESSAGE}" ]]; then
+            echo "Coolify did not acknowledge deployment for service ${SERVICE_UUID}." >&2
+            jq . <<<"${DEPLOY_RESPONSE}" >&2
+            exit 1
+          fi
+          echo "${DEPLOY_MESSAGE}"
 
           long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner", "sandbox-egress-proxy", "servicenow-mcp-gateway"]'
           success=false

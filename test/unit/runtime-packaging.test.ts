@@ -38,14 +38,16 @@ describe("runtime packaging guardrails", () => {
     );
   });
 
-  it("deploys Coolify services with the current POST endpoint", () => {
+  it("applies pending Coolify service configuration through the deploy API", () => {
     const workflow = projectFile(".github/workflows/coolify.yml");
 
+    expect(workflow).toContain('api POST "/deploy"');
+    expect(workflow).toContain("'{uuid: $uuid, force: true}'");
     expect(workflow).toContain(
-      'api POST "/services/${SERVICE_UUID}/restart?latest=true" >/dev/null',
+      ".deployments[]? | select(.resource_uuid == $uuid)",
     );
     expect(workflow).not.toContain(
-      'DEPLOY_RESPONSE="$(api GET "/deploy?uuid=${SERVICE_UUID}&force=true")"',
+      'api POST "/services/${SERVICE_UUID}/restart?latest=true"',
     );
   });
 
