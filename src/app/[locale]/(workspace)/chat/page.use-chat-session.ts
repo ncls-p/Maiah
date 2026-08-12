@@ -215,7 +215,8 @@ export function useChatSession(c: SessionContext) {
         notifyWorkspaceHistoryChanged();
       }
       return submitToStream(...args);
-    }, [activeConversationId, setConversations, submitToStream],
+    },
+    [activeConversationId, setConversations, submitToStream],
   );
   const latestTodoList = useMemo(
     () => latestChatTodoListFromMessages(messages),
@@ -373,11 +374,15 @@ export function useChatSession(c: SessionContext) {
     })
       .then((data) => {
         if (cancelled) return;
+        const requestedAgentId = new URLSearchParams(
+          window.location.search,
+        ).get("agentId");
         if (
           data.conversation?.agentId &&
-          !new URL(window.location.href).searchParams.get("agentId")
-        )
+          (!requestedAgentId || requestedAgentId !== selectedAgentId)
+        ) {
           setSelectedAgentId(data.conversation.agentId);
+        }
         if (data.conversation) {
           setConversationCanContinue(data.conversation.canContinue !== false);
           setConversationIsOwner(data.conversation.isOwner !== false);
@@ -422,6 +427,7 @@ export function useChatSession(c: SessionContext) {
     setInterfaceMode,
     setSelectedAgentId,
     setMessages,
+    selectedAgentId,
   ]);
   return {
     ...stream,

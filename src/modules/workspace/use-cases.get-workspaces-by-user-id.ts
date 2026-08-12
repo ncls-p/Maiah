@@ -147,6 +147,18 @@ async function getWorkspaceRoleNames(workspaceId: string, userId: string) {
   return bindings.map(({ roleName }) => roleName);
 }
 
+export async function ensureWorkspaceForUser(input: {
+  userId: string;
+  role?: string | null;
+  invitedBy?: string;
+}) {
+  const existingWorkspaces = await getWorkspacesByUserId(input.userId);
+  if (existingWorkspaces.length > 0) {
+    return existingWorkspaces[0].workspace;
+  }
+  return ensurePrimaryWorkspaceForUser(input);
+}
+
 export async function ensurePrimaryWorkspaceForUser(input: {
   userId: string;
   role?: string | null;

@@ -8,7 +8,7 @@ import { WorkspaceProvider } from "@/components/workspace-provider";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getSession } from "@/modules/auth/session";
 import { getSidebarNavConfig } from "@/modules/navigation/sidebar-config.server";
-import { ensurePrimaryWorkspaceForUser } from "@/modules/workspace/use-cases";
+import { ensureWorkspaceForUser } from "@/modules/workspace/use-cases";
 
 export const metadata: Metadata = {
   title: "App",
@@ -31,7 +31,7 @@ export default async function WorkspaceLayout({
   const user = session.user;
   const displayName = user.name || user.email;
   const isAdmin = await isPlatformAdminSession(session);
-  await ensurePrimaryWorkspaceForUser({
+  await ensureWorkspaceForUser({
     userId: user.id,
     role: isAdmin ? "admin" : user.role,
   });

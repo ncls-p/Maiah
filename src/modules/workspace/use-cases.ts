@@ -6,6 +6,7 @@ export { addWorkspaceMember } from "./use-cases.get-system-workspace-role";
 export {
   countWorkspaces,
   ensurePrimaryWorkspaceForUser,
+  ensureWorkspaceForUser,
   getWorkspacesByUserId,
 } from "./use-cases.get-workspaces-by-user-id";
 export { updateWorkspaceMemberRole } from "./use-cases.update-workspace-member-role";

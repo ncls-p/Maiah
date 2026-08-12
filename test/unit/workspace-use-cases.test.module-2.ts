@@ -4,6 +4,7 @@ import {
   addWorkspaceMember,
   createWorkspace,
   ensurePrimaryWorkspaceForUser,
+  ensureWorkspaceForUser,
 } from "@/modules/workspace/use-cases";
 import {
   dbModule,
@@ -11,6 +12,32 @@ import {
   fakeRole,
   fakeWorkspace,
 } from "./workspace-use-cases.test.db-module";
+
+describe("ensureWorkspaceForUser", () => {
+  it("keeps an existing accessible project instead of recreating the primary organization", async () => {
+    const existingWorkspace = {
+      ...fakeWorkspace,
+      id: "workspace-existing",
+      organizationId: "organization-existing",
+    };
+    dbModule._chain.where.mockResolvedValueOnce([
+      {
+        workspace: existingWorkspace,
+        member: fakeMember,
+        organizationMember: null,
+        organization: {
+          id: "organization-existing",
+          name: "Existing organization",
+        },
+      },
+    ]);
+
+    const result = await ensureWorkspaceForUser({ userId: "user-2" });
+
+    expect(result).toEqual(existingWorkspace);
+    expect(dbModule.db.transaction).not.toHaveBeenCalled();
+  });
+});
 
 describe("ensurePrimaryWorkspaceForUser", () => {
   it("joins the hidden primary workspace with the role derived from platform role", async () => {

@@ -129,9 +129,7 @@ export function useChatPageController() {
 
   useEffect(() => {
     if (!workspaceId || !selectedAgentId) return;
-    if (!activeConversationId && !newConversationAgentIdRef.current) {
-      newConversationAgentIdRef.current = selectedAgentId;
-    }
+    newConversationAgentIdRef.current = selectedAgentId;
     const expectedKey = chatComposerDraftKey(
       workspaceId,
       selectedAgentId,
@@ -299,10 +297,24 @@ export function useChatPageController() {
 
   const routeConversationId = searchParams.get("conversationId");
   const routeAgentId = searchParams.get("agentId");
+  const availableRouteAgentId = agents.some(({ id }) => id === routeAgentId)
+    ? routeAgentId
+    : null;
   useEffect(() => {
     if (loadingAgents) return;
+    if (routeAgentId && !availableRouteAgentId) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("agentId");
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        query ? `${pathname}?${query}` : pathname,
+      );
+      return;
+    }
     if (routeConversationId && routeConversationId !== activeConversationId) {
-      selectConversation(routeConversationId, routeAgentId);
+      selectConversation(routeConversationId, availableRouteAgentId);
       return;
     }
     if (!routeConversationId && activeConversationId && !sending) {
@@ -311,16 +323,19 @@ export function useChatPageController() {
     }
     if (
       !routeConversationId &&
-      routeAgentId &&
-      routeAgentId !== selectedAgentId
+      availableRouteAgentId &&
+      availableRouteAgentId !== selectedAgentId
     ) {
-      selectAgent(routeAgentId);
+      selectAgent(availableRouteAgentId);
     }
   }, [
     activeConversationId,
+    availableRouteAgentId,
     loadingAgents,
+    pathname,
     routeAgentId,
     routeConversationId,
+    searchParams,
     selectAgent,
     selectConversation,
     selectedAgentId,

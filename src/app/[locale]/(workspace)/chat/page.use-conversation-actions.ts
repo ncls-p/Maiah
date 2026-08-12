@@ -41,8 +41,8 @@ export function useConversationActions(context: ConversationActionsContext) {
     c.setQueuedMessages([]);
     c.setSelectedAgentId(agentId);
     c.setActiveVersion(null);
+    c.newConversationAgentIdRef.current = agentId;
     if (!c.activeConversationId) {
-      c.newConversationAgentIdRef.current = agentId;
       c.restoreComposerDraft(agentId, null);
       c.setMessages([]);
       c.setCodeWorkspaceArtifact(null);
@@ -77,7 +77,10 @@ export function useConversationActions(context: ConversationActionsContext) {
       nextAgentId ?? c.selectedAgentId ?? "",
       conversationId,
     );
-    if (nextAgentId) c.setSelectedAgentId(nextAgentId);
+    if (nextAgentId) {
+      c.newConversationAgentIdRef.current = nextAgentId;
+      c.setSelectedAgentId(nextAgentId);
+    }
     c.setActiveConversationId(conversationId);
     window.history.replaceState(
       null,
