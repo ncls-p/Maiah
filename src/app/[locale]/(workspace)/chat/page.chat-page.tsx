@@ -1,6 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
 import {
@@ -36,6 +36,7 @@ import { ChatPageBoundary } from "./page.chat-page-boundary";
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [activeConversationId, setActiveConversationId] = useState<
@@ -226,13 +227,9 @@ export function useChatPageController() {
         params.set("temporary", "true");
         params.set("ttl", String(ttlMinutes));
       }
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}?${params.toString()}`,
-      );
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [],
+    [pathname, router],
   );
 
   const {
@@ -246,7 +243,6 @@ export function useChatPageController() {
     detachActiveStream,
     setActiveVersion,
     loadingMessages,
-    prepareConversationMessages,
     quota,
     canChat,
     conversationIsOwner,
@@ -292,7 +288,6 @@ export function useChatPageController() {
       setActiveVersion,
       setQueuedMessages,
       setMessages,
-      prepareConversationMessages,
       setCodeWorkspaceArtifact,
       setAttachments,
       detachActiveStream,

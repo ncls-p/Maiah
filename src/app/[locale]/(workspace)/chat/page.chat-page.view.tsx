@@ -1,4 +1,4 @@
-import { ViewTransition, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { ChatLayout } from "@/components/chat/chat-layout";
@@ -133,122 +133,116 @@ export function ChatPageView({ model }: { model: Model }) {
           onModeChange={chooseInterfaceMode}
         />
       ) : null}
-      <ViewTransition
-        name="chat-transcript-viewport"
-        default="none"
-        update="chat-transcript"
-      >
-        {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
-          <section
-            className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
-            style={
-              { "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties
-            }
+      {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
+        <section
+          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
+          style={
+            { "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties
+          }
+        >
+          <aside
+            className="flex min-h-0 flex-col bg-muted/10"
+            id="coding-chat-panel"
           >
-            <aside
-              className="flex min-h-0 flex-col bg-muted/10"
-              id="coding-chat-panel"
-            >
-              <div className="border-b border-border/50 px-3 py-2">
-                <p className="text-xs font-medium text-foreground">
-                  {t("codingPanelTitle")}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {t("codingPanelDescription")}
-                </p>
+            <div className="border-b border-border/50 px-3 py-2">
+              <p className="text-xs font-medium text-foreground">
+                {t("codingPanelTitle")}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("codingPanelDescription")}
+              </p>
+            </div>
+            <section className="min-h-0 flex-1 overflow-hidden">
+              <div className="size-full min-h-0">
+                <ChatMessageList
+                  key={activeConversationId ?? "new-conversation"}
+                  messages={messages}
+                  sending={sending}
+                  loading={loadingMessages}
+                  workspaceId={workspaceId ?? undefined}
+                  workspaceArtifactDisplay="summary"
+                  conversationId={activeConversationId}
+                  bottomRef={bottomRef}
+                  onEditMessage={editMessage}
+                  onDeleteMessage={deleteMessage}
+                  onResendMessage={resendMessage}
+                  onRegenerateAssistant={resendMessage}
+                  onContinueAssistant={continueAssistantResponse}
+                  onJumpLatest={reloadActualLatestMessages}
+                  pendingApprovals={pendingApprovals}
+                  onApproveTool={approveToolInvocation}
+                  onRejectTool={rejectToolInvocation}
+                  onSuggestionClick={submitSuggestion}
+                />
               </div>
-              <section className="min-h-0 flex-1 overflow-hidden">
-                <div className="size-full min-h-0">
-                  <ChatMessageList
-                    key={activeConversationId ?? "new-conversation"}
-                    messages={messages}
-                    sending={sending}
-                    loading={loadingMessages}
-                    workspaceId={workspaceId ?? undefined}
-                    workspaceArtifactDisplay="summary"
-                    conversationId={activeConversationId}
-                    bottomRef={bottomRef}
-                    onEditMessage={editMessage}
-                    onDeleteMessage={deleteMessage}
-                    onResendMessage={resendMessage}
-                    onRegenerateAssistant={resendMessage}
-                    onContinueAssistant={continueAssistantResponse}
-                    onJumpLatest={reloadActualLatestMessages}
-                    pendingApprovals={pendingApprovals}
-                    onApproveTool={approveToolInvocation}
-                    onRejectTool={rejectToolInvocation}
-                    onSuggestionClick={submitSuggestion}
-                  />
-                </div>
-              </section>
-              <ChatComposer
-                input={input}
-                canChat={canChat}
-                sending={sending}
-                queuedMessages={queuedMessages}
-                onInputChange={setInput}
-                onSubmit={submitMessage}
-                onStop={stopGeneration}
-                onQueuedMessageChange={updateQueuedMessage}
-                onQueuedMessageCancel={cancelQueuedMessage}
-                onUploadCodeWorkspace={uploadCodeWorkspace}
-                onUploadChatAttachment={uploadChatAttachment}
-                attachments={attachments}
-                todoList={latestTodoList}
-                onRemoveAttachment={(attachmentId) =>
-                  setAttachments((current) =>
-                    current.filter(
-                      (attachment) => attachment.id !== attachmentId,
-                    ),
-                  )
-                }
-              />
-            </aside>
-            <CodeWorkspaceResizeHandle
-              controls="coding-chat-panel"
-              label={t("resizeCodingChat")}
-              maximum={MAX_CHAT_WIDTH}
-              minimum={MIN_CHAT_WIDTH}
-              onResize={updateCodingChatWidth}
-              value={codingChatWidth}
+            </section>
+            <ChatComposer
+              input={input}
+              canChat={canChat}
+              sending={sending}
+              queuedMessages={queuedMessages}
+              onInputChange={setInput}
+              onSubmit={submitMessage}
+              onStop={stopGeneration}
+              onQueuedMessageChange={updateQueuedMessage}
+              onQueuedMessageCancel={cancelQueuedMessage}
+              onUploadCodeWorkspace={uploadCodeWorkspace}
+              onUploadChatAttachment={uploadChatAttachment}
+              attachments={attachments}
+              todoList={latestTodoList}
+              onRemoveAttachment={(attachmentId) =>
+                setAttachments((current) =>
+                  current.filter(
+                    (attachment) => attachment.id !== attachmentId,
+                  ),
+                )
+              }
             />
-            <div className="min-h-0 overflow-hidden">
-              <CodeWorkspaceArtifactCard
-                artifact={codeWorkspaceArtifact}
-                workspaceId={workspaceId ?? undefined}
-                variant="workbench"
-              />
-            </div>
-          </section>
-        ) : (
-          <section className="min-h-0 flex-1 overflow-hidden">
-            {!loadingMessages && messages.length === 0 ? (
-              <EmptyConversationState canChat={canChat} t={t} />
-            ) : null}
-            <div className="size-full min-h-0">
-              <ChatMessageList
-                key={activeConversationId ?? "new-conversation"}
-                messages={messages}
-                sending={sending}
-                loading={loadingMessages}
-                workspaceId={workspaceId ?? undefined}
-                conversationId={activeConversationId}
-                bottomRef={bottomRef}
-                onEditMessage={editMessage}
-                onDeleteMessage={deleteMessage}
-                onResendMessage={resendMessage}
-                onRegenerateAssistant={resendMessage}
-                onContinueAssistant={continueAssistantResponse}
-                onJumpLatest={reloadActualLatestMessages}
-                pendingApprovals={pendingApprovals}
-                onApproveTool={approveToolInvocation}
-                onRejectTool={rejectToolInvocation}
-                onSuggestionClick={submitSuggestion}
-              />
-            </div>
-          </section>
-        )}
-      </ViewTransition>
+          </aside>
+          <CodeWorkspaceResizeHandle
+            controls="coding-chat-panel"
+            label={t("resizeCodingChat")}
+            maximum={MAX_CHAT_WIDTH}
+            minimum={MIN_CHAT_WIDTH}
+            onResize={updateCodingChatWidth}
+            value={codingChatWidth}
+          />
+          <div className="min-h-0 overflow-hidden">
+            <CodeWorkspaceArtifactCard
+              artifact={codeWorkspaceArtifact}
+              workspaceId={workspaceId ?? undefined}
+              variant="workbench"
+            />
+          </div>
+        </section>
+      ) : (
+        <section className="min-h-0 flex-1 overflow-hidden">
+          {!loadingMessages && messages.length === 0 ? (
+            <EmptyConversationState canChat={canChat} t={t} />
+          ) : null}
+          <div className="size-full min-h-0">
+            <ChatMessageList
+              key={activeConversationId ?? "new-conversation"}
+              messages={messages}
+              sending={sending}
+              loading={loadingMessages}
+              workspaceId={workspaceId ?? undefined}
+              conversationId={activeConversationId}
+              bottomRef={bottomRef}
+              onEditMessage={editMessage}
+              onDeleteMessage={deleteMessage}
+              onResendMessage={resendMessage}
+              onRegenerateAssistant={resendMessage}
+              onContinueAssistant={continueAssistantResponse}
+              onJumpLatest={reloadActualLatestMessages}
+              pendingApprovals={pendingApprovals}
+              onApproveTool={approveToolInvocation}
+              onRejectTool={rejectToolInvocation}
+              onSuggestionClick={submitSuggestion}
+            />
+          </div>
+        </section>
+      )}
       {interfaceMode === CODING_INTERFACE_MODE &&
       codeWorkspaceArtifact ? null : (
         <ChatComposer

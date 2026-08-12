@@ -3,7 +3,7 @@
 import type { ChatConversation } from "@/components/chat/chat-types";
 import { fetchJson } from "@/lib/api-client";
 import { notifyWorkspaceHistoryChanged } from "@/lib/workspace-history-events";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +17,8 @@ export function useTemporaryConversationPersistence(input: {
   setConversations: Dispatch<SetStateAction<ChatConversation[]>>;
   translate: (key: string) => string;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [converting, setConverting] = useState(false);
   const [updatingRetention, setUpdatingRetention] = useState(false);
@@ -25,27 +27,20 @@ export function useTemporaryConversationPersistence(input: {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("temporary");
     params.delete("ttl");
-    window.history.replaceState(
-      null,
-      "",
-      params.size > 0
-        ? `${window.location.pathname}?${params.toString()}`
-        : window.location.pathname,
+    router.replace(
+      params.size > 0 ? `${pathname}?${params.toString()}` : pathname,
+      { scroll: false },
     );
-  }, [searchParams]);
+  }, [pathname, router, searchParams]);
 
   const updateTemporaryRouteTtl = useCallback(
     (ttlMinutes: number) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("temporary", "true");
       params.set("ttl", String(ttlMinutes));
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}?${params.toString()}`,
-      );
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [searchParams],
+    [pathname, router, searchParams],
   );
 
   const makePersistent = useCallback(async () => {

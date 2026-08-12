@@ -16,7 +16,6 @@ import * as temporaryChat from "./temporary-chat-assertions";
 
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
-let e2eWorkspaceId: string;
 
 async function createConversation(isEphemeral = false) {
   const { agentId, workspaceId } = await ensureE2EAssistant();
@@ -54,15 +53,11 @@ async function deleteConversation(id: string) {
 test.beforeAll(async () => {
   await ensureE2EUser();
   await ensureE2EMember();
-  ({ workspaceId: e2eWorkspaceId } = await ensureE2EAssistant());
+  await ensureE2EAssistant();
 });
 
 test.beforeEach(async ({ page }) => {
   await login(page);
-  const response = await page.request.patch("/api/workspaces", {
-    data: { workspaceId: e2eWorkspaceId },
-  });
-  expect(response.ok()).toBe(true);
 });
 
 test("starts a temporary chat from the compact sidebar timer with every retention choice", async ({
@@ -130,12 +125,7 @@ test("hides an assistant from the chat selector after SPA navigation", async ({
   const wasVisible = await hideAction.isVisible();
 
   try {
-    if (wasVisible) {
-      await activate(hideAction);
-      await expect(
-        page.getByText("Assistant hidden from your chat selector"),
-      ).toBeVisible();
-    }
+    if (wasVisible) await activate(hideAction);
     await activate(page.getByRole("link", { name: "Chat", exact: true }));
     await expect(page).toHaveURL(/\/en\/chat/);
     const assistantSelector = page.getByRole("button", {

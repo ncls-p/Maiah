@@ -15,7 +15,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "@napi-rs/canvas", "@firecrawl/anydoc"],
   allowedDevOrigins: ["192.168.1.152", "100.98.140.47"],
   experimental: {
-    viewTransition: true,
     proxyClientMaxBodySize: "30mb",
     serverActions: {
       bodySizeLimit: "10mb",

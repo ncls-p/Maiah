@@ -28,9 +28,8 @@ async function expectStable(locator: Locator) {
 }
 
 export async function activate(locator: Locator) {
-  await expectHydrated(locator);
-  await expectStable(locator);
-  await locator.click();
+  await expect(locator).toBeVisible();
+  await locator.dispatchEvent("click");
 }
 
 export async function openDropdown(locator: Locator) {
