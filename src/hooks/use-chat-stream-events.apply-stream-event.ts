@@ -27,6 +27,7 @@ export function applyStreamEvent(
     handlers.updateAssistant((message) => ({
       ...message,
       status: "completed",
+      ...(parsed.metrics ? { metrics: parsed.metrics } : {}),
       parts: completeReasoningParts(message.parts),
     }));
     handlers.clearPendingApprovals();

@@ -421,7 +421,25 @@
       "regenerate": "Régénérer",
       "continueResponse": "Continuer cette réponse",
       "continue": "Continuer",
-      "continuePrompt": "Continue ta réponse précédente exactement là où tu t’es arrêté. Ne répète pas ce que tu as déjà écrit."
+      "forkConversation": "Créer un fork depuis cette réponse",
+      "previousFork": "Fork précédent",
+      "nextFork": "Fork suivant",
+      "forkPosition": "Fork {current} sur {total}",
+      "forkCreated": "Fork de conversation créé",
+      "forkFailed": "Impossible de créer le fork",
+      "continuePrompt": "Continue ta réponse précédente exactement là où tu t’es arrêté. Ne répète pas ce que tu as déjà écrit.",
+      "metrics": {
+        "label": "Afficher les métriques de génération",
+        "title": "Métriques de génération",
+        "inputTokens": "Tokens en entrée",
+        "outputTokens": "Tokens générés",
+        "totalTokens": "Tokens au total",
+        "cacheReadTokens": "Tokens lus du cache",
+        "cacheWriteTokens": "Tokens mis en cache",
+        "reasoningTokens": "Tokens de raisonnement",
+        "duration": "Durée",
+        "tokensPerSecond": "Tokens par seconde"
+      }
     },
     "rendering": {
       "externalLinkTitle": "Ouvrir un lien externe ?",

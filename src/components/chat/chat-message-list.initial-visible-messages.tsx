@@ -41,6 +41,9 @@ export interface ChatMessageListProps {
   onResendMessage?: (message: ChatMessage) => Promise<void> | void;
   onRegenerateAssistant?: (message: ChatMessage) => Promise<void> | void;
   onContinueAssistant?: (message: ChatMessage) => Promise<void> | void;
+  onForkMessage?: (message: ChatMessage) => Promise<void> | void;
+  onNavigateBranch?: (conversationId: string) => Promise<void> | void;
+  forkingMessageId?: string | null;
   onJumpLatest?: () => Promise<void> | void;
   pendingApprovals?: PendingToolApproval[];
   onApproveTool?: (approval: PendingToolApproval) => void;

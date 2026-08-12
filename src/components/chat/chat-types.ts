@@ -27,6 +27,8 @@ export {
   textFromMessage,
   workPhaseHasPendingWork,
 } from "./chat-types.chat-stream-event";
+export type { ChatMessageMetrics } from "@/modules/chat/message-metrics";
+export type { ConversationBranchNavigation } from "@/modules/chat/conversation-branches";
 export type {
   ChatMessagePartGroup,
   ChatStreamEvent,

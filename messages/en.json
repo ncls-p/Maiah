@@ -421,7 +421,25 @@
       "regenerate": "Regenerate",
       "continueResponse": "Continue this response",
       "continue": "Continue",
-      "continuePrompt": "Continue your previous response exactly where you stopped. Do not repeat what you have already written."
+      "forkConversation": "Fork from this response",
+      "previousFork": "Previous fork",
+      "nextFork": "Next fork",
+      "forkPosition": "Fork {current} of {total}",
+      "forkCreated": "Conversation fork created",
+      "forkFailed": "Unable to create fork",
+      "continuePrompt": "Continue your previous response exactly where you stopped. Do not repeat what you have already written.",
+      "metrics": {
+        "label": "Show generation metrics",
+        "title": "Generation metrics",
+        "inputTokens": "Input tokens",
+        "outputTokens": "Generated tokens",
+        "totalTokens": "Total tokens",
+        "cacheReadTokens": "Cache read tokens",
+        "cacheWriteTokens": "Cache write tokens",
+        "reasoningTokens": "Reasoning tokens",
+        "duration": "Duration",
+        "tokensPerSecond": "Tokens per second"
+      }
     },
     "rendering": {
       "externalLinkTitle": "Open external link?",

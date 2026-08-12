@@ -36,6 +36,8 @@ export function ChatPageView({ model }: { model: Model }) {
     codeWorkspaceArtifact,
     codingChatWidth,
     continueAssistantResponse,
+    forkConversation,
+    forkingMessageId,
     conversationImpact,
     conversationIsOwner,
     conversationReadOnly,
@@ -66,6 +68,7 @@ export function ChatPageView({ model }: { model: Model }) {
     reloadActualLatestMessages,
     reloadAgentContext,
     resendMessage,
+    navigateConversationBranch,
     selectAgent,
     selectedAgent,
     selectedAgentId,
@@ -168,6 +171,9 @@ export function ChatPageView({ model }: { model: Model }) {
                   onResendMessage={resendMessage}
                   onRegenerateAssistant={resendMessage}
                   onContinueAssistant={continueAssistantResponse}
+                  onForkMessage={forkConversation}
+                  onNavigateBranch={navigateConversationBranch}
+                  forkingMessageId={forkingMessageId}
                   onJumpLatest={reloadActualLatestMessages}
                   pendingApprovals={pendingApprovals}
                   onApproveTool={approveToolInvocation}
@@ -234,6 +240,9 @@ export function ChatPageView({ model }: { model: Model }) {
               onResendMessage={resendMessage}
               onRegenerateAssistant={resendMessage}
               onContinueAssistant={continueAssistantResponse}
+              onForkMessage={forkConversation}
+              onNavigateBranch={navigateConversationBranch}
+              forkingMessageId={forkingMessageId}
               onJumpLatest={reloadActualLatestMessages}
               pendingApprovals={pendingApprovals}
               onApproveTool={approveToolInvocation}

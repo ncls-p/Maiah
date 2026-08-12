@@ -1219,6 +1219,20 @@ export const OPENAPI_ROUTE_MANIFEST = [
     responseKind: "json",
   },
   {
+    path: "/api/workspace/conversations/{conversationId}/forks",
+    method: "POST",
+    operationId: "postWorkspaceConversationsConversationIdForks",
+    summary:
+      "Create or execute workspace · conversations · {conversationId} · forks",
+    tag: "conversations",
+    auth: ["session", "apiKey"],
+    permissions: [],
+    pathParameters: ["conversationId"],
+    queryParameters: [],
+    bodyKind: "json",
+    responseKind: "json",
+  },
+  {
     path: "/api/workspace/conversations/{conversationId}/messages/{messageId}",
     method: "DELETE",
     operationId: "deleteWorkspaceConversationsConversationIdMessagesMessageId",

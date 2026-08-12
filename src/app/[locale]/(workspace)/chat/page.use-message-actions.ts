@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import type {
@@ -33,11 +33,16 @@ type Context = {
   setCodeWorkspaceArtifact: (artifact: CodeWorkspaceArtifact | null) => void;
   setActiveVersion: (version: AgentVersion | null) => void;
   setLoadingContext: (loading: boolean) => void;
+  selectConversation: (
+    conversationId: string,
+    conversationAgentId?: string | null,
+  ) => void;
   t: (key: string) => string;
 };
 
 export function useMessageActions(c: Context) {
   const { resolveApproval } = c;
+  const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
   async function editMessage(message: ChatMessage, content: string) {
     if (!c.activeConversationId) return;
     const trimmed = content.trim();
@@ -93,6 +98,28 @@ export function useMessageActions(c: Context) {
         continueFromMessageId: message.id,
       });
   }
+  async function forkConversation(message: ChatMessage) {
+    if (!c.activeConversationId || c.sending || forkingMessageId) return;
+    setForkingMessageId(message.id);
+    try {
+      const result = await fetchJson<{
+        conversation: { id: string; agentId: string };
+      }>(`/api/workspace/conversations/${c.activeConversationId}/forks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: message.id }),
+      });
+      await c.refreshConversations();
+      c.selectConversation(result.conversation.id, result.conversation.agentId);
+      toast.success(c.t("messageList.forkCreated"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : c.t("messageList.forkFailed"),
+      );
+    } finally {
+      setForkingMessageId(null);
+    }
+  }
   async function reloadActualLatestMessages() {
     if (!c.activeConversationId || c.sending) return;
     const data = await fetchJson<{ messages?: ChatMessage[] }>(
@@ -140,6 +167,9 @@ export function useMessageActions(c: Context) {
     deleteMessage,
     resendMessage,
     continueAssistantResponse,
+    forkConversation,
+    forkingMessageId,
+    navigateConversationBranch: c.selectConversation,
     reloadActualLatestMessages,
     reloadAgentContext,
     approveToolInvocation,

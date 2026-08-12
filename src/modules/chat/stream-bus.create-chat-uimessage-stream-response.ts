@@ -44,14 +44,14 @@ export function createChatUIMessageStreamResponse(
           finishTextPart();
           finishReasoningPart();
         }
-        function settle(stopped = false) {
+        function settle(stopped = false, metrics?: Record<string, unknown>) {
           if (settled) return;
           settled = true;
           finishOpenParts();
           writer.write({
             type: "finish",
             finishReason: stopped ? "stop" : "stop",
-            messageMetadata: { ...metadata, stopped },
+            messageMetadata: { ...metadata, stopped, metrics },
           });
           resolve();
         }
@@ -284,7 +284,12 @@ export function createChatUIMessageStreamResponse(
                 return;
               }
               if (type === "done") {
-                settle(event.stopped === true);
+                settle(
+                  event.stopped === true,
+                  typeof event.metrics === "object" && event.metrics !== null
+                    ? (event.metrics as Record<string, unknown>)
+                    : undefined,
+                );
                 unsubscribe();
               }
             },

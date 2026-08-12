@@ -5,13 +5,14 @@ import {
   ChatUsageImpact,
   CodeWorkspaceArtifact,
 } from "./chat-types.chat-agent";
+import type { ChatMessageMetrics } from "@/modules/chat/message-metrics";
 import { getToolStatus, parseToolPart } from "./chat-types.work-phase-outcome";
 
 export type ChatStreamEvent =
   | { type: "text" | "reasoning"; delta: string }
   | { type: "reasoning_start" }
   | { type: "reasoning_end" }
-  | { type: "done" }
+  | { type: "done"; metrics?: ChatMessageMetrics }
   | { type: "error"; error: string }
   | { type: "conversation_title"; title: string }
   | { type: "suggestions"; suggestions: string[] }

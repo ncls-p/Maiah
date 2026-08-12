@@ -7,6 +7,7 @@ import {
   isCodeWorkspaceArtifact,
   iterateChunks,
   readMetadata,
+  readMetricsMetadata,
   titleFromData,
   toolApprovalFromData,
   toolInputProgressFromData,
@@ -171,7 +172,10 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
         options.onEvent({ type: "error", error: chunk.errorText });
         break;
       case "finish":
-        options.onEvent({ type: "done" });
+        options.onEvent({
+          type: "done",
+          metrics: readMetricsMetadata(chunk.messageMetadata),
+        });
         break;
     }
   }

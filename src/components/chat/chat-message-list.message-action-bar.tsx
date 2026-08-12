@@ -3,7 +3,10 @@
 import {
   ArrowRightIcon,
   CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CopyIcon,
+  GitForkIcon,
   PencilIcon,
   RefreshCcwIcon,
   Trash2Icon,
@@ -28,11 +31,15 @@ export function MessageActionBar({
   canDelete,
   canRegenerate,
   canContinue,
+  canFork,
+  forking,
   onCopy,
   onEdit,
   onDelete,
   onRegenerate,
   onContinue,
+  onFork,
+  onNavigateBranch,
 }: {
   message: ChatMessage;
   sending: boolean;
@@ -40,14 +47,21 @@ export function MessageActionBar({
   canDelete: boolean;
   canRegenerate: boolean;
   canContinue: boolean;
+  canFork: boolean;
+  forking: boolean;
   onCopy: () => Promise<void> | void;
   onEdit: () => void;
   onDelete: () => void;
   onRegenerate: () => void;
   onContinue: () => void;
+  onFork: () => void;
+  onNavigateBranch: (conversationId: string) => void;
 }) {
   const t = useTranslations("chat.messageList");
   const [copied, setCopied] = useState(false);
+  const branch = message.branch;
+  const previousBranchId = branch?.conversationIds[branch.activeIndex - 1];
+  const nextBranchId = branch?.conversationIds[branch.activeIndex + 1];
 
   const handleCopy = async () => {
     try {
@@ -134,6 +148,65 @@ export function MessageActionBar({
           <ArrowRightIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
           {t("continue")}
         </Button>
+      ) : null}
+      {canFork ? (
+        <Button
+          type={BUTTON_TYPE}
+          size="icon-sm"
+          variant={GHOST_VARIANT}
+          aria-label={t("forkConversation")}
+          className="size-6"
+          disabled={sending || forking}
+          onClick={onFork}
+        >
+          <GitForkIcon
+            className={cn(COMPACT_ICON_CLASS, forking && "animate-pulse")}
+            aria-hidden="true"
+          />
+        </Button>
+      ) : null}
+      {branch && branch.conversationIds.length > 1 ? (
+        <span className="ml-0.5 inline-flex h-6 items-center rounded-md bg-muted/55 text-[10px] tabular-nums text-muted-foreground">
+          <Button
+            type={BUTTON_TYPE}
+            size="icon-sm"
+            variant={GHOST_VARIANT}
+            aria-label={t("previousFork")}
+            className="size-6 rounded-md"
+            disabled={!previousBranchId || sending}
+            onClick={() =>
+              previousBranchId && onNavigateBranch(previousBranchId)
+            }
+          >
+            <ChevronLeftIcon
+              className={COMPACT_ICON_CLASS}
+              aria-hidden="true"
+            />
+          </Button>
+          <span
+            className="min-w-8 text-center"
+            aria-label={t("forkPosition", {
+              current: branch.activeIndex + 1,
+              total: branch.conversationIds.length,
+            })}
+          >
+            {branch.activeIndex + 1}/{branch.conversationIds.length}
+          </span>
+          <Button
+            type={BUTTON_TYPE}
+            size="icon-sm"
+            variant={GHOST_VARIANT}
+            aria-label={t("nextFork")}
+            className="size-6 rounded-md"
+            disabled={!nextBranchId || sending}
+            onClick={() => nextBranchId && onNavigateBranch(nextBranchId)}
+          >
+            <ChevronRightIcon
+              className={COMPACT_ICON_CLASS}
+              aria-hidden="true"
+            />
+          </Button>
+        </span>
       ) : null}
     </div>
   );

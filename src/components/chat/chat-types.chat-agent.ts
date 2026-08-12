@@ -110,6 +110,8 @@ export interface ChatMessage {
   status?: string;
   parts: ChatMessagePart[];
   createdAt?: string;
+  metrics?: import("@/modules/chat/message-metrics").ChatMessageMetrics;
+  branch?: import("@/modules/chat/conversation-branches").ConversationBranchNavigation;
 }
 
 export interface PendingToolApproval {

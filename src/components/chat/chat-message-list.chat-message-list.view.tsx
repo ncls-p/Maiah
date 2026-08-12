@@ -27,6 +27,7 @@ import { copyRichHtml } from "@/lib/rich-clipboard";
 import { cn } from "@/lib/utils";
 import type { useChatMessageListController } from "./chat-message-list.chat-message-list";
 import { ChatScrollControls } from "./chat-message-list.chat-scroll-controls";
+import { ChatMessageMetricsTooltip } from "./chat-message-metrics-tooltip";
 import {
   BUTTON_TYPE,
   EMPTY_PENDING_APPROVALS,
@@ -61,6 +62,9 @@ export function ChatMessageListView({
     messages,
     onApproveTool,
     onContinueAssistant,
+    onForkMessage,
+    onNavigateBranch,
+    forkingMessageId,
     onDeleteMessage,
     onEditMessage,
     onJumpLatest,
@@ -257,52 +261,70 @@ export function ChatMessageListView({
                         </BubbleContent>
                       </Bubble>
 
-                      {!isEditing && message.createdAt ? (
+                      {!isEditing && (message.createdAt || message.metrics) ? (
                         <MessageFooter className="mt-1.5 gap-2 text-[11px] text-muted-foreground/60">
-                          <a
-                            href={`#message-${message.id}`}
-                            className="rounded-sm underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                            aria-label={t("directLink")}
-                          >
-                            {new Date(message.createdAt).toLocaleTimeString(
-                              locale,
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              },
-                            )}
-                          </a>
+                          {message.createdAt ? (
+                            <a
+                              href={`#message-${message.id}`}
+                              className="rounded-sm underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                              aria-label={t("directLink")}
+                            >
+                              {new Date(message.createdAt).toLocaleTimeString(
+                                locale,
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </a>
+                          ) : null}
                           {message.status === "streaming" ? (
                             <StreamingStatus />
+                          ) : null}
+                          {isAssistant && message.metrics ? (
+                            <ChatMessageMetricsTooltip
+                              metrics={message.metrics}
+                              locale={locale}
+                            />
                           ) : null}
                         </MessageFooter>
                       ) : null}
 
                       {!isEditing ? (
-                      <MessageActionBar
-                        message={message}
-                        sending={sending}
-                        canEdit={canEdit}
-                        canDelete={canDelete}
-                        canRegenerate={canRegenerate}
-                        canContinue={canContinue}
-                        onCopy={async () => {
-                          await copyRichHtml(markdownToHtml(content));
-                        }}
-                        onEdit={() => {
-                          setEditingMessageId(message.id);
-                          setEditingContent(content);
-                        }}
-                        onDelete={() => void onDeleteMessage?.(message)}
-                        onRegenerate={() => {
-                          if (precedingUserMsg) {
-                            void onResendMessage?.(precedingUserMsg);
+                        <MessageActionBar
+                          message={message}
+                          sending={sending}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          canRegenerate={canRegenerate}
+                          canContinue={canContinue}
+                          canFork={
+                            Boolean(onForkMessage) &&
+                            isAssistant &&
+                            message.status !== "streaming"
                           }
-                        }}
-                        onContinue={() => {
-                          void onContinueAssistant?.(message);
-                        }}
-                      />
+                          forking={forkingMessageId === message.id}
+                          onCopy={async () => {
+                            await copyRichHtml(markdownToHtml(content));
+                          }}
+                          onEdit={() => {
+                            setEditingMessageId(message.id);
+                            setEditingContent(content);
+                          }}
+                          onDelete={() => void onDeleteMessage?.(message)}
+                          onRegenerate={() => {
+                            if (precedingUserMsg) {
+                              void onResendMessage?.(precedingUserMsg);
+                            }
+                          }}
+                          onContinue={() => {
+                            void onContinueAssistant?.(message);
+                          }}
+                          onFork={() => void onForkMessage?.(message)}
+                          onNavigateBranch={(conversationId) =>
+                            void onNavigateBranch?.(conversationId)
+                          }
+                        />
                       ) : null}
                     </MessagePrimitiveContent>
                   </MessagePrimitive>

@@ -7,6 +7,7 @@ import {
   type ConversationSummaryPolicy,
 } from "@/modules/chat/conversation-summary";
 import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
+import { chatMessageMetricsFromUsage } from "@/modules/chat/message-metrics";
 import {
   calculateTokenUsageImpact,
   parseSustainabilityConfig,
@@ -237,5 +238,15 @@ export async function completeStandardChat(input: {
       summary: conversationSummary,
       inputTokens: totalUsage.inputTokens ?? null,
     });
-  input.enqueueEvent({ type: "done" });
+  input.enqueueEvent({
+    type: "done",
+    metrics: chatMessageMetricsFromUsage(
+      totalUsage,
+      Date.now() - input.startedAt,
+      {
+        inputTokens: continuationClaim?.message.tokenInput,
+        outputTokens: continuationClaim?.message.tokenOutput,
+      },
+    ),
+  });
 }

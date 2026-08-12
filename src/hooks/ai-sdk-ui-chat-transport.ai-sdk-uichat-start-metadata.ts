@@ -5,6 +5,7 @@ import type {
   ChatStreamEvent,
   CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
+import { normalizeChatMessageMetrics } from "@/modules/chat/message-metrics";
 
 export type AiSdkUIChatStartMetadata = {
   conversationId?: string;
@@ -45,6 +46,13 @@ export function readMetadata(value: unknown): AiSdkUIChatStartMetadata {
     expiresAt:
       typeof record.expiresAt === "string" ? record.expiresAt : undefined,
   };
+}
+
+export function readMetricsMetadata(value: unknown) {
+  if (typeof value !== "object" || value === null) return undefined;
+  const metrics = (value as Record<string, unknown>).metrics;
+  if (typeof metrics !== "object" || metrics === null) return undefined;
+  return normalizeChatMessageMetrics(metrics);
 }
 
 export function isCodeWorkspaceArtifact(

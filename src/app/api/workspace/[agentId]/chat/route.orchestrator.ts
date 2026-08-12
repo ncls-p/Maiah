@@ -13,6 +13,7 @@ import {
   registerChatStreamAbortController,
 } from "@/modules/chat/stream-bus";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import { normalizeChatMessageMetrics } from "@/modules/chat/message-metrics";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -33,6 +34,7 @@ import {
 } from "./route.orchestration-progress";
 
 export function runOrchestratorChat(context: ChatExecutionContext) {
+  const startedAt = Date.now();
   const {
     requestId,
     agentId,
@@ -176,7 +178,23 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
       if (result.text) enqueueEvent({ type: "text", delta: result.text });
       if (usageImpactSetting.enabled)
         enqueueEvent({ type: "impact", impact: usageImpact });
-      enqueueEvent({ type: "done" });
+      enqueueEvent({
+        type: "done",
+        metrics: normalizeChatMessageMetrics({
+          inputTokens:
+            (continuationClaim?.message.tokenInput ?? 0) +
+            usageImpact.inputTokens,
+          outputTokens:
+            (continuationClaim?.message.tokenOutput ?? 0) +
+            usageImpact.outputTokens,
+          totalTokens:
+            (continuationClaim?.message.tokenInput ?? 0) +
+            usageImpact.inputTokens +
+            (continuationClaim?.message.tokenOutput ?? 0) +
+            usageImpact.outputTokens,
+          durationMs: Date.now() - startedAt,
+        }),
+      });
     } catch (error) {
       const aborted = streamAbortController.signal.aborted;
       await progress.flush();

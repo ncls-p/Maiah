@@ -1,6 +1,7 @@
 import { decryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
+import { chatMessageMetricsFromStoredMessage } from "@/modules/chat/message-metrics";
 import { db } from "@/server/infrastructure/db";
 import {
   messageParts,
@@ -87,6 +88,12 @@ export async function getConversationMessages(conversationId: string) {
         (partsByMessageId.get(msg.id) ?? []).map(renderMessagePart),
       ),
       createdAt: msg.createdAt.toISOString(),
+      metrics: chatMessageMetricsFromStoredMessage({
+        inputTokens: msg.tokenInput,
+        outputTokens: msg.tokenOutput,
+        createdAt: msg.createdAt,
+        completedAt: msg.completedAt,
+      }),
     })),
   );
 }

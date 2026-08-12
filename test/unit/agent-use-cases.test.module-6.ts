@@ -45,6 +45,28 @@ describe("getConversationMessages", () => {
     expect(decryptValue).toHaveBeenCalledWith("enc:text");
   });
 
+  it("returns durable token and duration metrics", async () => {
+    const msg = {
+      id: "msg-1",
+      role: "assistant",
+      status: "completed",
+      tokenInput: 100,
+      tokenOutput: 25,
+      createdAt: new Date("2026-08-12T08:00:00.000Z"),
+      completedAt: new Date("2026-08-12T08:00:05.000Z"),
+    };
+    dbModule._c.orderBy.mockResolvedValueOnce([msg]).mockResolvedValueOnce([]);
+
+    const result = await getConversationMessages("conv-1");
+
+    expect(result[0].metrics).toEqual({
+      inputTokens: 100,
+      outputTokens: 25,
+      totalTokens: 125,
+      durationMs: 5_000,
+    });
+  });
+
   it("keeps an empty reasoning part as a durable lifecycle indicator", async () => {
     const { decryptValue } = await import("@/lib/crypto");
     vi.mocked(decryptValue).mockResolvedValueOnce("");

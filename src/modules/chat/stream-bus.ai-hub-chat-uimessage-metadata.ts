@@ -11,6 +11,7 @@ export type AiHubChatUIMessageMetadata = {
   isEphemeral?: boolean;
   expiresAt?: string;
   stopped?: boolean;
+  metrics?: import("./message-metrics").ChatMessageMetrics;
 };
 
 type Subscriber = {

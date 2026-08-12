@@ -17,6 +17,7 @@ type AiHubUIMessageMetadata = {
   messageId?: string;
   userMessageId?: string;
   stopped?: boolean;
+  metrics?: ChatMessage["metrics"];
 };
 
 type AiHubUIMessageData = {
@@ -178,12 +179,14 @@ function partToUIParts(part: ChatMessagePart): MutableAiHubUIParts {
     if (!isCitationArray(citations)) return [];
     return [
       { type: "data-citations", id: "citations", data: citations },
-      ...citations.map((citation): MutableAiHubUIPart => ({
-        type: "source-document",
-        sourceId: citation.chunkId,
-        mediaType: "text/plain",
-        title: citation.documentTitle,
-      })),
+      ...citations.map(
+        (citation): MutableAiHubUIPart => ({
+          type: "source-document",
+          sourceId: citation.chunkId,
+          mediaType: "text/plain",
+          title: citation.documentTitle,
+        }),
+      ),
     ];
   }
   if (part.type === "file") {
@@ -216,6 +219,7 @@ export function toAiSdkUIMessages(messages: ChatMessage[]): AiHubUIMessage[] {
         protocol: "ai-hub-ui",
         createdAt: message.createdAt,
         status: message.status,
+        metrics: message.metrics,
       },
       parts: message.parts.flatMap(partToUIParts),
     }));

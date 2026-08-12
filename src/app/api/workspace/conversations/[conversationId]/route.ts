@@ -1,6 +1,7 @@
 import { handleRoute } from "@/lib/route-handler";
 import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
+import { getConversationBranchNavigation } from "@/modules/chat/conversation-branches";
 import {
   ephemeralExpiresAt,
   isEphemeralTtlMinutes,
@@ -64,8 +65,14 @@ export async function GET(
         getConversationMessages(conversationId),
         getUsageImpactSetting(),
       ]);
+      const branchNavigation = await getConversationBranchNavigation({
+        conversation,
+        messageIds: storedMessages.map(({ id }) => id),
+        userId: session.user.id,
+      });
       const messages = storedMessages.map((message) => ({
         ...message,
+        branch: branchNavigation.get(message.id),
         parts: usageImpactSetting.enabled
           ? message.parts
           : message.parts.filter((part) => part.type !== "impact"),

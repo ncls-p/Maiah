@@ -155,6 +155,7 @@ describe("toAiSdkUIMessages", () => {
       status: "completed",
       parts: [{ type: "text", content: "Hello" }],
       createdAt: "2024-01-01T00:00:00.000Z",
+      metrics: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
     };
     const result = toAiSdkUIMessages([message]);
 
@@ -162,6 +163,7 @@ describe("toAiSdkUIMessages", () => {
     expect(result[0].metadata?.protocol).toBe("ai-hub-ui");
     expect(result[0].metadata?.createdAt).toBe("2024-01-01T00:00:00.000Z");
     expect(result[0].metadata?.status).toBe("completed");
+    expect(result[0].metadata?.metrics).toEqual(message.metrics);
   });
 
   it("handles empty messages array", () => {
