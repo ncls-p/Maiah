@@ -173,7 +173,7 @@ export function WorkPhase({
       onOpenChange={setManualOpen}
       data-open={String(open)}
       className={cn(
-        "t-acc group/work-phase w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
+        "t-acc group/work-phase w-full overflow-hidden rounded-xl border border-border/55 bg-card/70 text-xs shadow-[var(--control-shadow)] transition-[background-color,border-color,box-shadow] duration-150 ease-out",
         visualState === "approval" && "border-warning/25 bg-warning/[0.025]",
         visualState === "pending" && "border-primary/20 bg-primary/[0.025]",
         visualState === "warning" && "border-warning/25 bg-warning/[0.02]",
@@ -181,13 +181,13 @@ export function WorkPhase({
           "border-destructive/25 bg-destructive/[0.02]",
       )}
     >
-      <div className="flex min-h-12 items-center gap-2.5 border-b border-border/45 px-3 py-2">
-        <ToolSequenceBadge sequence={sequence} />
+      <div className="flex min-h-10 items-center gap-2 border-b border-border/40 px-2.5 py-1.5">
+        <ToolSequenceBadge sequence={sequence} compact />
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
             <span
               className={cn(
-                "shrink-0 font-medium tracking-[-0.01em] text-foreground",
+                "shrink-0 text-[12px] font-medium tracking-[-0.01em] text-foreground",
                 visualState === "pending" && "t-shimmer",
               )}
               data-text={visualState === "pending" ? statusLabel : undefined}
@@ -209,7 +209,7 @@ export function WorkPhase({
               </span>
             ) : null}
           </div>
-          <div className="flex min-w-0 items-center gap-1 overflow-hidden text-[11px] text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden text-[10px] leading-4 text-muted-foreground">
             {visibleActivities.map((activity, activityIndex) => (
               <span key={activity} className="inline-flex min-w-0 items-center">
                 {activityIndex > 0 ? (
@@ -232,7 +232,7 @@ export function WorkPhase({
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
             size="sm"
-            className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground transition-transform hover:text-foreground active:scale-[0.96]"
+            className="h-8 shrink-0 rounded-lg px-2 text-[11px] text-muted-foreground transition-transform hover:text-foreground active:scale-[0.96]"
             aria-label={
               hasSpecialistActivity
                 ? open
@@ -249,7 +249,7 @@ export function WorkPhase({
             {open ? t("reasoningHide") : t("reasoningView")}
           </Button>
         </CollapsibleTrigger>
-        <ToolStatusDot state={visualState} />
+        <ToolStatusDot state={visualState} compact />
       </div>
       <CollapsibleContent
         forceMount
@@ -259,7 +259,7 @@ export function WorkPhase({
         inert={!open ? true : undefined}
       >
         <div className="t-acc-panel-inner">
-          <div className="space-y-2 bg-background/20 p-2.5">{children}</div>
+          <div className="space-y-1 bg-background/15 p-1.5">{children}</div>
         </div>
       </CollapsibleContent>
     </Collapsible>

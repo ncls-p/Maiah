@@ -361,10 +361,10 @@ export const ToolPartCard = memo(function ToolPartCard({
     return (
       <section
         className={cn(
-          "w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]",
+          "w-full overflow-hidden rounded-xl border border-border/55 bg-card/70 text-xs shadow-[var(--control-shadow)]",
           agentContext &&
             agentContext.depth > 0 &&
-            "ml-4 border-l-2 border-l-primary/35 sm:ml-6",
+            "ml-3 border-l-2 border-l-primary/35 sm:ml-5",
         )}
       >
         <ToolCardHeader
@@ -386,14 +386,28 @@ export const ToolPartCard = memo(function ToolPartCard({
             </>
           }
           state={visualState}
+          compact
         />
-        <div className="bg-background/20 p-2.5">{specializedContent}</div>
+        <div className="bg-background/15 p-2">{specializedContent}</div>
       </section>
     );
   }
 
   const detailsOpen =
     open || visualState === "pending" || visualState === "approval";
+  const headerSubtitle = (
+    <>
+      {agentContext?.agentName ? (
+        <>
+          <span className="truncate">{agentContext.agentName}</span>
+          <span aria-hidden="true">·</span>
+        </>
+      ) : null}
+      <span className="truncate">{parsed.toolName ?? friendlyName}</span>
+      <span aria-hidden="true">·</span>
+      <span className="shrink-0">{statusLabel}</span>
+    </>
+  );
 
   return (
     <Collapsible
@@ -401,12 +415,12 @@ export const ToolPartCard = memo(function ToolPartCard({
       onOpenChange={setOpen}
       data-open={String(detailsOpen)}
       className={cn(
-        "t-acc group/tool relative w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
+        "t-acc group/tool relative w-full overflow-hidden rounded-xl border border-border/50 bg-card/55 text-xs transition-[background-color,border-color] duration-150 ease-out",
         agentContext &&
           agentContext.depth > 0 &&
-          "ml-4 border-l-2 border-l-primary/35 sm:ml-6",
+          "ml-3 border-l-2 border-l-primary/35 sm:ml-5",
         visualState === "approval" && "border-warning/25 bg-warning/[0.025]",
-        visualState === "pending" && "border-primary/20 bg-primary/[0.025]",
+        visualState === "pending" && "border-primary/20 bg-primary/[0.02]",
         visualState === "error" &&
           "border-destructive/25 bg-destructive/[0.02]",
       )}
@@ -414,20 +428,9 @@ export const ToolPartCard = memo(function ToolPartCard({
       <ToolCardHeader
         sequence={sequence}
         title={friendlyName}
-        subtitle={
-          <>
-            {agentContext?.agentName ? (
-              <>
-                <span className="truncate">{agentContext.agentName}</span>
-                <span aria-hidden="true">·</span>
-              </>
-            ) : null}
-            <span className="truncate">{parsed.toolName ?? friendlyName}</span>
-            <span aria-hidden="true">·</span>
-            <span className="shrink-0">{statusLabel}</span>
-          </>
-        }
+        subtitle={headerSubtitle}
         state={visualState}
+        compact
         action={
           visualState === "completed" || visualState === "error" ? (
             <CollapsibleTrigger asChild>
@@ -435,18 +438,14 @@ export const ToolPartCard = memo(function ToolPartCard({
                 type={BUTTON_TYPE}
                 variant={GHOST_VARIANT}
                 size="icon-sm"
-                className="size-8 shrink-0 rounded-lg text-muted-foreground"
+                className="size-6 shrink-0 rounded-md text-muted-foreground"
                 aria-label={
                   detailsOpen ? t("hideActionDetails") : t("showActionDetails")
                 }
               >
-                <ChevronDownIcon
-                  className={cn(
-                    "size-3.5 transition-transform duration-200",
-                    detailsOpen && "rotate-180",
-                  )}
-                  aria-hidden="true"
-                />
+                <span className="t-acc-chevron">
+                  <ChevronDownIcon className="size-3" aria-hidden="true" />
+                </span>
               </Button>
             </CollapsibleTrigger>
           ) : null
@@ -462,7 +461,7 @@ export const ToolPartCard = memo(function ToolPartCard({
         </span>
       ) : null}
       {approval ? (
-        <div className="bg-warning/[0.035] px-3 py-3">
+        <div className="bg-warning/[0.035] px-2.5 py-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[11px] text-muted-foreground">
               {t("approvalWaiting")}
@@ -472,7 +471,7 @@ export const ToolPartCard = memo(function ToolPartCard({
                 type={BUTTON_TYPE}
                 size="sm"
                 variant={OUTLINE_VARIANT}
-                className="h-10 rounded-xl px-3 text-[11px]"
+                className="h-8 rounded-lg px-2.5 text-[11px]"
                 onClick={() => onReject?.(approval)}
               >
                 <XIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
@@ -481,7 +480,7 @@ export const ToolPartCard = memo(function ToolPartCard({
               <Button
                 type={BUTTON_TYPE}
                 size="sm"
-                className="h-10 rounded-xl px-3 text-[11px]"
+                className="h-8 rounded-lg px-2.5 text-[11px]"
                 onClick={() => onApprove?.(approval)}
               >
                 <CheckIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
@@ -494,32 +493,33 @@ export const ToolPartCard = memo(function ToolPartCard({
       <CollapsibleContent
         forceMount
         className="t-acc-panel"
+        hidden={!detailsOpen}
         aria-hidden={!detailsOpen}
         inert={!detailsOpen ? true : undefined}
       >
         <div className="t-acc-panel-inner">
-          <div className="bg-background/25 px-3 py-3">
+          <div className="space-y-1.5 border-t border-border/35 bg-background/20 px-2.5 py-2">
             {summaryText ? (
-              <p className="mb-2 text-[11px] leading-4 text-muted-foreground">
+              <p className="text-[11px] leading-4 text-muted-foreground">
                 {summaryText}
               </p>
             ) : null}
             {inputText ? (
-              <div className="mb-2">
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              <div>
+                <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/55">
                   {t("actionInput")}
                 </div>
-                <pre className="max-h-40 overflow-auto rounded-xl bg-muted/25 p-3 leading-4 text-[11px] text-muted-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
+                <pre className="max-h-24 overflow-auto rounded-lg bg-muted/20 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground">
                   {inputText}
                 </pre>
               </div>
             ) : null}
             {outputText ? (
               <div>
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/55">
                   {t("actionOutput")}
                 </div>
-                <pre className="max-h-60 overflow-auto rounded-xl bg-muted/25 p-3 leading-4 text-[11px] text-muted-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
+                <pre className="max-h-32 overflow-auto rounded-lg bg-muted/20 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground">
                   {outputText}
                 </pre>
               </div>
