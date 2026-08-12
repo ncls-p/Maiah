@@ -1112,7 +1112,7 @@ jobs:
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
           echo "Using sandbox runner image ${AI_HUB_SANDBOX_IMAGE}"
           echo "Using ServiceNow MCP gateway image ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}"
-          DEPLOY_RESPONSE="$(api POST "/deploy?uuid=${SERVICE_UUID}&force=true")"
+          DEPLOY_RESPONSE="$(api POST "/services/${SERVICE_UUID}/restart?latest=true")"
           DEPLOYMENT_UUID="$(
             jq -r '.deployment_uuid // .deployments[0].deployment_uuid // empty' \
               <<<"${DEPLOY_RESPONSE}"

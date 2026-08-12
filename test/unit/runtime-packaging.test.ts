@@ -42,7 +42,7 @@ describe("runtime packaging guardrails", () => {
     const workflow = projectFile(".github/workflows/coolify.yml");
 
     expect(workflow).toContain(
-      'DEPLOY_RESPONSE="$(api POST "/deploy?uuid=${SERVICE_UUID}&force=true")"',
+      'DEPLOY_RESPONSE="$(api POST "/services/${SERVICE_UUID}/restart?latest=true")"',
     );
     expect(workflow).not.toContain(
       'DEPLOY_RESPONSE="$(api GET "/deploy?uuid=${SERVICE_UUID}&force=true")"',
