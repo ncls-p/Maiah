@@ -20,7 +20,6 @@ interface ChatComposerBodyProps {
   input: string;
   canChat: boolean;
   sending: boolean;
-  focusKey?: string;
   attachments: NonNullable<ChatComposerProps["attachments"]>;
   todoList: ChatComposerProps["todoList"];
   centered: boolean;
@@ -52,18 +51,6 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
   const t = useTranslations("chat.composer");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const focusedKeyRef = useRef<string | null>(null);
-
-  useLayoutEffect(() => {
-    if (!props.canChat || !props.focusKey) return;
-    if (focusedKeyRef.current === props.focusKey) return;
-    focusedKeyRef.current = props.focusKey;
-
-    const frame = window.requestAnimationFrame(() => {
-      textareaRef.current?.focus({ preventScroll: true });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [props.canChat, props.focusKey]);
 
   useLayoutEffect(() => {
     const element = textareaRef.current;

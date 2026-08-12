@@ -185,7 +185,6 @@ export function ChatPageView({ model }: { model: Model }) {
                 input={input}
                 canChat={canChat}
                 sending={sending}
-                focusKey={activeConversationId ?? "new-conversation"}
                 queuedMessages={queuedMessages}
                 onInputChange={setInput}
                 onSubmit={submitMessage}
@@ -256,7 +255,6 @@ export function ChatPageView({ model }: { model: Model }) {
           input={input}
           canChat={canChat}
           sending={sending}
-          focusKey={activeConversationId ?? "new-conversation"}
           queuedMessages={queuedMessages}
           onInputChange={setInput}
           onSubmit={submitMessage}

@@ -20,12 +20,14 @@ export function UserMessageRail({
   shortcuts,
   hiddenMessageCount,
   totalMessageCount,
+  conversationId,
   messageIndexById,
   setVisibleMessageCount,
 }: {
   shortcuts: UserMessageShortcut[];
   hiddenMessageCount: number;
   totalMessageCount: number;
+  conversationId?: string | null;
   messageIndexById: ReadonlyMap<string, number>;
   setVisibleMessageCount: React.Dispatch<React.SetStateAction<number>>;
 }) {
@@ -64,12 +66,18 @@ export function UserMessageRail({
         behavior: preferredScrollBehavior(),
         scrollMargin: MESSAGE_JUMP_SCROLL_MARGIN,
       });
-      rememberUserMessageAnchor(pendingMessageId);
+      rememberUserMessageAnchor(conversationId, pendingMessageId);
       setPendingMessageId(null);
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [hiddenMessageCount, pendingMessageId, scrollToMessage, shortcuts]);
+  }, [
+    conversationId,
+    hiddenMessageCount,
+    pendingMessageId,
+    scrollToMessage,
+    shortcuts,
+  ]);
 
   if (shortcuts.length === 0) return null;
 
@@ -86,7 +94,7 @@ export function UserMessageRail({
       behavior: preferredScrollBehavior(),
       scrollMargin: MESSAGE_JUMP_SCROLL_MARGIN,
     });
-    rememberUserMessageAnchor(shortcut.id);
+    rememberUserMessageAnchor(conversationId, shortcut.id);
   };
 
   const closePanel = () => {

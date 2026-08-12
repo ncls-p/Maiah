@@ -1,8 +1,13 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import {
+  cancelsChatStreamFollow,
+  getChatStreamFollowKey,
+  isChatViewportAtEnd,
+} from "@/components/chat/chat-scroll";
 import { type ChatMessage } from "@/components/chat/chat-types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatMessageListView } from "./chat-message-list.chat-message-list.view";
@@ -82,7 +87,103 @@ export function useChatMessageListController({
   }, [visibleMessages]);
   const lastMessage = messages[messages.length - 1] ?? null;
   const lastMessageId = lastMessage?.id ?? null;
+  const hasTranscript = !loading && messages.length > 0;
+  const scrollFollowKey = useMemo(
+    () => getChatStreamFollowKey(messages),
+    [messages],
+  );
+
+  // Follow every streamed layout change while the reader remains at the end.
+  // Scrolling up opts out immediately and preserves the reader's position.
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const shouldFollowStreamRef = useRef(false);
+  const isDraggingScrollbarRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!hasTranscript) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateFollowStream = () => {
+      if (isChatViewportAtEnd(viewport)) {
+        shouldFollowStreamRef.current = true;
+      } else if (isDraggingScrollbarRef.current) {
+        shouldFollowStreamRef.current = false;
+      }
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) shouldFollowStreamRef.current = false;
+    };
+    const handleTouchMove = () => {
+      shouldFollowStreamRef.current = false;
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (cancelsChatStreamFollow(event)) {
+        shouldFollowStreamRef.current = false;
+      }
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      isDraggingScrollbarRef.current = event.target === viewport;
+    };
+    const handlePointerUp = () => {
+      isDraggingScrollbarRef.current = false;
+    };
+
+    updateFollowStream();
+    viewport.addEventListener("scroll", updateFollowStream, { passive: true });
+    viewport.addEventListener("wheel", handleWheel, { passive: true });
+    viewport.addEventListener("touchmove", handleTouchMove, { passive: true });
+    viewport.addEventListener("keydown", handleKeyDown);
+    viewport.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      viewport.removeEventListener("scroll", updateFollowStream);
+      viewport.removeEventListener("wheel", handleWheel);
+      viewport.removeEventListener("touchmove", handleTouchMove);
+      viewport.removeEventListener("keydown", handleKeyDown);
+      viewport.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [hasTranscript]);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !shouldFollowStreamRef.current) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      if (!shouldFollowStreamRef.current) return;
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollFollowKey, pendingApprovals.length]);
+
+  useLayoutEffect(() => {
+    if (!hasTranscript) return;
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content || typeof ResizeObserver === "undefined") return;
+
+    let frame: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (!shouldFollowStreamRef.current) return;
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        if (!shouldFollowStreamRef.current) return;
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+      });
+    });
+    observer.observe(content);
+
+    return () => {
+      observer.disconnect();
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [hasTranscript]);
 
   if (loading) {
     return (
@@ -108,6 +209,7 @@ export function useChatMessageListController({
   return {
     kind: "ready",
     bottomRef,
+    contentRef,
     conversationId,
     editingContent,
     editingMessageId,

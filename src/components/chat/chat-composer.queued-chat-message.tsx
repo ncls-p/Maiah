@@ -29,7 +29,6 @@ export interface ChatComposerProps {
   input: string;
   canChat: boolean;
   sending: boolean;
-  focusKey?: string;
   queuedMessages?: QueuedChatMessage[];
   onInputChange: (value: string) => void;
   onSubmit: () => void;
