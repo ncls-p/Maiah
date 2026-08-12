@@ -24,6 +24,7 @@ type ConversationActionsContext = {
   setActiveVersion: Setter<AgentVersion | null>;
   setQueuedMessages: Setter<QueuedChatMessage[]>;
   setMessages: (messages: ChatMessage[]) => void;
+  prepareConversationMessages: (conversationId: string) => void;
   setCodeWorkspaceArtifact: Setter<CodeWorkspaceArtifact | null>;
   setAttachments: Setter<ChatAttachment[]>;
   detachActiveStream: () => void;
@@ -66,7 +67,7 @@ export function useConversationActions(context: ConversationActionsContext) {
     if (conversationId === c.activeConversationId) return;
     c.detachActiveStream();
     c.setQueuedMessages([]);
-    c.setMessages([]);
+    c.prepareConversationMessages(conversationId);
     c.setCodeWorkspaceArtifact(null);
     c.setAttachments([]);
     c.resetInterfaceMode();

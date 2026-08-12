@@ -47,8 +47,11 @@ async function deleteConversation(conversationId: string) {
 }
 
 test.beforeAll(async () => {
-  ({ agentId: primaryAgentId, alternateAgentId, workspaceId } =
-    await ensureE2EAssistantPair());
+  ({
+    agentId: primaryAgentId,
+    alternateAgentId,
+    workspaceId,
+  } = await ensureE2EAssistantPair());
 });
 
 test.beforeEach(async ({ page }) => {
@@ -75,9 +78,7 @@ test("switches assistant and model without reloading the chat page", async ({
   );
 
   await selector.click();
-  await page
-    .getByRole("menuitem", { name: /E2E alternate assistant/ })
-    .click();
+  await page.getByRole("menuitem", { name: /E2E alternate assistant/ }).click();
 
   await expect(page).toHaveURL(`/fr/chat?agentId=${alternateAgentId}`);
   await expect(selector).toContainText("E2E alternate assistant");
@@ -102,9 +103,17 @@ test("keeps the chosen assistant when leaving an existing conversation", async (
 }) => {
   const conversationId = await createPrimaryConversation();
   try {
+    const initialConversationLoad = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response
+          .url()
+          .endsWith(`/api/workspace/conversations/${conversationId}`),
+    );
     await page.goto(
       `/fr/chat?conversationId=${conversationId}&agentId=${primaryAgentId}`,
     );
+    await initialConversationLoad;
     const selector = page.getByRole("button", { name: "Assistant actuel" });
     await expect(selector).toContainText("E2E menu assistant", {
       timeout: 15_000,
@@ -112,6 +121,15 @@ test("keeps the chosen assistant when leaving an existing conversation", async (
     const initialDocumentTimeOrigin = await page.evaluate(
       () => performance.timeOrigin,
     );
+    let conversationReloads = 0;
+    page.on("request", (request) => {
+      if (
+        request.method() === "GET" &&
+        request.url().endsWith(`/api/workspace/conversations/${conversationId}`)
+      ) {
+        conversationReloads += 1;
+      }
+    });
 
     await selector.click();
     await page
@@ -124,6 +142,7 @@ test("keeps the chosen assistant when leaving an existing conversation", async (
     await expect(selector).toContainText("E2E alternate assistant");
     await page.waitForTimeout(1_000);
     await expect(selector).toContainText("E2E alternate assistant");
+    expect(conversationReloads).toBe(0);
 
     await page
       .getByRole("button", { name: "Nouvelle conversation", exact: true })
@@ -142,9 +161,7 @@ test("keeps the chosen assistant when leaving an existing conversation", async (
 test("removes an unavailable assistant from the URL without losing the locale", async ({
   page,
 }) => {
-  await page.goto(
-    "/fr/chat?agentId=00000000-0000-4000-8000-000000000000",
-  );
+  await page.goto("/fr/chat?agentId=00000000-0000-4000-8000-000000000000");
 
   await expect(page).toHaveURL("/fr/chat");
   await expect(
