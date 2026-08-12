@@ -3,6 +3,7 @@ import type { OrganizationThemeConfig } from "@/modules/organization/themes";
 import type { OrganizationHeroConfig } from "@/modules/organization/hero-branding";
 
 type WorkspaceRow = {
+  isActive?: boolean;
   workspace?: {
     id?: string;
     name?: string;
@@ -28,6 +29,7 @@ export type WorkspaceSummary = {
   organizationTheme: string;
   organizationThemeConfig: OrganizationThemeConfig | null;
   organizationHeroConfig: OrganizationHeroConfig | null;
+  isActive: boolean;
 };
 
 export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
@@ -52,11 +54,25 @@ export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
           organizationTheme: row.organization?.theme ?? "ocean",
           organizationThemeConfig: row.organization?.themeConfigJson ?? null,
           organizationHeroConfig: row.organization?.heroConfigJson ?? null,
+          isActive: row.isActive === true,
         };
       })
       .filter((row): row is WorkspaceSummary => row !== null);
   } catch {
     return [];
+  }
+}
+
+export async function saveActiveWorkspace(workspaceId: string) {
+  try {
+    const response = await fetch("/api/workspaces", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId }),
+    });
+    return response.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -66,11 +82,13 @@ export async function fetchJson<T>(
 ): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
-    const error = await res.json().catch(() => null);
-    throw new Error(
-      (error as { error?: string } | null)?.error ??
-        `Request failed: ${res.status}`,
-    );
+    let error: { error?: string } | null = null;
+    try {
+      error = (await res.json()) as { error?: string };
+    } catch {
+      // The HTTP status remains the fallback when the body is not JSON.
+    }
+    throw new Error(error?.error ?? `Request failed: ${res.status}`);
   }
   return res.json() as Promise<T>;
 }

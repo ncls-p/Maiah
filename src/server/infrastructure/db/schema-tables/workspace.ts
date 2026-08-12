@@ -146,6 +146,29 @@ export const workspaces = pgTable(
   ],
 );
 
+export const userWorkspacePreferences = pgTable(
+  "user_workspace_preferences",
+  {
+    userId: uuid(USER_ID_COLUMN)
+      .primaryKey()
+      .references(() => users.id, { onDelete: CASCADE_ACTION }),
+    activeWorkspaceId: uuid("active_workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: CASCADE_ACTION }),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("user_workspace_preferences_active_workspace_idx").on(
+      t.activeWorkspaceId,
+    ),
+  ],
+);
+
 export const workspaceMemberStatusEnum = pgEnum("workspace_member_status", [
   "active",
   "suspended",

@@ -3,6 +3,7 @@ import {
   fetchPendingToolCount,
   fetchWorkspacePermissions,
   fetchWorkspaces,
+  saveActiveWorkspace,
 } from "@/lib/api-client";
 import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,6 +26,7 @@ describe("api-client", () => {
         ok: true,
         json: async () => [
           {
+            isActive: true,
             workspace: { id: "1", name: "WS1", slug: "ws1" },
             organization: {
               id: "org-1",
@@ -52,6 +54,7 @@ describe("api-client", () => {
         organizationTheme: "forest",
         organizationThemeConfig: null,
         organizationHeroConfig: null,
+        isActive: true,
       });
     });
 
@@ -108,6 +111,7 @@ describe("api-client", () => {
         organizationTheme: "ocean",
         organizationThemeConfig: null,
         organizationHeroConfig: null,
+        isActive: false,
       });
     });
 
@@ -116,6 +120,25 @@ describe("api-client", () => {
 
       const result = await fetchWorkspaces();
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("saveActiveWorkspace", () => {
+    it("persists the active workspace", async () => {
+      mockFetch.mockResolvedValue({ ok: true });
+
+      await expect(saveActiveWorkspace("workspace-1")).resolves.toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith("/api/workspaces", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: "workspace-1" }),
+      });
+    });
+
+    it("keeps the local fallback when persistence fails", async () => {
+      mockFetch.mockRejectedValue(new Error("offline"));
+
+      await expect(saveActiveWorkspace("workspace-1")).resolves.toBe(false);
     });
   });
 

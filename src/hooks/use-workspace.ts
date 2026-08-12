@@ -14,6 +14,7 @@ export type WorkspaceSummary = {
   organizationTheme: string;
   organizationThemeConfig: OrganizationThemeConfig | null;
   organizationHeroConfig: OrganizationHeroConfig | null;
+  isActive: boolean;
 };
 
 export type WorkspaceContextValue = {

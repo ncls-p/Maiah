@@ -2,7 +2,7 @@
 
 import { ChevronDownIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -10,8 +10,11 @@ import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -74,7 +77,7 @@ export function OrbitMobileNavigation({
 
   useEffect(() => {
     for (const destination of primaryDestinations) {
-      if (destination !== pathname) router.prefetch(destination);
+      if (destination !== pathname) void router.prefetch(destination);
     }
   }, [pathname, router]);
 
@@ -223,7 +226,17 @@ export function OrbitProductNavigation({
 
 export function OrbitAccountMenu({ displayName }: { displayName?: string }) {
   const tShell = useTranslations("shell");
+  const { workspaceId, workspaces, setWorkspaceId } = useWorkspace();
   const initial = displayName?.trim().charAt(0).toLocaleUpperCase() || "M";
+  const workspaceGroups = new Map<string, typeof workspaces>();
+  for (const workspace of workspaces) {
+    const organizationKey =
+      workspace.organizationId || workspace.organizationName;
+    const organizationWorkspaces = workspaceGroups.get(organizationKey) ?? [];
+    organizationWorkspaces.push(workspace);
+    workspaceGroups.set(organizationKey, organizationWorkspaces);
+  }
+  const workspacesByOrganization = Array.from(workspaceGroups);
 
   return (
     <DropdownMenu>
@@ -236,21 +249,61 @@ export function OrbitAccountMenu({ displayName }: { displayName?: string }) {
           {initial}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 p-1.5">
-        <DropdownMenuLabel className="truncate px-2.5 py-2 text-sm font-medium">
-          {displayName || tShell("workspace")}
-        </DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-72 p-1.5">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="truncate px-2.5 py-2 text-sm font-medium">
+            {displayName || tShell("workspace")}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        {workspacesByOrganization.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{tShell("activeProject")}</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={workspaceId ?? ""}
+                onValueChange={(nextWorkspaceId) => {
+                  if (nextWorkspaceId !== workspaceId) {
+                    setWorkspaceId(nextWorkspaceId);
+                  }
+                }}
+              >
+                {workspacesByOrganization.map(
+                  ([organizationId, organizationWorkspaces]) => (
+                    <Fragment key={organizationId}>
+                      <DropdownMenuLabel inset className="mt-1 truncate">
+                        {organizationWorkspaces[0]?.organizationName}
+                      </DropdownMenuLabel>
+                      {organizationWorkspaces.map((workspace) => (
+                        <DropdownMenuRadioItem
+                          key={workspace.id}
+                          value={workspace.id}
+                        >
+                          <span className="truncate">{workspace.name}</span>
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </Fragment>
+                  ),
+                )}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="p-0">
-          <LocaleSwitcher menu />
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="p-0">
-          <ThemeToggleButton menu />
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild className="p-0">
+            <LocaleSwitcher menu />
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="p-0">
+            <ThemeToggleButton menu />
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild variant="destructive" className="p-0">
-          <SignOutButton className="h-10 w-full rounded-lg px-2.5 font-normal" />
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild variant="destructive" className="p-0">
+            <SignOutButton className="h-10 w-full rounded-lg px-2.5 font-normal" />
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -19,5 +19,6 @@ export {
   teamRelations,
   userAgentPreferenceRelations,
   userRelations,
+  userWorkspacePreferenceRelations,
   workspaceRelations,
 } from "./schema-relations.user-relations";

@@ -63,7 +63,7 @@ Chaque ressource distante doit distinguer :
 | Scénario                            | Attendu                                                                                         | Couverture                            |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------- |
 | Plusieurs organisations             | Création indépendante, propriétaire initial et premier projet atomiques                         | Route + module + migration PostgreSQL |
-| Plusieurs projets                   | Sélecteur groupé par organisation, choix persistant, héritage visible                           | Code + navigateur                     |
+| Plusieurs projets                   | Sélecteur global groupé par organisation ; choix de compte retrouvé dans une nouvelle session privée | Vitest + Playwright + PostgreSQL       |
 | Héritage organisation → projet      | Rôles utilisateur et équipe fusionnés avec les attributions locales                             | Tests IAM + CI PostgreSQL             |
 | Attribution membre ou équipe        | Principal, rôle et portée recroisés côté serveur avec l’organisation active                     | Module + validation de route          |
 | Rôle personnalisé                   | Catalogue fermé, au moins un droit, portée organisation ou projet                               | Tests catalogue + code                |

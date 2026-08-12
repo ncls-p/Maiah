@@ -46,6 +46,12 @@ Pour un utilisateur et un projet :
 
 Une suppression de membre ou une modification d’équipe invalide le cache de l’organisation et de chacun de ses projets. Le délai du cache reste une protection de performance, jamais la source de vérité.
 
+## Projet actif
+
+Le projet choisi est une préférence de compte stockée dans `user_workspace_preferences`, et non un état propre au navigateur. Une nouvelle session, y compris en navigation privée, retrouve donc le même projet actif. Le stockage local historique reste uniquement un repli de migration lorsqu’aucune préférence serveur n’existe encore.
+
+La préférence référence l’ID immuable du projet : renommer une organisation, un projet ou leur slug ne change pas la sélection. `PATCH /api/workspaces` accepte uniquement un projet auquel l’utilisateur de la session a encore accès ; une clé API ne peut pas modifier cette préférence de compte.
+
 ## Invariants
 
 - Un membre d’équipe doit d’abord être membre actif de l’organisation.

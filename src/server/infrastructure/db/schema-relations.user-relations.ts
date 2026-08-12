@@ -28,19 +28,21 @@ export const {
   userAgentPreferences,
   userToolSettings,
   users,
+  userWorkspacePreferences,
   workspaceMembers,
   workspaces,
 } = schema;
 
 // ─── Relations ─────────────────────────────────────────────────────────
 
-export const userRelations = relations(users, ({ many }) => ({
+export const userRelations = relations(users, ({ many, one }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
   workspaceMembers: many(workspaceMembers),
   organizationMembers: many(organizationMembers),
   teamMembers: many(teamMembers),
   agentPreferences: many(userAgentPreferences),
+  activeWorkspacePreference: one(userWorkspacePreferences),
   conversationShares: many(conversationShares),
 }));
 
@@ -101,6 +103,7 @@ export const workspaceRelations = relations(workspaces, ({ one, many }) => ({
     references: [users.id],
   }),
   members: many(workspaceMembers),
+  activeUserPreferences: many(userWorkspacePreferences),
   agents: many(agents),
   agentPreferences: many(userAgentPreferences),
   conversationFolders: many(conversationFolders),
@@ -111,6 +114,20 @@ export const workspaceRelations = relations(workspaces, ({ one, many }) => ({
   knowledgeBases: many(knowledgeBases),
   skills: many(agentSkills),
 }));
+
+export const userWorkspacePreferenceRelations = relations(
+  userWorkspacePreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userWorkspacePreferences.userId],
+      references: [users.id],
+    }),
+    workspace: one(workspaces, {
+      fields: [userWorkspacePreferences.activeWorkspaceId],
+      references: [workspaces.id],
+    }),
+  }),
+);
 
 export const agentRelations = relations(agents, ({ one, many }) => ({
   workspace: one(workspaces, {

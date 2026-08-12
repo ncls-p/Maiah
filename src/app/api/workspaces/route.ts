@@ -1,12 +1,30 @@
 import {
   handleRoute,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
   ensurePrimaryWorkspaceForUser,
+  getActiveWorkspaceIdForUser,
   getWorkspacesByUserId,
+  setActiveWorkspaceForUser,
 } from "@/modules/workspace/use-cases";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const activeWorkspaceSchema = z.object({ workspaceId: z.uuid() });
+
+type WorkspaceRow = Awaited<ReturnType<typeof getWorkspacesByUserId>>[number];
+
+function markActiveWorkspace(
+  rows: WorkspaceRow[],
+  activeWorkspaceId: string | null,
+) {
+  return rows.map((row) => ({
+    ...row,
+    isActive: row.workspace.id === activeWorkspaceId,
+  }));
+}
 
 export async function GET(req: NextRequest) {
   return handleRoute(
@@ -21,14 +39,54 @@ export async function GET(req: NextRequest) {
         );
         if (forbidden) return forbidden;
         return NextResponse.json(
-          workspaces.filter(
-            ({ workspace }) => workspace.id === auth.workspaceId,
+          markActiveWorkspace(
+            workspaces.filter(
+              ({ workspace }) => workspace.id === auth.workspaceId,
+            ),
+            auth.workspaceId,
           ),
         );
       }
-      return NextResponse.json(workspaces);
+      const activeWorkspaceId = await getActiveWorkspaceIdForUser(
+        session.user.id,
+      );
+      return NextResponse.json(
+        markActiveWorkspace(workspaces, activeWorkspaceId),
+      );
     },
     { logLabel: "Failed to list workspaces" },
+  );
+}
+
+export async function PATCH(req: NextRequest) {
+  return handleRoute(
+    req,
+    async ({ session, auth }) => {
+      if (auth.type === "api_key") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const parsed = activeWorkspaceSchema.safeParse(await req.json());
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "workspaceId must be a valid UUID" },
+          { status: 400 },
+        );
+      }
+
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+      );
+      if (forbidden) return forbidden;
+
+      await setActiveWorkspaceForUser(
+        session.user.id,
+        parsed.data.workspaceId,
+      );
+      return new NextResponse(null, { status: 204 });
+    },
+    { logLabel: "Failed to save active workspace" },
   );
 }
 

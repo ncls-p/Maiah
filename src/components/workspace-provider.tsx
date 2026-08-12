@@ -7,14 +7,16 @@ import {
   type WorkspaceContextValue,
   type WorkspaceSummary,
 } from "@/hooks/use-workspace";
-import { fetchWorkspaces } from "@/lib/api-client";
+import { fetchWorkspaces, saveActiveWorkspace } from "@/lib/api-client";
+import {
+  ACTIVE_WORKSPACE_STORAGE_KEY,
+  resolveActiveWorkspaceId,
+} from "@/lib/workspace-selection";
 import {
   resolveOrganizationTheme,
   themeCss,
   type OrganizationTheme,
 } from "@/modules/organization/themes";
-
-const ACTIVE_WORKSPACE_KEY = "active-workspace-id";
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspaceId, setWorkspaceIdState] = useState<string | null>(null);
@@ -24,7 +26,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const setWorkspaceId = useCallback((nextWorkspaceId: string) => {
     setWorkspaceIdState(nextWorkspaceId);
-    window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, nextWorkspaceId);
+    window.localStorage.setItem(
+      ACTIVE_WORKSPACE_STORAGE_KEY,
+      nextWorkspaceId,
+    );
+    void saveActiveWorkspace(nextWorkspaceId);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -33,16 +39,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     try {
       const rows = await fetchWorkspaces();
       setWorkspaces(rows);
-      const storedWorkspaceId =
-        window.localStorage.getItem(ACTIVE_WORKSPACE_KEY);
-      const active =
-        rows.find((row) => row.id === workspaceId)?.id ??
-        rows.find((row) => row.id === storedWorkspaceId)?.id ??
-        rows[0]?.id ??
-        null;
+      const storedWorkspaceId = window.localStorage.getItem(
+        ACTIVE_WORKSPACE_STORAGE_KEY,
+      );
+      const active = resolveActiveWorkspaceId(rows, {
+        currentWorkspaceId: workspaceId,
+        storedWorkspaceId,
+      });
       if (active) {
         setWorkspaceIdState(active);
-        window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, active);
+        window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, active);
+        const hasServerPreference = rows.some((row) => row.isActive);
+        if (!hasServerPreference) void saveActiveWorkspace(active);
       } else {
         setWorkspaceIdState(null);
         setError("Setup required");

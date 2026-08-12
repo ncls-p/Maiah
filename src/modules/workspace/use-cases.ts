@@ -1,3 +1,7 @@
+export {
+  getActiveWorkspaceIdForUser,
+  setActiveWorkspaceForUser,
+} from "./use-cases.active-workspace";
 export { addWorkspaceMember } from "./use-cases.get-system-workspace-role";
 export {
   countWorkspaces,

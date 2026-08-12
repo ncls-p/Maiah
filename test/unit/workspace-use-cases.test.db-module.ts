@@ -4,8 +4,10 @@ import * as _dbModule from "@/server/infrastructure/db";
 
 import {
   countWorkspaces,
+  getActiveWorkspaceIdForUser,
   getWorkspaceBySlug,
   getWorkspacesByUserId,
+  setActiveWorkspaceForUser,
 } from "@/modules/workspace/use-cases";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
@@ -40,6 +42,7 @@ const CHAIN_KEYS = [
   "values",
   "set",
   "onConflictDoNothing",
+  "onConflictDoUpdate",
 ] as const;
 
 type ChainFn = ReturnType<typeof vi.fn>;
@@ -82,6 +85,7 @@ vi.mock("@/server/infrastructure/db", () => {
       "values",
       "set",
       "onConflictDoNothing",
+      "onConflictDoUpdate",
     ] as const;
     for (const k of keys) {
       c[k] = vi.fn().mockReturnThis();
@@ -160,6 +164,33 @@ export const fakeRole = {
 };
 
 // ─── Tests ───────────────────────────────────────────────────────────
+
+describe("active workspace preference", () => {
+  it("returns the account-level active workspace", async () => {
+    dbModule._chain.limit.mockResolvedValueOnce([
+      { activeWorkspaceId: "workspace-2" },
+    ]);
+
+    await expect(getActiveWorkspaceIdForUser("user-2")).resolves.toBe(
+      "workspace-2",
+    );
+  });
+
+  it("returns null when no account preference exists", async () => {
+    await expect(getActiveWorkspaceIdForUser("user-2")).resolves.toBeNull();
+  });
+
+  it("upserts the account-level active workspace", async () => {
+    await setActiveWorkspaceForUser("user-2", "workspace-2");
+
+    expect(dbModule.db.insert).toHaveBeenCalledOnce();
+    expect(dbModule._chain.values).toHaveBeenCalledWith({
+      userId: "user-2",
+      activeWorkspaceId: "workspace-2",
+    });
+    expect(dbModule._chain.onConflictDoUpdate).toHaveBeenCalledOnce();
+  });
+});
 
 describe("getWorkspaceBySlug", () => {
   it("returns null when not found", async () => {

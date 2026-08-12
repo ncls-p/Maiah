@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { ACTIVE_WORKSPACE_STORAGE_KEY } from "@/lib/workspace-selection";
 
 export function SignOutButton({
   iconOnly = false,
@@ -36,7 +37,7 @@ export function SignOutButton({
 
       if (!response.ok) throw new Error(t("signOutFailed"));
 
-      window.sessionStorage.removeItem("active_workspace_id");
+      window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
       router.push("/auth/signin");
       router.refresh();
     } catch (error) {
