@@ -87,31 +87,32 @@ function usePendingToolCount(workspaceId: string | null | undefined) {
 }
 
 function useWorkspacePermissions(workspaceId: string | null | undefined) {
-  const [permissions, setPermissions] = useState<WorkspacePermissions>(
-    DEFAULT_WORKSPACE_PERMISSIONS,
-  );
-  const [permissionsReady, setPermissionsReady] = useState(false);
+  const [loaded, setLoaded] = useState<{
+    workspaceId: string;
+    permissions: WorkspacePermissions;
+  } | null>(null);
 
   useEffect(() => {
     const currentWorkspaceId = workspaceId ?? "";
-    if (!currentWorkspaceId) {
-      setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
-      setPermissionsReady(false);
-      return;
-    }
+    if (!currentWorkspaceId) return;
+
     let cancelled = false;
 
     async function loadPermissions() {
       try {
         const data = await fetchWorkspacePermissions(currentWorkspaceId);
         if (!cancelled) {
-          setPermissions(data);
-          setPermissionsReady(true);
+          setLoaded({
+            workspaceId: currentWorkspaceId,
+            permissions: data,
+          });
         }
       } catch {
         if (!cancelled) {
-          setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
-          setPermissionsReady(true);
+          setLoaded({
+            workspaceId: currentWorkspaceId,
+            permissions: DEFAULT_WORKSPACE_PERMISSIONS,
+          });
         }
       }
     }
@@ -121,6 +122,14 @@ function useWorkspacePermissions(workspaceId: string | null | undefined) {
       cancelled = true;
     };
   }, [workspaceId]);
+
+  const currentWorkspaceId = workspaceId ?? "";
+  const permissions =
+    loaded?.workspaceId === currentWorkspaceId
+      ? loaded.permissions
+      : DEFAULT_WORKSPACE_PERMISSIONS;
+  const permissionsReady =
+    Boolean(currentWorkspaceId) && loaded?.workspaceId === currentWorkspaceId;
 
   return { permissions, permissionsReady };
 }

@@ -45,6 +45,16 @@ export function useChatMessageListController({
   const [visibleMessageCount, setVisibleMessageCount] = useState(
     INITIAL_VISIBLE_MESSAGES,
   );
+  const [listConversationId, setListConversationId] = useState(conversationId);
+
+  // Reset list UI when switching conversations (adjust state during render).
+  if (conversationId !== listConversationId) {
+    setListConversationId(conversationId);
+    setVisibleMessageCount(INITIAL_VISIBLE_MESSAGES);
+    setEditingMessageId(null);
+    setEditingContent("");
+    setSavingMessageId(null);
+  }
   const hiddenMessageCount = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = useMemo(
     () =>
@@ -101,10 +111,6 @@ export function useChatMessageListController({
   const isDraggingScrollbarRef = useRef(false);
 
   useLayoutEffect(() => {
-    setVisibleMessageCount(INITIAL_VISIBLE_MESSAGES);
-    setEditingMessageId(null);
-    setEditingContent("");
-    setSavingMessageId(null);
     shouldFollowStreamRef.current = true;
   }, [conversationId]);
 
