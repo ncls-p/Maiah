@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
+import { createChatHref } from "@/lib/chat-navigation";
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
 
@@ -40,17 +41,22 @@ export function useConversationActions(context: ConversationActionsContext) {
     c.setQueuedMessages([]);
     c.setSelectedAgentId(agentId);
     c.setActiveVersion(null);
-    const params = new URLSearchParams({ agentId });
-    if (c.activeConversationId)
-      params.set("conversationId", c.activeConversationId);
-    else {
+    if (!c.activeConversationId) {
       c.newConversationAgentIdRef.current = agentId;
       c.restoreComposerDraft(agentId, null);
       c.setMessages([]);
       c.setCodeWorkspaceArtifact(null);
       c.resetInterfaceMode();
     }
-    window.history.replaceState(null, "", `/chat?${params.toString()}`);
+    window.history.replaceState(
+      null,
+      "",
+      createChatHref({
+        pathname: window.location.pathname,
+        agentId,
+        conversationId: c.activeConversationId,
+      }),
+    );
   }
 
   function selectConversation(
@@ -73,10 +79,15 @@ export function useConversationActions(context: ConversationActionsContext) {
     );
     if (nextAgentId) c.setSelectedAgentId(nextAgentId);
     c.setActiveConversationId(conversationId);
-    const params = new URLSearchParams();
-    if (nextAgentId) params.set("agentId", nextAgentId);
-    params.set("conversationId", conversationId);
-    window.history.replaceState(null, "", `/chat?${params.toString()}`);
+    window.history.replaceState(
+      null,
+      "",
+      createChatHref({
+        pathname: window.location.pathname,
+        agentId: nextAgentId,
+        conversationId,
+      }),
+    );
   }
 
   function startNewConversation() {
@@ -96,7 +107,10 @@ export function useConversationActions(context: ConversationActionsContext) {
     window.history.replaceState(
       null,
       "",
-      nextAgentId ? `/chat?agentId=${nextAgentId}` : "/chat",
+      createChatHref({
+        pathname: window.location.pathname,
+        agentId: nextAgentId,
+      }),
     );
   }
 

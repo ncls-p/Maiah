@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
+import { createChatHref } from "@/lib/chat-navigation";
 import type { WorkspaceShellState } from "@/lib/workspace-nav";
 import { useWorkspaceHistory } from "./workspace-history-sidebar.use-workspace-history";
 
@@ -45,14 +46,29 @@ export function WorkspaceHistoryContent({
     (workspace) => workspace.id === workspaceId,
   );
 
+  const selectedAgentId = searchParams.get("agentId");
   const openConversation = useCallback(
     (conversationId: string, agentId?: string | null) => {
-      const params = new URLSearchParams({ conversationId });
-      if (agentId) params.set("agentId", agentId);
-      router.push(`/chat?${params.toString()}`);
+      router.push(createChatHref({ conversationId, agentId }));
       onNavigate?.();
     },
     [onNavigate, router],
+  );
+  const openNewConversation = useCallback(() => {
+    router.push(createChatHref({ agentId: selectedAgentId }));
+    onNavigate?.();
+  }, [onNavigate, router, selectedAgentId]);
+  const openNewTemporaryConversation = useCallback(
+    (ttlMinutes: number) => {
+      router.push(
+        createChatHref({
+          agentId: selectedAgentId,
+          temporaryTtlMinutes: ttlMinutes,
+        }),
+      );
+      onNavigate?.();
+    },
+    [onNavigate, router, selectedAgentId],
   );
 
   if (history.loadError) {
@@ -66,10 +82,7 @@ export function WorkspaceHistoryContent({
                 type="button"
                 size="icon"
                 className="size-10 rounded-xl"
-                onClick={() => {
-                  router.push("/chat");
-                  onNavigate?.();
-                }}
+                onClick={openNewConversation}
                 aria-label={t("newConversation")}
               >
                 <PlusIcon className="size-4" aria-hidden="true" />
@@ -141,14 +154,8 @@ export function WorkspaceHistoryContent({
         onSearchQueryChange={history.setQuery}
         onRetrySearch={history.retry}
         onSelectConversation={openConversation}
-        onNewConversation={() => {
-          router.push("/chat");
-          onNavigate?.();
-        }}
-        onNewTemporaryConversation={(ttlMinutes) => {
-          router.push(`/chat?temporary=true&ttl=${ttlMinutes}`);
-          onNavigate?.();
-        }}
+        onNewConversation={openNewConversation}
+        onNewTemporaryConversation={openNewTemporaryConversation}
         onRenameConversation={(conversationId, title) =>
           void history.renameConversation(conversationId, title)
         }
