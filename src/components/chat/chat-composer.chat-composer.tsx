@@ -22,6 +22,7 @@ export function ChatComposer({
   input,
   canChat,
   sending,
+  focusKey,
   queuedMessages = [],
   onSubmit,
   onInputChange,
@@ -241,6 +242,7 @@ export function ChatComposer({
         input={input}
         canChat={canChat}
         sending={sending}
+        focusKey={focusKey}
         attachments={attachments}
         todoList={todoList}
         centered={centered}

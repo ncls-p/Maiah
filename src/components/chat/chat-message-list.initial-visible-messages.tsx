@@ -10,10 +10,7 @@ import {
   type PendingToolApproval,
 } from "@/components/chat/chat-types";
 import type { WorkspaceArtifactDisplay } from "@/components/chat/code-workspace-artifact-card";
-import {
-  useMessageScroller,
-  useMessageScrollerVisibility,
-} from "@/components/ui/message-scroller";
+import { useMessageScroller } from "@/components/ui/message-scroller";
 
 export const INITIAL_VISIBLE_MESSAGES = 60;
 export const LOAD_MORE_MESSAGES = 30;
@@ -48,10 +45,6 @@ export interface ChatMessageListProps {
   onSuggestionClick?: (suggestion: string) => void;
 }
 
-export function chatAnchorStorageKey(conversationId: string) {
-  return `ai-hub-chat-anchor:${conversationId}`;
-}
-
 export function SavedMessageAnchorRestorer({
   conversationId,
 }: {
@@ -71,12 +64,9 @@ export function SavedMessageAnchorRestorer({
     const hashMessageId = window.location.hash.startsWith("#message-")
       ? window.location.hash.slice("#message-".length)
       : null;
-    const savedMessageId =
-      hashMessageId ??
-      window.localStorage.getItem(chatAnchorStorageKey(conversationId));
-    if (!savedMessageId) return;
+    if (!hashMessageId) return;
     const frame = window.requestAnimationFrame(() => {
-      scrollToMessage(savedMessageId, {
+      scrollToMessage(hashMessageId, {
         align: "start",
         behavior: "auto",
         scrollMargin: 24,
@@ -84,24 +74,6 @@ export function SavedMessageAnchorRestorer({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [conversationId, scrollToMessage]);
-
-  return null;
-}
-
-export function MessageVisibilityPersistence({
-  conversationId,
-}: {
-  conversationId?: string | null;
-}) {
-  const { currentAnchorId } = useMessageScrollerVisibility();
-
-  useEffect(() => {
-    if (!conversationId || !currentAnchorId) return;
-    window.localStorage.setItem(
-      chatAnchorStorageKey(conversationId),
-      currentAnchorId,
-    );
-  }, [conversationId, currentAnchorId]);
 
   return null;
 }
@@ -158,11 +130,6 @@ export function preferredScrollBehavior(): ScrollBehavior {
     : "smooth";
 }
 
-export function rememberUserMessageAnchor(
-  conversationId: string | null | undefined,
-  messageId: string,
-) {
+export function rememberUserMessageAnchor(messageId: string) {
   window.history.replaceState(null, "", `#message-${messageId}`);
-  if (!conversationId) return;
-  window.localStorage.setItem(chatAnchorStorageKey(conversationId), messageId);
 }

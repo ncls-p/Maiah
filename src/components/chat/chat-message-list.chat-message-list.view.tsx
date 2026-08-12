@@ -31,7 +31,6 @@ import {
   BUTTON_TYPE,
   EMPTY_PENDING_APPROVALS,
   LOAD_MORE_MESSAGES,
-  MessageVisibilityPersistence,
   OUTLINE_VARIANT,
   SavedMessageAnchorRestorer,
 } from "./chat-message-list.initial-visible-messages";
@@ -49,7 +48,6 @@ export function ChatMessageListView({
 }) {
   const {
     bottomRef,
-    contentRef,
     conversationId,
     editingContent,
     editingMessageId,
@@ -86,12 +84,12 @@ export function ChatMessageListView({
   } = model;
   return (
     <MessageScrollerProvider
-      defaultScrollPosition="start"
+      autoScroll
+      defaultScrollPosition="end"
       scrollMargin={24}
       scrollPreviousItemPeek={96}
     >
       <SavedMessageAnchorRestorer conversationId={conversationId} />
-      <MessageVisibilityPersistence conversationId={conversationId} />
       <MessageScroller className="min-h-0 flex-1">
         <MessageScrollerViewport
           ref={viewportRef}
@@ -99,10 +97,7 @@ export function ChatMessageListView({
           className={viewportClassName}
           aria-label={t("transcript")}
         >
-          <MessageScrollerContent
-            ref={contentRef}
-            className="mx-auto w-full max-w-4xl gap-5 pb-24"
-          >
+          <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-5 pb-24">
             {hiddenMessageCount > 0 ? (
               <MessageScrollerItem className="flex justify-center">
                 <Marker variant="separator" className="max-w-lg">
@@ -151,10 +146,7 @@ export function ChatMessageListView({
               const isLast = message.id === lastMessageId;
               const isStreamingAssistant =
                 isAssistant && message.status === "streaming";
-              const shouldScrollAnchor = shouldUseMessageScrollAnchor({
-                message,
-                sending,
-              });
+              const shouldScrollAnchor = shouldUseMessageScrollAnchor(message);
               const isAnimating = sending && isLast && isStreamingAssistant;
               const messagePendingApprovals = isStreamingAssistant
                 ? pendingApprovals
@@ -302,15 +294,10 @@ export function ChatMessageListView({
           shortcuts={userMessageShortcuts}
           hiddenMessageCount={hiddenMessageCount}
           totalMessageCount={messages.length}
-          conversationId={conversationId}
           messageIndexById={messageIndexById}
           setVisibleMessageCount={setVisibleMessageCount}
         />
-        <ChatScrollControls
-          sending={sending}
-          conversationId={conversationId}
-          onJumpLatest={onJumpLatest}
-        />
+        <ChatScrollControls sending={sending} onJumpLatest={onJumpLatest} />
       </MessageScroller>
     </MessageScrollerProvider>
   );

@@ -6,6 +6,7 @@ import {
   activate,
   databaseUrl,
   e2eUser,
+  ensureE2EAssistant,
   ensureE2EUser,
   login,
 } from "./fixtures";
@@ -13,6 +14,9 @@ import {
 const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd());
+
+let e2eAgentId: string;
+let e2eWorkspaceId: string;
 
 async function encryptFixtureText(plaintext: string) {
   const keyHex = process.env.APP_ENCRYPTION_KEY;
@@ -54,9 +58,9 @@ async function createRecoveredToolConversation() {
               wm.workspace_id
        from "user" u
        join workspace_members wm on wm.user_id = u.id and wm.status = 'active'
-       where u.email = $1
+       where u.email = $1 and wm.workspace_id = $2
        limit 1`,
-      [e2eUser.email],
+      [e2eUser.email, e2eWorkspaceId],
     );
     const row = context.rows[0];
     if (!row) throw new Error("No workspace available for chat E2E fixture");
@@ -67,8 +71,11 @@ async function createRecoveredToolConversation() {
     let agentId: string;
     let agentVersionId: string;
     let createdAgent = false;
-    const finalText =
-      "The first query failed, the corrected query succeeded, and the workflow completed.";
+    const finalText = Array.from(
+      { length: 80 },
+      (_, index) =>
+        `Result ${index + 1}: the corrected query succeeded and the workflow completed.`,
+    ).join("\n\n");
 
     await client.query("begin");
 
@@ -78,12 +85,12 @@ async function createRecoveredToolConversation() {
     }>(
       `select id as agent_id, active_version_id as agent_version_id
        from agents
-       where workspace_id = $1
+       where id = $1
+         and workspace_id = $2
          and archived_at is null
          and active_version_id is not null
-       order by (created_by_user_id = $2) desc, created_at
        limit 1`,
-      [row.workspace_id, row.user_id],
+      [e2eAgentId, row.workspace_id],
     );
 
     if (activeAgent.rows[0]) {
@@ -258,10 +265,16 @@ async function createRecoveredToolConversation() {
 
 test.beforeAll(async () => {
   await ensureE2EUser();
+  ({ agentId: e2eAgentId, workspaceId: e2eWorkspaceId } =
+    await ensureE2EAssistant());
 });
 
 test.beforeEach(async ({ page }) => {
   await login(page);
+  const response = await page.request.patch("/api/workspaces", {
+    data: { workspaceId: e2eWorkspaceId },
+  });
+  expect(response.ok()).toBe(true);
 });
 
 test.describe("chat page", () => {
@@ -287,6 +300,30 @@ test.describe("chat page", () => {
       await expect(
         transcript.getByRole("button", { name: "Continue this response" }),
       ).toBeVisible();
+      const transcriptViewport = page.locator(
+        '[data-slot="message-scroller-viewport"]',
+      );
+      await expect
+        .poll(() =>
+          transcriptViewport.evaluate(
+            (element) => element.scrollHeight > element.clientHeight,
+          ),
+        )
+        .toBe(true);
+      await expect
+        .poll(() =>
+          transcriptViewport.evaluate(
+            (element) =>
+              element.scrollHeight - element.scrollTop - element.clientHeight,
+          ),
+        )
+        .toBeLessThanOrEqual(2);
+      await expect(
+        transcript.locator('[data-scroll-anchor="true"]'),
+      ).toHaveCount(1);
+      await expect(
+        page.getByRole("textbox", { name: "Message" }),
+      ).toBeFocused();
       await expect(
         transcript.locator(
           'button[aria-label="Regenerate response"] + button[aria-label="Continue this response"]',
@@ -370,9 +407,6 @@ test.describe("chat page", () => {
       await expect(todoDock).toBeVisible();
 
       await todoDock.getByRole("button", { name: "Show task details" }).click();
-      const transcriptViewport = page.locator(
-        '[data-slot="message-scroller-viewport"]',
-      );
       await transcriptViewport.hover();
       await page.mouse.wheel(0, -200);
       await expect(todoDock).toBeVisible();

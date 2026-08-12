@@ -10,15 +10,12 @@ import {
   useMessageScroller,
   useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
-import { chatAnchorStorageKey } from "./chat-message-list.initial-visible-messages";
 
 export function ChatScrollControls({
   sending,
-  conversationId,
   onJumpLatest,
 }: {
   sending: boolean;
-  conversationId?: string | null;
   onJumpLatest?: () => Promise<void> | void;
 }) {
   const t = useTranslations("chat.messageList");
@@ -26,9 +23,6 @@ export function ChatScrollControls({
   const { scrollToEnd } = useMessageScroller();
 
   async function jumpToActualLatest() {
-    if (conversationId) {
-      window.localStorage.removeItem(chatAnchorStorageKey(conversationId));
-    }
     const url = new URL(window.location.href);
     url.hash = "";
     window.history.replaceState(null, "", url);

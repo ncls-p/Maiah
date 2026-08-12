@@ -6,26 +6,31 @@ const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd());
 
+let e2eWorkspaceId: string;
+
 test.beforeAll(async () => {
   await ensureE2EUser();
-  await ensureE2EAssistant();
+  ({ workspaceId: e2eWorkspaceId } = await ensureE2EAssistant());
 });
 
 test.beforeEach(async ({ page }) => {
   await login(page);
+  const response = await page.request.patch("/api/workspaces", {
+    data: { workspaceId: e2eWorkspaceId },
+  });
+  expect(response.ok()).toBe(true);
 });
 
 test.describe("chat composer", () => {
   test("input field is present when agents exist", async ({ page }) => {
     await page.goto("/en/chat");
-    await page.waitForTimeout(2000);
+    const composer = page.getByRole("textbox", {
+      name: "Message",
+      exact: true,
+    });
 
-    // Chat composer / textarea should be present
-    const composer = page.locator("textarea, [role='textbox']").first();
-
-    if (await composer.isVisible()) {
-      await expect(composer).toBeVisible();
-    }
+    await expect(composer).toBeVisible({ timeout: 15_000 });
+    await expect(composer).toBeFocused();
   });
 
   test("keeps composer controls within the mobile viewport", async ({
@@ -46,6 +51,9 @@ test.describe("chat composer", () => {
     );
     await expect(dock).toBeVisible();
     await expect(textarea).toBeVisible();
+    await expect(textarea).toBeFocused();
+    await expect(mobileNavigation).toBeHidden();
+    await textarea.blur();
     await expect(mobileNavigation).toBeVisible();
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
       "content",
