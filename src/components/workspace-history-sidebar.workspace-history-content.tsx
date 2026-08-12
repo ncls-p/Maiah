@@ -17,8 +17,11 @@ import {
 } from "@/components/sidebar-chrome";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useRouter } from "@/i18n/navigation";
-import { createChatHref } from "@/lib/chat-navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import {
+  createChatHref,
+  type ChatHrefOptions,
+} from "@/lib/chat-navigation";
 import type { WorkspaceShellState } from "@/lib/workspace-nav";
 import { useWorkspaceHistory } from "./workspace-history-sidebar.use-workspace-history";
 
@@ -33,6 +36,7 @@ export function WorkspaceHistoryContent({
 }) {
   const t = useTranslations("chat.sidebar");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { workspaceId, workspaces } = useWorkspace();
   const history = useWorkspaceHistory();
@@ -47,28 +51,38 @@ export function WorkspaceHistoryContent({
   );
 
   const selectedAgentId = searchParams.get("agentId");
+  const navigateToChat = useCallback(
+    (options: ChatHrefOptions) => {
+      if (pathname === "/chat") {
+        window.history.pushState(
+          null,
+          "",
+          createChatHref({ ...options, pathname: window.location.pathname }),
+        );
+      } else {
+        router.push(createChatHref(options));
+      }
+      onNavigate?.();
+    },
+    [onNavigate, pathname, router],
+  );
   const openConversation = useCallback(
     (conversationId: string, agentId?: string | null) => {
-      router.push(createChatHref({ conversationId, agentId }));
-      onNavigate?.();
+      navigateToChat({ conversationId, agentId });
     },
-    [onNavigate, router],
+    [navigateToChat],
   );
   const openNewConversation = useCallback(() => {
-    router.push(createChatHref({ agentId: selectedAgentId }));
-    onNavigate?.();
-  }, [onNavigate, router, selectedAgentId]);
+    navigateToChat({ agentId: selectedAgentId });
+  }, [navigateToChat, selectedAgentId]);
   const openNewTemporaryConversation = useCallback(
     (ttlMinutes: number) => {
-      router.push(
-        createChatHref({
-          agentId: selectedAgentId,
-          temporaryTtlMinutes: ttlMinutes,
-        }),
-      );
-      onNavigate?.();
+      navigateToChat({
+        agentId: selectedAgentId,
+        temporaryTtlMinutes: ttlMinutes,
+      });
     },
-    [onNavigate, router, selectedAgentId],
+    [navigateToChat, selectedAgentId],
   );
 
   if (history.loadError) {

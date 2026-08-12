@@ -7,6 +7,7 @@ export {
   e2eUser,
   e2eViewer,
   ensureE2EAssistant,
+  ensureE2EAssistantPair,
   ensureE2EUser,
 } from "./fixtures.e2e-user";
 export {

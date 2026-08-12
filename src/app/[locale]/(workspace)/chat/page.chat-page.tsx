@@ -297,13 +297,18 @@ export function useChatPageController() {
 
   const routeConversationId = searchParams.get("conversationId");
   const routeAgentId = searchParams.get("agentId");
+  const routeSearch = searchParams.toString();
   const availableRouteAgentId = agents.some(({ id }) => id === routeAgentId)
     ? routeAgentId
     : null;
   useEffect(() => {
     if (loadingAgents) return;
+    // Native history updates are synchronous, while useSearchParams catches up
+    // on the following render. Do not let a stale route snapshot undo the
+    // assistant choice made by the user in between those two updates.
+    if (window.location.search.slice(1) !== routeSearch) return;
     if (routeAgentId && !availableRouteAgentId) {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(routeSearch);
       params.delete("agentId");
       const query = params.toString();
       window.history.replaceState(
@@ -335,7 +340,7 @@ export function useChatPageController() {
     pathname,
     routeAgentId,
     routeConversationId,
-    searchParams,
+    routeSearch,
     selectAgent,
     selectConversation,
     selectedAgentId,

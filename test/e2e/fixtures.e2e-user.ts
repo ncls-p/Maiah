@@ -191,3 +191,75 @@ export async function ensureE2EAssistant() {
     await client.end();
   }
 }
+
+export async function ensureE2EAssistantPair() {
+  const primary = await ensureE2EAssistant();
+  const client = new Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    const alternateModelId = "10000000-0000-4000-8000-000000000003";
+    const providerId = "10000000-0000-4000-8000-000000000001";
+    const user = await client.query<{ id: string }>(
+      `select id from "user" where email = $1 limit 1`,
+      [e2eUser.email],
+    );
+    const userId = user.rows[0]?.id;
+    if (!userId) throw new Error("E2E assistant user is not initialized");
+
+    await client.query(
+      `insert into ai_models
+       (id, provider_id, model_id, display_name, enabled, created_at, updated_at)
+       values ($1, $2, 'e2e-alternate-model', 'E2E alternate model', true, now(), now())
+       on conflict (provider_id, model_id) do update
+       set display_name = excluded.display_name,
+           enabled = true,
+           updated_at = now()`,
+      [alternateModelId, providerId],
+    );
+    const alternateAssistant = await client.query<{ id: string }>(
+      `insert into agents
+       (id, workspace_id, name, slug, visibility, sharing_mode, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'E2E alternate assistant', 'e2e-alternate-assistant', 'workspace', 'marketplace', $3, now(), now())
+       on conflict (workspace_id, slug) do update
+       set name = excluded.name,
+           created_by_user_id = excluded.created_by_user_id,
+           visibility = 'workspace',
+           sharing_mode = 'marketplace',
+           archived_at = null,
+           updated_at = now()
+       returning id`,
+      [randomUUID(), primary.workspaceId, userId],
+    );
+    const alternateAgentId = alternateAssistant.rows[0]?.id;
+    if (!alternateAgentId) {
+      throw new Error("E2E alternate assistant could not be initialized");
+    }
+    const alternateVersion = await client.query<{ id: string }>(
+      `insert into agent_versions
+       (id, agent_id, version_number, name, system_prompt, provider_id, model_id,
+        created_by_user_id, created_at)
+       values ($1, $2, 1, 'E2E alternate version', 'You are the alternate E2E test assistant.',
+               $3, $4, $5, now())
+       on conflict (agent_id, version_number) do update
+       set name = excluded.name,
+           system_prompt = excluded.system_prompt,
+           provider_id = excluded.provider_id,
+           model_id = excluded.model_id
+       returning id`,
+      [
+        randomUUID(),
+        alternateAgentId,
+        providerId,
+        alternateModelId,
+        userId,
+      ],
+    );
+    await client.query(
+      `update agents set active_version_id = $1, updated_at = now() where id = $2`,
+      [alternateVersion.rows[0].id, alternateAgentId],
+    );
+    return { ...primary, alternateAgentId };
+  } finally {
+    await client.end();
+  }
+}
