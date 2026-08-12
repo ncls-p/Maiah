@@ -9,8 +9,6 @@ services:
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-maiah}
       - OTEL_SERVICE_VERSION=${OTEL_SERVICE_VERSION:-local}
       - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=${OTEL_SERVICE_NAMESPACE:-deodis},deployment.environment=${OTEL_DEPLOYMENT_ENVIRONMENT:-production},service.version=${OTEL_SERVICE_VERSION:-local}}
-      - DT_CUSTOM_PROP=${DT_CUSTOM_PROP:-app=${OTEL_SERVICE_NAME:-maiah} env=${OTEL_DEPLOYMENT_ENVIRONMENT:-production} platform=${OBSERVABILITY_PLATFORM:-coolify} owner=${OBSERVABILITY_OWNER:-deodis}}
-      - DT_TAGS=${DT_TAGS:-app=${OTEL_SERVICE_NAME:-maiah} env=${OTEL_DEPLOYMENT_ENVIRONMENT:-production} platform=${OBSERVABILITY_PLATFORM:-coolify} owner=${OBSERVABILITY_OWNER:-deodis}}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://maiah.shiftify.eco}
       - BETTER_AUTH_TRUSTED_ORIGINS=${BETTER_AUTH_TRUSTED_ORIGINS:-https://maiah.shiftify.eco}
@@ -214,9 +212,13 @@ services:
     healthcheck:
       test:
         - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:3128/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+        - curl
+        - --fail
+        - --silent
+        - --show-error
+        - --max-time
+        - "3"
+        - http://127.0.0.1:3128/health
       interval: 30s
       timeout: 5s
       start_period: 10s

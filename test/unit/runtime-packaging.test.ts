@@ -155,8 +155,31 @@ describe("runtime packaging guardrails", () => {
       expect(compose).toContain("SANDBOX_EGRESS_MAX_TRANSFER_BYTES");
       expect(compose).toContain('user: "10002:10002"');
       expect(compose).not.toMatch(/sandbox-runner:[\s\S]*?network_mode: none/);
+      const egressProxyMarker = "  sandbox-egress-proxy:";
+      const egressProxyStart = compose.indexOf(`\n${egressProxyMarker}\n`) + 1;
+      const afterEgressProxy = compose.slice(
+        egressProxyStart + egressProxyMarker.length,
+      );
+      const nextServiceOffset = afterEgressProxy.search(/\n  [a-z][\w-]*:\n/);
+      const egressProxy = `${egressProxyMarker}${afterEgressProxy.slice(0, nextServiceOffset)}`;
+      expect(egressProxy).toContain("http://127.0.0.1:3128/health");
+      expect(egressProxy).toContain("curl");
+      expect(egressProxy).not.toContain("fetch(");
     }
     expect(dockerfile).toContain("/usr/bin/pip /usr/bin/pip3");
     expect(dockerfile).toContain("/usr/local/lib/node_modules/npm");
+  });
+
+  it("does not configure Dynatrace in application deployments", () => {
+    for (const deploymentFile of [
+      ".env.example",
+      "docker-compose.prod.yml",
+      ".coolify/stack.compose.yml",
+      ".github/workflows/coolify.yml",
+    ]) {
+      expect(projectFile(deploymentFile)).not.toMatch(
+        /dynatrace|oneagent|DT_CUSTOM_PROP|DT_TAGS/i,
+      );
+    }
   });
 });

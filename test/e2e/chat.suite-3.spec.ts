@@ -173,7 +173,7 @@ async function createRecoveredToolConversation() {
         assistantMessageId,
         JSON.stringify({
           toolCallId: "failed-dql-call",
-          toolName: "dynatrace_execute_dql",
+          toolName: "observability_execute_query",
           input: { query: "invalid query" },
           output: {
             ok: false,
@@ -184,7 +184,7 @@ async function createRecoveredToolConversation() {
         randomUUID(),
         JSON.stringify({
           toolCallId: "successful-dql-retry",
-          toolName: "dynatrace_execute_dql",
+          toolName: "observability_execute_query",
           input: { query: "fetch logs" },
           output: { ok: true, result: [{ id: "problem-1" }] },
         }),
