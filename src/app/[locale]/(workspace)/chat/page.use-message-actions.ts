@@ -91,6 +91,24 @@ export function useMessageActions(c: Context) {
         reuseUserMessage: true,
       });
   }
+  async function regenerateAssistantResponse(message: ChatMessage) {
+    if (!c.activeConversationId || c.sending) return;
+    const messageIndex = c.messages.findIndex((item) => item.id === message.id);
+    const precedingUserMessage = c.messages
+      .slice(0, messageIndex)
+      .findLast((item) => item.role === "user");
+    if (!precedingUserMessage) return;
+    const content = textFromMessage(precedingUserMessage).trim();
+    if (!content) return;
+    await c.handleSubmit(content, {
+      resendFromMessageId: precedingUserMessage.id,
+      regenerateAssistantMessageId: message.id,
+      responseVersionConversationIds: message.branch?.conversationIds ?? [
+        c.activeConversationId,
+      ],
+      reuseUserMessage: true,
+    });
+  }
   async function continueAssistantResponse(message: ChatMessage) {
     if (!c.activeConversationId || c.sending) await Promise.resolve();
     else
@@ -166,6 +184,7 @@ export function useMessageActions(c: Context) {
     editMessage,
     deleteMessage,
     resendMessage,
+    regenerateAssistantResponse,
     continueAssistantResponse,
     forkConversation,
     forkingMessageId,

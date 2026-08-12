@@ -7,6 +7,7 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-maiah}
+      - OTEL_SERVICE_VERSION=${OTEL_SERVICE_VERSION:-local}
       - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=${OTEL_SERVICE_NAMESPACE:-deodis},deployment.environment=${OTEL_DEPLOYMENT_ENVIRONMENT:-production},service.version=${OTEL_SERVICE_VERSION:-local}}
       - DT_CUSTOM_PROP=${DT_CUSTOM_PROP:-app=${OTEL_SERVICE_NAME:-maiah} env=${OTEL_DEPLOYMENT_ENVIRONMENT:-production} platform=${OBSERVABILITY_PLATFORM:-coolify} owner=${OBSERVABILITY_OWNER:-deodis}}
       - DT_TAGS=${DT_TAGS:-app=${OTEL_SERVICE_NAME:-maiah} env=${OTEL_DEPLOYMENT_ENVIRONMENT:-production} platform=${OBSERVABILITY_PLATFORM:-coolify} owner=${OBSERVABILITY_OWNER:-deodis}}

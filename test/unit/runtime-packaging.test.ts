@@ -42,11 +42,28 @@ describe("runtime packaging guardrails", () => {
     const workflow = projectFile(".github/workflows/coolify.yml");
 
     expect(workflow).toContain(
-      'DEPLOY_RESPONSE="$(api POST "/services/${SERVICE_UUID}/restart?latest=true")"',
+      'api POST "/services/${SERVICE_UUID}/restart?latest=true" >/dev/null',
     );
     expect(workflow).not.toContain(
       'DEPLOY_RESPONSE="$(api GET "/deploy?uuid=${SERVICE_UUID}&force=true")"',
     );
+  });
+
+  it("waits until Coolify serves the requested deployment version", () => {
+    const compose = projectFile(".coolify/stack.compose.yml");
+    const healthRoute = projectFile("src/app/api/health/route.ts");
+    const workflow = projectFile(".github/workflows/coolify.yml");
+
+    expect(compose).toContain(
+      "OTEL_SERVICE_VERSION=${OTEL_SERVICE_VERSION:-local}",
+    );
+    expect(healthRoute).toContain(
+      'deployment: process.env.OTEL_SERVICE_VERSION || "local"',
+    );
+    expect(workflow).toContain(
+      'wait_for_deployment_version "${AI_HUB_PUBLIC_URL}/api/health" "${OTEL_SERVICE_VERSION}"',
+    );
+    expect(workflow).not.toContain("sleep 30");
   });
 
   it("ships the document-search command used by the sandbox instructions", () => {

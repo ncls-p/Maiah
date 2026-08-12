@@ -85,6 +85,7 @@ export async function POST(
       ephemeral = false,
       ephemeralTtlMinutes,
       resendFromMessageId,
+      regenerateAssistantMessageId,
       continueFromMessageId,
       codeWorkspaceId,
       attachmentIds = [],
@@ -100,6 +101,14 @@ export async function POST(
         400,
         "conflicting_message_actions",
         { error: "Cannot regenerate and continue a response together" },
+        { agentId, userId: actorUserId },
+      );
+    }
+    if (regenerateAssistantMessageId && !resendFromMessageId) {
+      return rejectChatRequest(
+        400,
+        "regeneration_without_prompt",
+        { error: "Regeneration requires its user prompt" },
         { agentId, userId: actorUserId },
       );
     }
@@ -271,6 +280,7 @@ export async function POST(
       ephemeral,
       ephemeralTtlMinutes,
       resendFromMessageId,
+      regenerateAssistantMessageId,
       continueFromMessageId,
       codeWorkspaceAttachment,
       messageAttachments,

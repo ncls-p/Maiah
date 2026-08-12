@@ -268,6 +268,7 @@ export function useChatSubmitHandler(input: {
           ephemeral: options.ephemeral,
           ephemeralTtlMinutes: options.ephemeralTtlMinutes,
           resendFromMessageId: options.resendFromMessageId,
+          regenerateAssistantMessageId: options.regenerateAssistantMessageId,
           continueFromMessageId: options.continueFromMessageId,
           codeWorkspaceId:
             options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
@@ -285,6 +286,22 @@ export function useChatSubmitHandler(input: {
         abortSignal: controller.signal,
         onStart: (metadata) => {
           onConversationMetadata?.(metadata);
+          if (options.regenerateAssistantMessageId && metadata.conversationId) {
+            const conversationIds = Array.from(
+              new Set([
+                ...(options.responseVersionConversationIds ??
+                  (conversationId ? [conversationId] : [])),
+                metadata.conversationId,
+              ]),
+            );
+            assistantDraft = {
+              ...assistantDraft,
+              branch: {
+                conversationIds,
+                activeIndex: conversationIds.indexOf(metadata.conversationId),
+              },
+            };
+          }
           if (metadata.conversationId) {
             activeConversationId = metadata.conversationId;
             activeConversationIdRef.current = metadata.conversationId;
@@ -302,7 +319,9 @@ export function useChatSubmitHandler(input: {
           if (metadata.userMessageId) {
             setMessages((current) =>
               current.map((message) =>
-                message.id === userMessage.id
+                message.id === userMessage.id ||
+                (options.reuseUserMessage &&
+                  message.id === options.resendFromMessageId)
                   ? { ...message, id: metadata.userMessageId! }
                   : message,
               ),

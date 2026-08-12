@@ -6,6 +6,7 @@ import {
 import type { AssistantContinuationClaim } from "@/modules/chat/continuation";
 import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import { forkConversationForRegeneration } from "@/modules/chat/conversation-branches";
 import {
   forkSharedConversation,
   getConversationAccess,
@@ -46,6 +47,7 @@ export async function prepareChatConversation(input: {
   ephemeral?: boolean;
   ephemeralTtlMinutes?: number;
   resendFromMessageId?: string | null;
+  regenerateAssistantMessageId?: string | null;
   continueFromMessageId?: string | null;
   codeWorkspaceAttachment: unknown;
   messageAttachments: ChatAttachment[];
@@ -60,6 +62,7 @@ export async function prepareChatConversation(input: {
     ephemeral = false,
     ephemeralTtlMinutes,
     resendFromMessageId,
+    regenerateAssistantMessageId,
     continueFromMessageId,
     codeWorkspaceAttachment,
     messageAttachments,
@@ -67,6 +70,7 @@ export async function prepareChatConversation(input: {
   } = input;
   let conversation: typeof conversations.$inferSelect | null = null;
   let createdConversation = false;
+  let effectiveResendFromMessageId = resendFromMessageId;
   if (existingConversationId) {
     const access = await getConversationAccess(
       existingConversationId,
@@ -83,6 +87,7 @@ export async function prepareChatConversation(input: {
         if (
           !access.canContinue ||
           resendFromMessageId ||
+          regenerateAssistantMessageId ||
           continueFromMessageId
         ) {
           return rejectChatRequest(403, "conversation_read_only", {
@@ -99,7 +104,12 @@ export async function prepareChatConversation(input: {
       }
     }
 
-    if (!conversation && (resendFromMessageId || continueFromMessageId)) {
+    if (
+      !conversation &&
+      (resendFromMessageId ||
+        regenerateAssistantMessageId ||
+        continueFromMessageId)
+    ) {
       return rejectChatRequest(
         404,
         "conversation_not_found",
@@ -116,7 +126,12 @@ export async function prepareChatConversation(input: {
     }
   }
 
-  if (!conversation && (resendFromMessageId || continueFromMessageId)) {
+  if (
+    !conversation &&
+    (resendFromMessageId ||
+      regenerateAssistantMessageId ||
+      continueFromMessageId)
+  ) {
     return rejectChatRequest(
       400,
       "message_action_without_conversation",
@@ -207,6 +222,36 @@ export async function prepareChatConversation(input: {
     );
   }
 
+  if (regenerateAssistantMessageId) {
+    try {
+      const regeneration = await forkConversationForRegeneration({
+        source: conversation,
+        assistantMessageId: regenerateAssistantMessageId,
+        userId: actorUserId,
+      });
+      conversation = regeneration.fork;
+      effectiveResendFromMessageId = regeneration.copiedUserMessageId;
+    } catch (error) {
+      return rejectChatRequest(
+        409,
+        "response_cannot_be_regenerated",
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Response cannot be regenerated",
+        },
+        {
+          agentId,
+          workspaceId: agent.workspaceId,
+          userId: actorUserId,
+          conversationId: conversation.id,
+          regenerateAssistantMessageId,
+        },
+      );
+    }
+  }
+
   let continuationClaim: Extract<
     AssistantContinuationClaim,
     { status: "claimed" }
@@ -245,10 +290,10 @@ export async function prepareChatConversation(input: {
   if (continueFromMessageId) {
     // The continuation prompt is model-only context. It must never become a
     // visible or persisted user message.
-  } else if (resendFromMessageId) {
+  } else if (effectiveResendFromMessageId) {
     const existingUserMessage = await findUserMessageForResend({
       conversationId: conversation.id,
-      messageId: resendFromMessageId,
+      messageId: effectiveResendFromMessageId,
       content,
     });
 
@@ -262,7 +307,7 @@ export async function prepareChatConversation(input: {
           workspaceId: agent.workspaceId,
           userId: actorUserId,
           conversationId: conversation.id,
-          resendFromMessageId,
+          resendFromMessageId: effectiveResendFromMessageId,
         },
       );
     }
@@ -367,7 +412,9 @@ export async function prepareChatConversation(input: {
     .where(eq(conversations.id, conversation.id));
   const shouldRegenerateConversationTitle =
     createdConversation ||
-    (!continueFromMessageId && resendFromMessageId
+    (!continueFromMessageId &&
+    effectiveResendFromMessageId &&
+    !regenerateAssistantMessageId
       ? await isFirstUserMessageInConversation(conversation.id, userMessage!.id)
       : false);
 

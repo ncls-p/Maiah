@@ -19,6 +19,7 @@ export const chatRequestSchema = z.object({
     .refine(isEphemeralTtlMinutes)
     .optional(),
   resendFromMessageId: z.uuid().nullable().optional(),
+  regenerateAssistantMessageId: z.uuid().nullable().optional(),
   continueFromMessageId: z.uuid().nullable().optional(),
   codeWorkspaceId: z.uuid().optional(),
   attachmentIds: z.array(z.uuid()).optional(),
@@ -59,7 +60,8 @@ export const KNOWLEDGE_CONTEXT_TOOL_ID = "00000000-0000-4000-8000-000000000102";
 export const MAX_OPENAI_TOOL_NAME_LENGTH = 64;
 export const TOOL_GATE_RETURN = "return" as const;
 export type ToolGateResult =
-  { status: "continue" } | { status: typeof TOOL_GATE_RETURN; output: unknown };
+  | { status: "continue" }
+  | { status: typeof TOOL_GATE_RETURN; output: unknown };
 
 export type ToolApprovalRequiredEvent = {
   invocationId: string;

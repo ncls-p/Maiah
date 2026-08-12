@@ -26,6 +26,51 @@ async function orderedConversationMessages(conversationId: string) {
     .orderBy(asc(messages.createdAt), asc(messages.id));
 }
 
+async function copyConversationPrefix(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  sourceMessages: Awaited<ReturnType<typeof orderedConversationMessages>>,
+  targetConversationId: string,
+  lastMessageIndex: number,
+) {
+  const copiedMessageIds = new Map<string, string>();
+  for (const sourceMessage of sourceMessages.slice(0, lastMessageIndex + 1)) {
+    const [copiedMessage] = await tx
+      .insert(messages)
+      .values({
+        conversationId: targetConversationId,
+        role: sourceMessage.role,
+        status: sourceMessage.status,
+        tokenInput: sourceMessage.tokenInput,
+        tokenOutput: sourceMessage.tokenOutput,
+        costUsd: sourceMessage.costUsd,
+        modelId: sourceMessage.modelId,
+        providerId: sourceMessage.providerId,
+        createdAt: sourceMessage.createdAt,
+        completedAt: sourceMessage.completedAt,
+      })
+      .returning();
+    copiedMessageIds.set(sourceMessage.id, copiedMessage.id);
+    const parts = await tx
+      .select()
+      .from(messageParts)
+      .where(eq(messageParts.messageId, sourceMessage.id))
+      .orderBy(asc(messageParts.sortOrder));
+    if (parts.length > 0) {
+      await tx.insert(messageParts).values(
+        parts.map((part) => ({
+          messageId: copiedMessage.id,
+          type: part.type,
+          contentEncrypted: part.contentEncrypted,
+          metadataJson: part.metadataJson,
+          sortOrder: part.sortOrder,
+          createdAt: part.createdAt,
+        })),
+      );
+    }
+  }
+  return copiedMessageIds;
+}
+
 export async function forkConversationAtMessage(input: {
   source: typeof conversations.$inferSelect;
   messageId: string;
@@ -64,41 +109,87 @@ export async function forkConversationAtMessage(input: {
       })
       .returning();
 
-    for (const sourceMessage of sourceMessages.slice(0, branchIndex + 1)) {
-      const [copiedMessage] = await tx
-        .insert(messages)
-        .values({
-          conversationId: fork.id,
-          role: sourceMessage.role,
-          status: sourceMessage.status,
-          tokenInput: sourceMessage.tokenInput,
-          tokenOutput: sourceMessage.tokenOutput,
-          costUsd: sourceMessage.costUsd,
-          modelId: sourceMessage.modelId,
-          providerId: sourceMessage.providerId,
-          createdAt: sourceMessage.createdAt,
-          completedAt: sourceMessage.completedAt,
-        })
-        .returning();
-      const parts = await tx
-        .select()
-        .from(messageParts)
-        .where(eq(messageParts.messageId, sourceMessage.id))
-        .orderBy(asc(messageParts.sortOrder));
-      if (parts.length > 0) {
-        await tx.insert(messageParts).values(
-          parts.map((part) => ({
-            messageId: copiedMessage.id,
-            type: part.type,
-            contentEncrypted: part.contentEncrypted,
-            metadataJson: part.metadataJson,
-            sortOrder: part.sortOrder,
-            createdAt: part.createdAt,
-          })),
-        );
+    await copyConversationPrefix(tx, sourceMessages, fork.id, branchIndex);
+    return fork;
+  });
+}
+
+export async function forkConversationForRegeneration(input: {
+  source: typeof conversations.$inferSelect;
+  assistantMessageId: string;
+  userId: string;
+}) {
+  let baseConversation = input.source;
+  let baseMessages = await orderedConversationMessages(input.source.id);
+  let assistantIndex = baseMessages.findIndex(
+    (message) => message.id === input.assistantMessageId,
+  );
+  const requestedAssistant = baseMessages[assistantIndex];
+  if (
+    assistantIndex < 0 ||
+    requestedAssistant.role !== "assistant" ||
+    requestedAssistant.status === "pending" ||
+    requestedAssistant.status === "streaming"
+  ) {
+    throw new Error("Assistant message is not ready for regeneration");
+  }
+
+  if (input.source.parentConversationId && input.source.branchFromMessageId) {
+    const [parentConversation] = await db
+      .select()
+      .from(conversations)
+      .where(activeConversation(input.source.parentConversationId))
+      .limit(1);
+    if (parentConversation?.userId === input.userId) {
+      const parentMessages = await orderedConversationMessages(
+        parentConversation.id,
+      );
+      const parentAnchorIndex = parentMessages.findIndex(
+        (message) => message.id === input.source.branchFromMessageId,
+      );
+      if (parentAnchorIndex === assistantIndex) {
+        baseConversation = parentConversation;
+        baseMessages = parentMessages;
+        assistantIndex = parentAnchorIndex;
       }
     }
-    return fork;
+  }
+
+  const branchMessage = baseMessages[assistantIndex];
+  const userMessageIndex = baseMessages.findLastIndex(
+    (message, index) => index < assistantIndex && message.role === "user",
+  );
+  const userMessage = baseMessages[userMessageIndex];
+  if (!branchMessage || !userMessage) {
+    throw new Error("User prompt for regeneration not found");
+  }
+
+  return db.transaction(async (tx) => {
+    const [fork] = await tx
+      .insert(conversations)
+      .values({
+        workspaceId: baseConversation.workspaceId,
+        agentId: baseConversation.agentId,
+        agentVersionId: baseConversation.agentVersionId,
+        userId: input.userId,
+        title: baseConversation.title,
+        status: "active",
+        parentConversationId: baseConversation.id,
+        branchFromMessageId: branchMessage.id,
+        isEphemeral: baseConversation.isEphemeral,
+        ephemeralTtlMinutes: baseConversation.ephemeralTtlMinutes,
+        expiresAt: baseConversation.expiresAt,
+      })
+      .returning();
+    const copiedMessageIds = await copyConversationPrefix(
+      tx,
+      baseMessages,
+      fork.id,
+      userMessageIndex,
+    );
+    const copiedUserMessageId = copiedMessageIds.get(userMessage.id);
+    if (!copiedUserMessageId) throw new Error("Failed to copy user prompt");
+    return { fork, copiedUserMessageId };
   });
 }
 

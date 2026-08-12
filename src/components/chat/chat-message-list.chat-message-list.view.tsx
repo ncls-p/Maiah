@@ -313,9 +313,7 @@ export function ChatMessageListView({
                           }}
                           onDelete={() => void onDeleteMessage?.(message)}
                           onRegenerate={() => {
-                            if (precedingUserMsg) {
-                              void onResendMessage?.(precedingUserMsg);
-                            }
+                            void onRegenerateAssistant?.(message);
                           }}
                           onContinue={() => {
                             void onContinueAssistant?.(message);

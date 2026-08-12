@@ -42,6 +42,8 @@ export type SubmitOptions = {
   ephemeral?: boolean;
   ephemeralTtlMinutes?: number;
   resendFromMessageId?: string;
+  regenerateAssistantMessageId?: string;
+  responseVersionConversationIds?: string[];
   reuseUserMessage?: boolean;
   continueFromMessageId?: string;
   codeWorkspaceArtifact?: CodeWorkspaceArtifact;

@@ -970,6 +970,35 @@ jobs:
             exit 1
           }
 
+          wait_for_deployment_version() {
+            local url="$1"
+            local expected_version="$2"
+            local attempts="${3:-60}"
+            local sleep_seconds="${4:-10}"
+            local health_json=""
+            for attempt in $(seq 1 "$attempts"); do
+              health_json="$(
+                /usr/bin/curl \
+                  --connect-timeout 5 \
+                  --max-time 15 \
+                  --silent \
+                  --show-error \
+                  --fail \
+                  "$url" 2>/dev/null || true
+              )"
+              if [[ "$(jq -r '.deployment // empty' <<<"${health_json}" 2>/dev/null || true)" == "$expected_version" ]]; then
+                return 0
+              fi
+              if (( attempt == 1 || attempt % 6 == 0 )); then
+                observed_version="$(jq -r '.deployment // "unavailable"' <<<"${health_json}" 2>/dev/null || echo unavailable)"
+                echo "Waiting for deployed version ${expected_version}; currently serving ${observed_version}." >&2
+              fi
+              sleep "$sleep_seconds"
+            done
+            echo "Maiah did not serve deployment ${expected_version} before the rollout timeout." >&2
+            exit 1
+          }
+
           ENV_ID="$(
             api GET "/projects/${COOLIFY_PROJECT_UUID}/environments" \
               | jq -r --arg name "${TARGET_ENV_NAME}" '.[] | select(.name == $name) | .id' \
@@ -1112,45 +1141,10 @@ jobs:
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
           echo "Using sandbox runner image ${AI_HUB_SANDBOX_IMAGE}"
           echo "Using ServiceNow MCP gateway image ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}"
-          DEPLOY_RESPONSE="$(api POST "/services/${SERVICE_UUID}/restart?latest=true")"
-          DEPLOYMENT_UUID="$(
-            jq -r '.deployment_uuid // .deployments[0].deployment_uuid // empty' \
-              <<<"${DEPLOY_RESPONSE}"
-          )"
-          if [[ -n "${DEPLOYMENT_UUID}" ]]; then
-            echo "Waiting for Coolify deployment ${DEPLOYMENT_UUID}"
-            deployment_finished=false
-            for attempt in $(seq 1 120); do
-              DEPLOYMENT_JSON="$(api GET "/deployments/${DEPLOYMENT_UUID}")"
-              DEPLOYMENT_STATUS="$(jq -r '.status // "unknown"' <<<"${DEPLOYMENT_JSON}")"
-              case "${DEPLOYMENT_STATUS}" in
-                finished)
-                  deployment_finished=true
-                  break
-                  ;;
-                failed|cancelled|canceled)
-                  echo "Coolify deployment ${DEPLOYMENT_UUID} ended with ${DEPLOYMENT_STATUS}." >&2
-                  jq -r '.logs // empty' <<<"${DEPLOYMENT_JSON}" >&2
-                  exit 1
-                  ;;
-              esac
-              if (( attempt == 1 || attempt % 6 == 0 )); then
-                echo "Coolify deployment status: ${DEPLOYMENT_STATUS}" >&2
-              fi
-              sleep 10
-            done
-            if [[ "${deployment_finished}" != "true" ]]; then
-              echo "Coolify deployment ${DEPLOYMENT_UUID} did not finish in time." >&2
-              jq -r '.logs // empty' <<<"${DEPLOYMENT_JSON}" >&2
-              exit 1
-            fi
-          else
-            # Coolify service deployments currently return only resource_uuid,
-            # unlike application deployments. Avoid observing the old healthy
-            # containers immediately after the asynchronous start request.
-            echo "Coolify service deployment has no deployment UUID; waiting for rollout to start."
-            sleep 30
-          fi
+          # The current Coolify service restart API is asynchronous and returns
+          # only a message (no deployment UUID). Pull the versioned images, then
+          # verify the release identity through the public health endpoint below.
+          api POST "/services/${SERVICE_UUID}/restart?latest=true" >/dev/null
 
           long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner", "sandbox-egress-proxy", "servicenow-mcp-gateway"]'
           success=false
@@ -1195,6 +1189,9 @@ jobs:
             expected_health_status="401"
           fi
           wait_for_http_status "${AI_HUB_PUBLIC_URL}/api/health" "Maiah public health endpoint" "${expected_health_status}" 30 10
+          if [[ "${ENABLE_BASIC_AUTH}" != "true" ]]; then
+            wait_for_deployment_version "${AI_HUB_PUBLIC_URL}/api/health" "${OTEL_SERVICE_VERSION}" 60 10
+          fi
 
           {
             echo "## Coolify Deployment"
@@ -1202,9 +1199,7 @@ jobs:
             echo "- Environment: \`${TARGET_ENV_NAME}\`"
             echo "- Service: \`${COOLIFY_SERVICE_NAME}\`"
             echo "- Service UUID: \`${SERVICE_UUID}\`"
-            if [[ -n "${DEPLOYMENT_UUID}" ]]; then
-              echo "- Deployment UUID: \`${DEPLOYMENT_UUID}\`"
-            fi
+            echo "- Deployment version: \`${OTEL_SERVICE_VERSION}\`"
             echo "- Public URL: ${AI_HUB_PUBLIC_URL}"
             echo "- App image: \`${AI_HUB_APP_IMAGE}\`"
             echo "- Worker image: \`${AI_HUB_WORKER_IMAGE}\`"

@@ -68,6 +68,7 @@ export function ChatPageView({ model }: { model: Model }) {
     reloadActualLatestMessages,
     reloadAgentContext,
     resendMessage,
+    regenerateAssistantResponse,
     navigateConversationBranch,
     selectAgent,
     selectedAgent,
@@ -169,7 +170,7 @@ export function ChatPageView({ model }: { model: Model }) {
                   onEditMessage={editMessage}
                   onDeleteMessage={deleteMessage}
                   onResendMessage={resendMessage}
-                  onRegenerateAssistant={resendMessage}
+                  onRegenerateAssistant={regenerateAssistantResponse}
                   onContinueAssistant={continueAssistantResponse}
                   onForkMessage={forkConversation}
                   onNavigateBranch={navigateConversationBranch}
@@ -238,7 +239,7 @@ export function ChatPageView({ model }: { model: Model }) {
               onEditMessage={editMessage}
               onDeleteMessage={deleteMessage}
               onResendMessage={resendMessage}
-              onRegenerateAssistant={resendMessage}
+              onRegenerateAssistant={regenerateAssistantResponse}
               onContinueAssistant={continueAssistantResponse}
               onForkMessage={forkConversation}
               onNavigateBranch={navigateConversationBranch}
