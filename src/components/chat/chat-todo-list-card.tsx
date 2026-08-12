@@ -9,7 +9,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +19,41 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ChatTodoList } from "@/modules/chat/todo-list";
+import {
+  chatTodoPlanKey,
+  readTodoDockPresentation,
+  type TodoDockPresentation,
+  writeTodoDockPresentation,
+} from "./chat-todo-list-presentation";
+
+export type { TodoDockPresentation } from "./chat-todo-list-presentation";
+export {
+  chatTodoPlanKey,
+  readTodoDockPresentation,
+  resetTodoDockPresentations,
+  writeTodoDockPresentation,
+} from "./chat-todo-list-presentation";
 
 export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
   const t = useTranslations("chat.rendering");
-  const [open, setOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const planKey = chatTodoPlanKey(todoList);
+  const [presentation, setPresentation] = useState<TodoDockPresentation>(() =>
+    readTodoDockPresentation(planKey),
+  );
+  const [trackedPlanKey, setTrackedPlanKey] = useState(planKey);
+
+  // Keep the remembered presentation when the same plan updates (tool progress).
+  // A new plan identity starts from the remembered value for that key (default open).
+  if (planKey !== trackedPlanKey) {
+    setTrackedPlanKey(planKey);
+    setPresentation(readTodoDockPresentation(planKey));
+  }
+
+  function setPresentationRemembered(next: TodoDockPresentation) {
+    writeTodoDockPresentation(planKey, next);
+    setPresentation(next);
+  }
+
   const complete = todoList.completedCount === todoList.totalCount;
   const progress =
     todoList.totalCount === 0
@@ -33,33 +63,9 @@ export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
     todoList.items.find((item) => item.status === "in_progress") ??
     todoList.items.find((item) => item.status === "pending") ??
     todoList.items.at(-1);
+  const open = presentation === "expanded";
 
-  useEffect(() => {
-    const viewport = document.querySelector<HTMLElement>(
-      '[data-slot="message-scroller-viewport"]',
-    );
-    if (!viewport) return;
-
-    let previousScrollTop = viewport.scrollTop;
-    const collapsePlan = () => setOpen(false);
-    const handleScroll = () => {
-      const currentScrollTop = viewport.scrollTop;
-      if (currentScrollTop < previousScrollTop - 4) collapsePlan();
-      previousScrollTop = currentScrollTop;
-    };
-    const handleWheel = (event: WheelEvent) => {
-      if (event.deltaY < 0) collapsePlan();
-    };
-
-    viewport.addEventListener("scroll", handleScroll, { passive: true });
-    viewport.addEventListener("wheel", handleWheel, { passive: true });
-    return () => {
-      viewport.removeEventListener("scroll", handleScroll);
-      viewport.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
-
-  if (hidden) {
+  if (presentation === "hidden") {
     return (
       <div
         data-slot="chat-todo-list-hidden"
@@ -70,7 +76,7 @@ export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
           variant="outline"
           size="sm"
           className="h-9 rounded-xl bg-card/90 px-2.5 text-xs shadow-sm backdrop-blur-xl"
-          onClick={() => setHidden(false)}
+          onClick={() => setPresentationRemembered("expanded")}
         >
           <ListTodoIcon data-icon="inline-start" aria-hidden="true" />
           {t("todoShowPlan")}
@@ -82,7 +88,9 @@ export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
   return (
     <Collapsible
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(nextOpen) =>
+        setPresentationRemembered(nextOpen ? "expanded" : "collapsed")
+      }
       className="overflow-hidden rounded-[1.15rem] bg-card/96 text-card-foreground shadow-[0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_18px_42px_-28px_color-mix(in_oklch,var(--foreground)_38%,transparent)] backdrop-blur-xl"
       asChild
     >
@@ -138,10 +146,7 @@ export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
             className="size-10 shrink-0 rounded-xl text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:text-foreground active:scale-[0.96]"
             aria-label={t("todoHidePlan")}
             title={t("todoHidePlan")}
-            onClick={() => {
-              setOpen(false);
-              setHidden(true);
-            }}
+            onClick={() => setPresentationRemembered("hidden")}
           >
             <XIcon className="size-4" aria-hidden="true" />
           </Button>
