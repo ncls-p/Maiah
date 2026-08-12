@@ -38,6 +38,17 @@ describe("runtime packaging guardrails", () => {
     );
   });
 
+  it("deploys Coolify services with the current POST endpoint", () => {
+    const workflow = projectFile(".github/workflows/coolify.yml");
+
+    expect(workflow).toContain(
+      'DEPLOY_RESPONSE="$(api POST "/deploy?uuid=${SERVICE_UUID}&force=true")"',
+    );
+    expect(workflow).not.toContain(
+      'DEPLOY_RESPONSE="$(api GET "/deploy?uuid=${SERVICE_UUID}&force=true")"',
+    );
+  });
+
   it("ships the document-search command used by the sandbox instructions", () => {
     const dockerfile = projectFile("Dockerfile");
     const sandboxStage = dockerfile.slice(
