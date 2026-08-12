@@ -106,3 +106,73 @@
     transition: none !important;
   }
 }
+
+/* Only the route viewport is snapshotted. The app header, chat history and
+   mobile navigation live outside this boundary and remain fully interactive. */
+::view-transition-group(.workspace-route) {
+  animation-duration: var(--page-slide-dur);
+  animation-timing-function: var(--page-slide-ease);
+}
+
+::view-transition-old(.workspace-route) {
+  animation: workspace-route-out 130ms ease-in both;
+}
+
+::view-transition-new(.workspace-route) {
+  animation: workspace-route-in var(--page-slide-dur) var(--page-slide-ease)
+    both;
+}
+
+::view-transition-group(.chat-transcript) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--page-fade-ease);
+}
+
+::view-transition-old(.chat-transcript) {
+  animation: chat-transcript-out 110ms ease-in both;
+}
+
+::view-transition-new(.chat-transcript) {
+  animation: chat-transcript-in 180ms var(--page-fade-ease) both;
+}
+
+@keyframes workspace-route-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+    filter: blur(2px);
+  }
+}
+
+@keyframes workspace-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--page-slide-distance));
+    filter: blur(var(--page-blur));
+  }
+}
+
+@keyframes chat-transcript-out {
+  to {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+@keyframes chat-transcript-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(.workspace-route),
+  ::view-transition-old(.workspace-route),
+  ::view-transition-new(.workspace-route),
+  ::view-transition-group(.chat-transcript),
+  ::view-transition-old(.chat-transcript),
+  ::view-transition-new(.chat-transcript) {
+    animation: none !important;
+  }
+}

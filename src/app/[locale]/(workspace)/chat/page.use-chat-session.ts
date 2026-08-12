@@ -1,7 +1,14 @@
 "use client";
 
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
@@ -108,6 +115,9 @@ export function useChatSession(c: SessionContext) {
   const ephemeralTtlMinutesRef = useRef(ephemeralTtlMinutes);
   const processingQueuedMessageRef = useRef(false);
   const skipNextMessageLoadRef = useRef(false);
+  const selectedAgentIdRef = useRef(selectedAgentId);
+  const loadedConversationIdRef = useRef<string | null>(null);
+  const messageCacheRef = useRef(new Map<string, ChatMessage[]>());
   const canChat = Boolean(
     activeVersion?.providerId &&
     activeVersion?.modelId &&
@@ -120,6 +130,7 @@ export function useChatSession(c: SessionContext) {
     canChat,
     onConversationCreated: (conversationId, firstMessage) => {
       skipNextMessageLoadRef.current = true;
+      loadedConversationIdRef.current = conversationId;
       const currentParams = new URLSearchParams(window.location.search);
       const createdEphemeral =
         ephemeralRef.current || currentParams.get("temporary") === "true";
@@ -205,6 +216,17 @@ export function useChatSession(c: SessionContext) {
     sending,
     handleSubmit: submitToStream,
   } = stream;
+  const prepareConversationMessages = useCallback(
+    (conversationId: string) => {
+      const cachedMessages = messageCacheRef.current.get(conversationId);
+      loadedConversationIdRef.current = cachedMessages ? conversationId : null;
+      startTransition(() => {
+        setMessages(cachedMessages ?? []);
+        setLoadingMessages(!cachedMessages);
+      });
+    },
+    [setMessages],
+  );
   const handleSubmit = useCallback(
     (...args: Parameters<typeof submitToStream>) => {
       if (activeConversationId) {
@@ -226,6 +248,20 @@ export function useChatSession(c: SessionContext) {
     () => aggregateChatUsageImpact(messages),
     [messages],
   );
+  useEffect(() => {
+    selectedAgentIdRef.current = selectedAgentId;
+  }, [selectedAgentId]);
+
+  useEffect(() => {
+    if (
+      activeConversationId &&
+      loadedConversationIdRef.current === activeConversationId &&
+      !loadingMessages
+    ) {
+      messageCacheRef.current.set(activeConversationId, messages);
+    }
+  }, [activeConversationId, loadingMessages, messages]);
+
   useEffect(() => {
     ephemeralRef.current = ephemeral;
     ephemeralTtlMinutesRef.current = ephemeralTtlMinutes;
@@ -348,6 +384,7 @@ export function useChatSession(c: SessionContext) {
   useEffect(() => {
     if (!activeConversationId) {
       skipNextMessageLoadRef.current = false;
+      loadedConversationIdRef.current = null;
       queueMicrotask(() => {
         setConversationCanContinue(true);
         setConversationIsOwner(true);
@@ -360,12 +397,15 @@ export function useChatSession(c: SessionContext) {
     }
     if (skipNextMessageLoadRef.current) {
       skipNextMessageLoadRef.current = false;
+      loadedConversationIdRef.current = activeConversationId;
       queueMicrotask(() => setLoadingMessages(false));
       return;
     }
     const controller = new AbortController();
     let cancelled = false;
-    queueMicrotask(() => setLoadingMessages(true));
+    const hasCachedMessages =
+      loadedConversationIdRef.current === activeConversationId;
+    if (!hasCachedMessages) queueMicrotask(() => setLoadingMessages(true));
     void fetchJson<{
       conversation?: ChatConversation;
       messages?: ChatMessage[];
@@ -377,9 +417,10 @@ export function useChatSession(c: SessionContext) {
         const requestedAgentId = new URLSearchParams(
           window.location.search,
         ).get("agentId");
+        const currentSelectedAgentId = selectedAgentIdRef.current;
         if (
           data.conversation?.agentId &&
-          (!requestedAgentId || requestedAgentId !== selectedAgentId)
+          (!requestedAgentId || requestedAgentId !== currentSelectedAgentId)
         ) {
           setSelectedAgentId(data.conversation.agentId);
         }
@@ -400,10 +441,14 @@ export function useChatSession(c: SessionContext) {
           );
         }
         const loaded = data.messages ?? [];
-        setMessages(loaded);
-        const artifact = latestCodeWorkspaceArtifact(loaded);
-        setCodeWorkspaceArtifact(artifact);
-        if (!artifact) setInterfaceMode(CHAT_INTERFACE_MODE);
+        messageCacheRef.current.set(activeConversationId, loaded);
+        loadedConversationIdRef.current = activeConversationId;
+        startTransition(() => {
+          setMessages(loaded);
+          const artifact = latestCodeWorkspaceArtifact(loaded);
+          setCodeWorkspaceArtifact(artifact);
+          if (!artifact) setInterfaceMode(CHAT_INTERFACE_MODE);
+        });
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name !== "AbortError")
@@ -427,7 +472,6 @@ export function useChatSession(c: SessionContext) {
     setInterfaceMode,
     setSelectedAgentId,
     setMessages,
-    selectedAgentId,
   ]);
   return {
     ...stream,
@@ -435,6 +479,7 @@ export function useChatSession(c: SessionContext) {
     activeVersion,
     setActiveVersion,
     loadingMessages,
+    prepareConversationMessages,
     quota,
     canChat,
     conversationIsOwner,
