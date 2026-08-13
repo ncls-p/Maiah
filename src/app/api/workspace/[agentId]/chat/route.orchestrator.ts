@@ -1,10 +1,12 @@
 import { encryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
+import { calculateOrchestrationUsageImpact } from "@/modules/agent/orchestration-usage-impact";
 import {
   AgentExecutionError,
   executeAgent,
 } from "@/modules/agent/runtime-executor";
-import { calculateOrchestrationUsageImpact } from "@/modules/agent/orchestration-usage-impact";
+import { createGenerationClock } from "@/modules/chat/generation-clock";
+import { normalizeChatMessageMetrics } from "@/modules/chat/message-metrics";
 import {
   completeChatStream,
   createChatStreamResponse,
@@ -13,7 +15,6 @@ import {
   registerChatStreamAbortController,
 } from "@/modules/chat/stream-bus";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
-import { normalizeChatMessageMetrics } from "@/modules/chat/message-metrics";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -56,6 +57,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
     publishChatStreamEvent(assistantMessage.id, event);
   let completedRun: Awaited<ReturnType<typeof executeAgent>> | null = null;
   const initialSortOrder = continuationClaim?.nextSortOrder ?? 0;
+  const generationClock = createGenerationClock(startedAt);
   const progress = createOrchestrationProgress({
     requestId,
     agentId,
@@ -78,9 +80,16 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
         messageId: assistantMessage.id,
         idempotencyKey: `chat:${assistantMessage.id}`,
         abortSignal: streamAbortController.signal,
-        onProgress: progress.queue,
+        onProgress: (event) => {
+          generationClock.observe(
+            event.type === "tool-start" ? "tool-call" : "tool-result",
+            event.toolCallId || event.id,
+          );
+          progress.queue(event);
+        },
       });
       completedRun = result;
+      const timings = generationClock.snapshot();
       await progress.flush();
       const usageImpactSetting = await getUsageImpactSetting();
       const usageImpact = await calculateOrchestrationUsageImpact(
@@ -192,7 +201,11 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
             usageImpact.inputTokens +
             (continuationClaim?.message.tokenOutput ?? 0) +
             usageImpact.outputTokens,
-          durationMs: Date.now() - startedAt,
+          durationMs: timings.durationMs,
+          timeToFirstTokenMs: timings.timeToFirstTokenMs,
+          generationMs: timings.generationMs,
+          toolMs: timings.toolMs,
+          thinkingMs: timings.thinkingMs,
         }),
       });
     } catch (error) {

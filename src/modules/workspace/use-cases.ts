@@ -1,3 +1,5 @@
+export { getActiveOrganizationThemeForUser } from "./use-cases.active-organization-theme";
+export type { ActiveOrganizationTheme } from "./use-cases.active-organization-theme";
 export {
   getActiveWorkspaceIdForUser,
   setActiveWorkspaceForUser,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { applyOrganizationTheme } from "@/components/organization-theme";
 import {
   WorkspaceContext,
   type WorkspaceContextValue,
@@ -12,11 +13,6 @@ import {
   ACTIVE_WORKSPACE_STORAGE_KEY,
   resolveActiveWorkspaceId,
 } from "@/lib/workspace-selection";
-import {
-  resolveOrganizationTheme,
-  themeCss,
-  type OrganizationTheme,
-} from "@/modules/organization/themes";
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspaceId, setWorkspaceIdState] = useState<string | null>(null);
@@ -26,10 +22,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const setWorkspaceId = useCallback((nextWorkspaceId: string) => {
     setWorkspaceIdState(nextWorkspaceId);
-    window.localStorage.setItem(
-      ACTIVE_WORKSPACE_STORAGE_KEY,
-      nextWorkspaceId,
-    );
+    window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, nextWorkspaceId);
     void saveActiveWorkspace(nextWorkspaceId);
   }, []);
 
@@ -73,27 +66,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    const themeName = (activeWorkspace?.organizationTheme ??
-      "ocean") as OrganizationTheme;
-    document.documentElement.dataset.brandTheme = themeName;
-    let style = document.querySelector<HTMLStyleElement>(
-      "style[data-organization-theme]",
+    if (!activeWorkspace) return;
+    applyOrganizationTheme(
+      activeWorkspace.organizationTheme,
+      activeWorkspace.organizationThemeConfig,
     );
-    if (!style) {
-      style = document.createElement("style");
-      style.dataset.organizationTheme = "true";
-      document.head.append(style);
-    }
-    style.textContent = themeCss(
-      resolveOrganizationTheme(
-        themeName,
-        activeWorkspace?.organizationThemeConfig,
-      ),
-    );
-  }, [
-    activeWorkspace?.organizationTheme,
-    activeWorkspace?.organizationThemeConfig,
-  ]);
+  }, [activeWorkspace]);
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({

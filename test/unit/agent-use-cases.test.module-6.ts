@@ -67,6 +67,47 @@ describe("getConversationMessages", () => {
     });
   });
 
+  it("overlays persisted generation timings from usage metadata", async () => {
+    const msg = {
+      id: "msg-1",
+      role: "assistant",
+      status: "completed",
+      tokenInput: 100,
+      tokenOutput: 25,
+      createdAt: new Date("2026-08-12T08:00:00.000Z"),
+      completedAt: new Date("2026-08-12T08:00:05.000Z"),
+    };
+    dbModule._c.orderBy.mockResolvedValueOnce([msg]).mockResolvedValueOnce([]);
+    dbModule._c.then.mockImplementationOnce((resolve: (value: unknown) => unknown) =>
+      Promise.resolve([
+        {
+          metadataJson: {
+            messageId: "msg-1",
+            timeToFirstTokenMs: 400,
+            generationMs: 1_200,
+            toolMs: 800,
+            thinkingMs: 300,
+            durationMs: 2_400,
+          },
+          createdAt: new Date("2026-08-12T08:00:05.000Z"),
+        },
+      ]).then(resolve),
+    );
+
+    const result = await getConversationMessages("conv-1");
+
+    expect(result[0].metrics).toMatchObject({
+      inputTokens: 100,
+      outputTokens: 25,
+      totalTokens: 125,
+      durationMs: 2_400,
+      timeToFirstTokenMs: 400,
+      generationMs: 1_200,
+      toolMs: 800,
+      thinkingMs: 300,
+    });
+  });
+
   it("keeps an empty reasoning part as a durable lifecycle indicator", async () => {
     const { decryptValue } = await import("@/lib/crypto");
     vi.mocked(decryptValue).mockResolvedValueOnce("");

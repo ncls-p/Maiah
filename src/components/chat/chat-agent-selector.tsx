@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ChatAgentSelectorProps {
   agents: ChatAgent[];
@@ -35,7 +36,8 @@ interface ChatAgentSelectorProps {
   workspaceId: string | null;
   organizationDefaultAgentId?: string | null;
   userDefaultAgentId?: string | null;
-  canChat: boolean;
+  isLoading: boolean;
+  needsSetup: boolean;
   canCreateAgent: boolean;
   onSelectAgent: (agentId: string) => void;
   onSetUserDefaultAgent?: (agentId: string | null) => void;
@@ -72,6 +74,46 @@ function AgentOption({
         </span>
       )}
     </DropdownMenuItem>
+  );
+}
+
+function SelectedAssistantTrigger(props: {
+  isLoading: boolean;
+  selectedAgent: ChatAgent | null;
+  selectedLabel: string;
+}) {
+  if (props.isLoading && !props.selectedAgent) {
+    return (
+      <span className="flex min-w-0 items-center gap-2">
+        <Skeleton className="size-6 shrink-0 rounded-full" />
+        <span className="min-w-0 flex-1 text-left leading-tight">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="mt-0.5 hidden h-2.5 w-20 min-[480px]:block" />
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      {props.selectedAgent ? (
+        <ModelLogo
+          logoUrl={props.selectedAgent.logoUrl}
+          label={props.selectedLabel}
+          size="sm"
+          imageFit="cover"
+          className="rounded-full"
+        />
+      ) : null}
+      <span className="min-w-0 flex-1 text-left leading-tight">
+        <span className="line-clamp-2 font-medium">{props.selectedLabel}</span>
+        {props.selectedAgent?.modelDisplayName ? (
+          <span className="mt-0.5 hidden truncate text-[11px] font-normal text-muted-foreground min-[480px]:block">
+            {props.selectedAgent.modelDisplayName}
+          </span>
+        ) : null}
+      </span>
+    </span>
   );
 }
 
@@ -126,30 +168,16 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
             variant="outline"
             size="sm"
             className="h-10 w-full min-w-0 justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] min-[480px]:max-w-80 min-[480px]:flex-[0_1_20rem]"
+            aria-busy={props.isLoading && !props.selectedAgent}
             aria-label={t("currentAssistant")}
-            title={selectedLabel}
+            title={props.selectedAgent ? selectedLabel : undefined}
+            disabled={props.isLoading && !props.selectedAgent}
           >
-            <span className="flex min-w-0 items-center gap-2">
-              {props.selectedAgent ? (
-                <ModelLogo
-                  logoUrl={props.selectedAgent.logoUrl}
-                  label={selectedLabel}
-                  size="sm"
-                  imageFit="cover"
-                  className="rounded-full"
-                />
-              ) : null}
-              <span className="min-w-0 flex-1 text-left leading-tight">
-                <span className="line-clamp-2 font-medium">
-                  {selectedLabel}
-                </span>
-                {props.selectedAgent?.modelDisplayName ? (
-                  <span className="mt-0.5 hidden truncate text-[11px] font-normal text-muted-foreground min-[480px]:block">
-                    {props.selectedAgent.modelDisplayName}
-                  </span>
-                ) : null}
-              </span>
-            </span>
+            <SelectedAssistantTrigger
+              isLoading={props.isLoading}
+              selectedAgent={props.selectedAgent}
+              selectedLabel={selectedLabel}
+            />
             <ChevronDownIcon
               className="size-3.5 shrink-0 text-muted-foreground"
               aria-hidden="true"
@@ -259,7 +287,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
       {props.activeConversationId && props.conversationIsOwner ? (
         <ConversationShareDialog conversationId={props.activeConversationId} />
       ) : null}
-      {!props.canChat ? (
+      {props.needsSetup ? (
         <Badge
           variant="outline"
           className="hidden min-h-8 shrink-0 items-center gap-1 rounded-lg border-transparent bg-warning/10 px-2 text-[11px] font-medium text-warning sm:inline-flex"

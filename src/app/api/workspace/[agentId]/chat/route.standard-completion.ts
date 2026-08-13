@@ -1,13 +1,18 @@
 import { encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import { getChatUsageMetricsByMessageId } from "@/modules/agent/use-cases.get-conversation-messages";
 import { generateChatAutomationArtifacts } from "@/modules/chat/automation";
 import {
   generateConversationSummary,
   shouldSummarizeConversation,
   type ConversationSummaryPolicy,
 } from "@/modules/chat/conversation-summary";
+import {
+  chatMessageMetricsFromUsage,
+  previousMetricsForContinuation,
+  type ChatGenerationTimings,
+} from "@/modules/chat/message-metrics";
 import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
-import { chatMessageMetricsFromUsage } from "@/modules/chat/message-metrics";
 import {
   calculateTokenUsageImpact,
   parseSustainabilityConfig,
@@ -35,6 +40,7 @@ export async function completeStandardChat(input: {
   partWriter: StreamedPartWriter;
   postCompletionAutomationRef: { current: (() => Promise<void>) | null };
   startedAt: number;
+  timings: ChatGenerationTimings;
   enqueueEvent: (event: Record<string, unknown>) => void;
 }) {
   const { context, totalUsage, partWriter } = input;
@@ -142,6 +148,22 @@ export async function completeStandardChat(input: {
         .set({ title: generatedTitle, updatedAt: new Date() })
         .where(eq(conversations.id, conversation.id));
   };
+  const previousUsageMetrics = continuationClaim
+    ? (await getChatUsageMetricsByMessageId(conversation.id)).get(
+        assistantMessage.id,
+      )
+    : undefined;
+  const metrics = chatMessageMetricsFromUsage(
+    totalUsage,
+    input.timings,
+    previousMetricsForContinuation(
+      {
+        tokenInput: continuationClaim?.message.tokenInput,
+        tokenOutput: continuationClaim?.message.tokenOutput,
+      },
+      previousUsageMetrics,
+    ),
+  );
   const completedAt = new Date();
   await db.transaction(async (tx) => {
     await tx
@@ -197,6 +219,15 @@ export async function completeStandardChat(input: {
         cost: eventUsageImpact.cost,
         energyKwh: eventUsageImpact.energyKwh,
         co2Grams: eventUsageImpact.co2Grams,
+        messageId: assistantMessage.id,
+        durationMs: metrics?.durationMs ?? input.timings.durationMs,
+        timeToFirstTokenMs: metrics?.timeToFirstTokenMs ?? null,
+        generationMs: metrics?.generationMs ?? null,
+        toolMs: metrics?.toolMs ?? null,
+        thinkingMs: metrics?.thinkingMs ?? null,
+        cacheReadTokens: metrics?.cacheReadTokens ?? null,
+        cacheWriteTokens: metrics?.cacheWriteTokens ?? null,
+        reasoningTokens: metrics?.reasoningTokens ?? null,
       },
     });
     if (usageImpactSetting.enabled)
@@ -240,13 +271,6 @@ export async function completeStandardChat(input: {
     });
   input.enqueueEvent({
     type: "done",
-    metrics: chatMessageMetricsFromUsage(
-      totalUsage,
-      Date.now() - input.startedAt,
-      {
-        inputTokens: continuationClaim?.message.tokenInput,
-        outputTokens: continuationClaim?.message.tokenOutput,
-      },
-    ),
+    metrics,
   });
 }

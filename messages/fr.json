@@ -438,6 +438,10 @@
         "cacheWriteTokens": "Tokens mis en cache",
         "reasoningTokens": "Tokens de raisonnement",
         "duration": "Durée",
+        "timeToFirstToken": "Temps jusqu’au premier token",
+        "toolExecution": "Exécution des outils",
+        "thinking": "Réflexion",
+        "decodeTime": "Décodage",
         "tokensPerSecond": "Tokens par seconde"
       }
     },

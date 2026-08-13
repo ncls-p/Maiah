@@ -28,6 +28,7 @@ export interface QueuedChatMessage {
 export interface ChatComposerProps {
   input: string;
   canChat: boolean;
+  needsSetup?: boolean;
   sending: boolean;
   queuedMessages?: QueuedChatMessage[];
   onInputChange: (value: string) => void;

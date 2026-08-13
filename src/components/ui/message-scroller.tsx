@@ -42,7 +42,10 @@ function MessageScrollerViewport({
     <MessageScrollerPrimitive.Viewport
       data-slot="message-scroller-viewport"
       className={cn(
-        "size-full min-h-0 min-w-0 scroll-fade-b scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain data-autoscrolling:scrollbar-none",
+        // overflow-anchor:none — the scroller pins to bottom itself; native
+        // scroll anchoring fights it one frame behind and makes streaming
+        // content (especially growing code blocks) tremble.
+        "size-full min-h-0 min-w-0 scroll-fade-b scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain [overflow-anchor:none] data-autoscrolling:scrollbar-ghost",
         className,
       )}
       {...props}

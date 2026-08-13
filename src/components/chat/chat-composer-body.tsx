@@ -19,6 +19,7 @@ import {
 interface ChatComposerBodyProps {
   input: string;
   canChat: boolean;
+  needsSetup: boolean;
   sending: boolean;
   attachments: NonNullable<ChatComposerProps["attachments"]>;
   todoList: ChatComposerProps["todoList"];
@@ -61,7 +62,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
     window.addEventListener("resize", resize);
 
     return () => window.removeEventListener("resize", resize);
-  }, [props.canChat, props.input, props.sending]);
+  }, [props.needsSetup, props.input, props.sending]);
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-4xl">
       {props.todoList ? (
@@ -118,13 +119,13 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
               }
             }}
             placeholder={
-              props.canChat
-                ? props.sending
+              props.needsSetup
+                ? t("setupPlaceholder")
+                : props.sending
                   ? t("queuePlaceholder")
                   : t("messagePlaceholder")
-                : t("setupPlaceholder")
             }
-            disabled={!props.canChat}
+            disabled={props.needsSetup}
             rows={1}
             className="scrollbar-none max-h-28 min-h-12 w-full resize-none overscroll-contain border-0 bg-transparent px-1 py-1.5 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:max-h-40 sm:text-sm placeholder:text-muted-foreground"
           />
@@ -137,7 +138,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             className="col-start-1 row-start-1 size-10 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label={t("uploadFiles")}
             disabled={
-              props.uploadingAttachment || props.sending || !props.canChat
+              props.uploadingAttachment || props.sending || props.needsSetup
             }
             onClick={() => fileInputRef.current?.click()}
           >
@@ -201,7 +202,9 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           </div>
         ) : null}
       </div>
-      {props.centered && props.canChat && props.promptSuggestions.length > 0 ? (
+      {props.centered &&
+      !props.needsSetup &&
+      props.promptSuggestions.length > 0 ? (
         <div className="mt-2 grid gap-2 sm:grid-cols-3 animate-in-fade">
           {props.promptSuggestions.slice(0, 3).map((suggestion, index) => (
             <button
@@ -218,7 +221,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           ))}
         </div>
       ) : null}
-      {!props.canChat ? (
+      {props.needsSetup ? (
         <div className="mt-1.5 min-h-5 px-1">
           <p className="text-xs text-muted-foreground animate-in-fade">
             {t("needsSetup")}{" "}

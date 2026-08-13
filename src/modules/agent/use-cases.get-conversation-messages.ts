@@ -1,14 +1,33 @@
 import { decryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
-import { chatMessageMetricsFromStoredMessage } from "@/modules/chat/message-metrics";
+import {
+  chatMessageMetricsFromStoredMessage,
+  latestChatUsageMetricsByMessageId,
+} from "@/modules/chat/message-metrics";
 import { db } from "@/server/infrastructure/db";
 import {
   messageParts,
   messages,
   usageEvents,
 } from "@/server/infrastructure/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+
+export async function getChatUsageMetricsByMessageId(conversationId: string) {
+  const events = await db
+    .select({
+      metadataJson: usageEvents.metadataJson,
+      createdAt: usageEvents.createdAt,
+    })
+    .from(usageEvents)
+    .where(
+      and(
+        eq(usageEvents.conversationId, conversationId),
+        eq(usageEvents.operation, "chat"),
+      ),
+    );
+  return latestChatUsageMetricsByMessageId(events);
+}
 
 export async function getConversationMessages(conversationId: string) {
   const messageRows = await db
@@ -18,6 +37,9 @@ export async function getConversationMessages(conversationId: string) {
     .orderBy(messages.createdAt);
 
   if (messageRows.length === 0) return [];
+
+  const usageMetricsByMessageId =
+    await getChatUsageMetricsByMessageId(conversationId);
 
   const partsByMessageId = new Map<
     string,
@@ -93,6 +115,7 @@ export async function getConversationMessages(conversationId: string) {
         outputTokens: msg.tokenOutput,
         createdAt: msg.createdAt,
         completedAt: msg.completedAt,
+        usageMetrics: usageMetricsByMessageId.get(msg.id),
       }),
     })),
   );

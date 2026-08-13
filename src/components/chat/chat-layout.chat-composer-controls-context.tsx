@@ -31,7 +31,8 @@ export interface ChatLayoutProps {
   conversationImpact?: ChatUsageImpact | null;
   organizationDefaultAgentId?: string | null;
   userDefaultAgentId?: string | null;
-  canChat: boolean;
+  isLoading?: boolean;
+  needsSetup?: boolean;
   canCreateAgent?: boolean;
   canRunSetup?: boolean;
   onSelectAgent: (agentId: string) => void;

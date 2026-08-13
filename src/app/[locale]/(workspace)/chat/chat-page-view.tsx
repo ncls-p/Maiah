@@ -128,10 +128,10 @@ export function CodeWorkspaceModeBar({
 }
 
 export function EmptyConversationState({
-  canChat,
+  needsSetup,
   t,
 }: {
-  canChat: boolean;
+  needsSetup: boolean;
   t: ChatTranslator;
 }) {
   const locale = useLocale() === "fr" ? "fr" : "en";
@@ -161,7 +161,7 @@ export function EmptyConversationState({
           </em>{" "}
           {hero?.lineTwoSuffix ?? t("heroLineTwo")}
         </h1>
-        {!canChat ? (
+        {needsSetup ? (
           <p className="mt-5 max-w-md text-sm text-muted-foreground">
             {t("emptySetup")}
           </p>

@@ -4,6 +4,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
 import {
+  assistantSelectionNeedsSetup,
+  isAssistantSelectionLoading,
+} from "@/components/chat/assistant-selection";
+import {
   chatComposerDraftKey,
   readChatComposerDraft,
   writeChatComposerDraft,
@@ -245,6 +249,7 @@ export function useChatPageController() {
     loadingMessages,
     quota,
     canChat,
+    activeVersion,
     conversationIsOwner,
     conversationReadOnly,
     latestTodoList,
@@ -275,6 +280,18 @@ export function useChatPageController() {
     setCodeWorkspaceArtifact,
     setInterfaceMode,
     setLoadingContext,
+  });
+
+  const selectionLoading = isAssistantSelectionLoading({
+    workspaceLoading,
+    agentsLoading: loadingAgents,
+    selectedAgent,
+    activeVersion,
+  });
+  const needsSetup = assistantSelectionNeedsSetup({
+    isLoading: selectionLoading,
+    selectedAgent,
+    activeVersion,
   });
 
   const { selectAgent, selectConversation, startNewConversation } =
@@ -432,7 +449,8 @@ export function useChatPageController() {
     activeConversationId,
     organizationDefaultAgentId,
     userDefaultAgentId,
-    canChat,
+    isLoading: selectionLoading,
+    needsSetup,
     canCreateAgent,
     canRunSetup,
     onSelectAgent: selectAgent,
@@ -458,6 +476,8 @@ export function useChatPageController() {
     attachments,
     bottomRef,
     canChat,
+    needsSetup,
+    isLoading: selectionLoading,
     canCreateAgent,
     canRunSetup,
     cancelQueuedMessage,

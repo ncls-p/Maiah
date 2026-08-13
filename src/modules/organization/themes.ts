@@ -269,6 +269,16 @@ export const ORGANIZATION_THEME_PRESETS: Record<
   ),
 };
 
+const ORGANIZATION_THEME_SET = new Set<string>(ORGANIZATION_THEMES);
+
+export function parseOrganizationTheme(
+  value: unknown,
+): OrganizationTheme | null {
+  return typeof value === "string" && ORGANIZATION_THEME_SET.has(value)
+    ? (value as OrganizationTheme)
+    : null;
+}
+
 export function resolveOrganizationTheme(
   themeName: OrganizationTheme,
   customTheme: OrganizationThemeConfig | null | undefined,
@@ -276,6 +286,17 @@ export function resolveOrganizationTheme(
   return themeName === "custom" && customTheme
     ? customTheme
     : ORGANIZATION_THEME_PRESETS[themeName === "custom" ? "ocean" : themeName];
+}
+
+export function organizationThemeDocumentStyle(
+  themeName: unknown,
+  themeConfig?: OrganizationThemeConfig | null,
+) {
+  const theme = parseOrganizationTheme(themeName) ?? "ocean";
+  return {
+    themeName: theme,
+    css: themeCss(resolveOrganizationTheme(theme, themeConfig)),
+  };
 }
 
 export function themeCss(config: OrganizationThemeConfig) {

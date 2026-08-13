@@ -90,6 +90,17 @@ test.describe("settings page", () => {
         "forest",
       );
       await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-brand-theme",
+        "forest",
+      );
+      expect(
+        await page.evaluate(() =>
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--primary")
+            .trim(),
+        ),
+      ).toBe("#28765a");
       await expect(
         branding.getByRole("button", { name: "Forest" }),
       ).toHaveAttribute("aria-pressed", "true");

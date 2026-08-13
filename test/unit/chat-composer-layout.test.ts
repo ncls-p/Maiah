@@ -58,6 +58,9 @@ describe("chat composer layout", () => {
     expect(bodySource).not.toContain('t("queueHint")');
     expect(selectorSource).toContain("grid-cols-[minmax(0,1fr)_auto_auto]");
     expect(selectorSource).toContain("min-[480px]:flex-nowrap");
+    expect(selectorSource).toContain("props.needsSetup");
+    expect(selectorSource).not.toContain("!props.canChat");
+    expect(selectorSource).toContain("SelectedAssistantTrigger");
   });
 
   it("keeps the capability catalog bounded and independently scrollable", () => {

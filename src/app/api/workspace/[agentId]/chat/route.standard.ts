@@ -6,6 +6,7 @@ import {
 } from "@/modules/agent/runtime-policy";
 import { recordUsageEvent } from "@/modules/agent/use-cases";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import { createGenerationClock } from "@/modules/chat/generation-clock";
 import {
   completeChatStream,
   createChatStreamResponse,
@@ -36,6 +37,7 @@ import {
   type ChatExecutionContext,
 } from "./route.execution-context";
 import { createStreamedPartWriter } from "./route.streamed-parts";
+
 export async function runStandardChat(input: {
   context: ChatExecutionContext;
   model: LanguageModel;
@@ -84,9 +86,8 @@ export async function runStandardChat(input: {
     requestStartedAt,
     enqueueEvent,
   });
-  const toolLimitFinalAnswerPrompt =
-    "Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
   const startedAt = Date.now();
+  const generationClock = createGenerationClock(startedAt);
   const partWriter = createStreamedPartWriter(
     assistantMessage.id,
     continuationClaim,
@@ -168,7 +169,7 @@ export async function runStandardChat(input: {
             return {
               activeTools: [],
               toolChoice: "none",
-              instructions: `${systemPrompt}\n\n${toolLimitFinalAnswerPrompt}`,
+              instructions: `${systemPrompt}\n\nTool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.`,
             };
           }
         : undefined,
@@ -188,6 +189,7 @@ export async function runStandardChat(input: {
   void (async () => {
     try {
       for await (const part of result.stream) {
+        generationClock.observe(part.type, streamToolCallId(part) || undefined);
         if (part.type === "text-delta") {
           await partWriter.appendText("text", part.text);
           enqueueEvent({ type: "text", delta: part.text });
@@ -300,6 +302,7 @@ export async function runStandardChat(input: {
         }
       }
 
+      const timings = generationClock.snapshot();
       const totalUsage = await result.usage;
       await completeStandardChat({
         context: executionContext,
@@ -308,6 +311,7 @@ export async function runStandardChat(input: {
         partWriter,
         postCompletionAutomationRef,
         startedAt,
+        timings,
         enqueueEvent,
       });
     } catch (error) {
@@ -337,7 +341,6 @@ export async function runStandardChat(input: {
           streamError,
           "Assistant generation failed",
         );
-        // Chat stream failed — message already marked failed below
         await db
           .update(messages)
           .set({ status: "failed", completedAt: new Date() })
@@ -374,10 +377,7 @@ export async function runStandardChat(input: {
           },
           streamError as Error,
         );
-        enqueueEvent({
-          type: "error",
-          error: errorMessage,
-        });
+        enqueueEvent({ type: "error", error: errorMessage });
       }
     } finally {
       completeChatStream(assistantMessage.id);

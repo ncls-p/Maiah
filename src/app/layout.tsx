@@ -7,6 +7,7 @@ import { PwaRegistration } from "@/components/pwa-registration";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { defaultLocale, locales } from "@/i18n/routing";
+import { resolveDocumentOrganizationTheme } from "@/lib/document-organization-theme";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -72,11 +73,13 @@ export default async function RootLayout({
   const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value;
   const documentLanguage =
     locales.find((locale) => locale === localeCookie) ?? defaultLocale;
+  const brandTheme = await resolveDocumentOrganizationTheme();
 
   return (
     <html
       lang={documentLanguage}
       suppressHydrationWarning
+      data-brand-theme={brandTheme?.themeName}
       className={cn(
         "min-h-full bg-background text-foreground antialiased",
         fontMono.variable,
@@ -84,6 +87,14 @@ export default async function RootLayout({
         fontHeading.variable,
       )}
     >
+      <head>
+        {brandTheme ? (
+          <style
+            data-organization-theme="true"
+            dangerouslySetInnerHTML={{ __html: brandTheme.css }}
+          />
+        ) : null}
+      </head>
       <body className="min-h-svh" suppressHydrationWarning>
         <ThemeProvider>
           <PwaRegistration />

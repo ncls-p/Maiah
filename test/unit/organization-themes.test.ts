@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   ORGANIZATION_THEME_PRESETS,
   THEME_TOKEN_KEYS,
+  organizationThemeDocumentStyle,
+  parseOrganizationTheme,
   resolveOrganizationTheme,
   themeCss,
 } from "@/modules/organization/themes";
@@ -37,5 +39,46 @@ describe("organization themes", () => {
     expect(css).toContain(".dark[data-brand-theme]");
     expect(css).toContain("--sidebar-accent:");
     expect(css).toContain("--chart-5:");
+  });
+
+  it("parses known organization theme names only", () => {
+    expect(parseOrganizationTheme("forest")).toBe("forest");
+    expect(parseOrganizationTheme("custom")).toBe("custom");
+    expect(parseOrganizationTheme("ocean ")).toBeNull();
+    expect(parseOrganizationTheme("midnight")).toBeNull();
+    expect(parseOrganizationTheme(null)).toBeNull();
+  });
+
+  it("builds document CSS from a preset without waiting for the client", () => {
+    const documentStyle = organizationThemeDocumentStyle("forest", null);
+
+    expect(documentStyle.themeName).toBe("forest");
+    expect(documentStyle.css).toContain(
+      `--primary:${ORGANIZATION_THEME_PRESETS.forest.light.primary}`,
+    );
+    expect(documentStyle.css).not.toContain(
+      `--primary:${ORGANIZATION_THEME_PRESETS.ocean.light.primary}`,
+    );
+  });
+
+  it("falls back to ocean when the stored theme name is unknown", () => {
+    const documentStyle = organizationThemeDocumentStyle("not-a-theme", null);
+
+    expect(documentStyle.themeName).toBe("ocean");
+    expect(documentStyle.css).toContain(
+      `--primary:${ORGANIZATION_THEME_PRESETS.ocean.light.primary}`,
+    );
+  });
+
+  it("keeps a custom palette in the first-paint document CSS", () => {
+    const custom = structuredClone(ORGANIZATION_THEME_PRESETS.slate);
+    custom.light.primary = "#123456";
+    custom.dark.primary = "#abcdef";
+
+    const documentStyle = organizationThemeDocumentStyle("custom", custom);
+
+    expect(documentStyle.themeName).toBe("custom");
+    expect(documentStyle.css).toContain("--primary:#123456");
+    expect(documentStyle.css).toContain("--primary:#abcdef");
   });
 });

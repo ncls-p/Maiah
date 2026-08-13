@@ -28,7 +28,8 @@ export function useChatLayoutController(props: ChatLayoutProps) {
         workspaceId={workspaceId}
         organizationDefaultAgentId={props.organizationDefaultAgentId}
         userDefaultAgentId={props.userDefaultAgentId}
-        canChat={props.canChat}
+        isLoading={props.isLoading ?? false}
+        needsSetup={props.needsSetup ?? false}
         canCreateAgent={props.canCreateAgent ?? false}
         onSelectAgent={props.onSelectAgent}
         onSetUserDefaultAgent={props.onSetUserDefaultAgent}

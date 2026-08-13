@@ -122,6 +122,7 @@ function QueuedMessagesPanel({
 export function ChatComposer({
   input,
   canChat,
+  needsSetup = false,
   sending,
   queuedMessages = [],
   onSubmit,
@@ -146,7 +147,8 @@ export function ChatComposer({
   const handleSelectedFiles = useCallback(
     async (files: File[]) => {
       const uploadedFiles = files.filter(Boolean);
-      if (uploadedFiles.length === 0 || uploadingAttachment || !canChat) return;
+      if (uploadedFiles.length === 0 || uploadingAttachment || needsSetup)
+        return;
       if (sending) {
         toast.error(t("waitForResponse"));
         return;
@@ -182,7 +184,7 @@ export function ChatComposer({
       }
     },
     [
-      canChat,
+      needsSetup,
       onUploadChatAttachment,
       onUploadCodeWorkspace,
       sending,
@@ -208,7 +210,7 @@ export function ChatComposer({
       event.preventDefault();
       if (event.dataTransfer)
         event.dataTransfer.dropEffect =
-          canChat && !sending && !uploadingAttachment ? "copy" : "none";
+          !needsSetup && !sending && !uploadingAttachment ? "copy" : "none";
     }
     function onDragLeave() {
       if (dragDepth === 0) return;
@@ -234,7 +236,7 @@ export function ChatComposer({
       document.removeEventListener("drop", onDrop);
       window.removeEventListener("blur", resetFileDrag);
     };
-  }, [canChat, handleSelectedFiles, sending, uploadingAttachment]);
+  }, [handleSelectedFiles, needsSetup, sending, uploadingAttachment]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -274,7 +276,7 @@ export function ChatComposer({
               <div
                 className={cn(
                   "pointer-events-none flex w-full max-w-md flex-col items-center rounded-[2rem] border border-dashed px-8 py-10 text-center shadow-[0_28px_90px_-36px_rgba(3,105,161,0.55)] transition-[border-color,background-color,box-shadow,transform] duration-200 animate-in zoom-in-95",
-                  canChat && !sending && !uploadingAttachment
+                  !needsSetup && !sending && !uploadingAttachment
                     ? "border-primary/55 bg-card/96 text-foreground ring-4 ring-primary/8"
                     : "border-border bg-card/96 text-muted-foreground",
                 )}
@@ -282,7 +284,7 @@ export function ChatComposer({
                 <span
                   className={cn(
                     "mb-4 flex size-14 items-center justify-center rounded-2xl border shadow-sm",
-                    canChat && !sending && !uploadingAttachment
+                    !needsSetup && !sending && !uploadingAttachment
                       ? "border-primary/20 bg-primary/10 text-primary"
                       : "border-border bg-muted",
                   )}
@@ -294,11 +296,11 @@ export function ChatComposer({
                     ? t("uploadingFiles")
                     : sending
                       ? t("waitForResponse")
-                      : canChat
-                        ? t("dropFilesTitle")
-                        : t("setupPlaceholder")}
+                      : needsSetup
+                        ? t("setupPlaceholder")
+                        : t("dropFilesTitle")}
                 </span>
-                {canChat && !sending && !uploadingAttachment ? (
+                {!needsSetup && !sending && !uploadingAttachment ? (
                   <span className="mt-1.5 max-w-sm text-sm leading-5 text-muted-foreground">
                     {t("dropFilesDescription")}
                   </span>
@@ -318,6 +320,7 @@ export function ChatComposer({
       <ChatComposerBody
         input={input}
         canChat={canChat}
+        needsSetup={needsSetup}
         sending={sending}
         attachments={attachments}
         todoList={todoList}

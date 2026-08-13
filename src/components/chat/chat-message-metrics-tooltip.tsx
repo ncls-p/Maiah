@@ -53,9 +53,24 @@ export function ChatMessageMetricsTooltip({
     metrics.reasoningTokens === undefined
       ? null
       : [t("reasoningTokens"), formatInteger.format(metrics.reasoningTokens)],
+    metrics.timeToFirstTokenMs === undefined
+      ? null
+      : [
+          t("timeToFirstToken"),
+          formatDuration(metrics.timeToFirstTokenMs, locale),
+        ],
     metrics.durationMs === undefined
       ? null
       : [t("duration"), formatDuration(metrics.durationMs, locale)],
+    metrics.toolMs === undefined
+      ? null
+      : [t("toolExecution"), formatDuration(metrics.toolMs, locale)],
+    metrics.thinkingMs === undefined
+      ? null
+      : [t("thinking"), formatDuration(metrics.thinkingMs, locale)],
+    metrics.generationMs === undefined
+      ? null
+      : [t("decodeTime"), formatDuration(metrics.generationMs, locale)],
     tokensPerSecond === undefined
       ? null
       : [

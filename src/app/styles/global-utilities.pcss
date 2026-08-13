@@ -20,6 +20,16 @@
     display: none;
   }
 
+  /* Hides the scrollbar visually while keeping its layout space, so toggling
+     it mid-stream (autoscroll) never re-wraps the content. */
+  .scrollbar-ghost {
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-ghost::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: color-mix(

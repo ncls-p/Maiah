@@ -29,6 +29,8 @@ export function ChatPageView({ model }: { model: Model }) {
     attachments,
     bottomRef,
     canChat,
+    needsSetup,
+    isLoading,
     canCreateAgent,
     canRunSetup,
     cancelQueuedMessage,
@@ -100,7 +102,8 @@ export function ChatPageView({ model }: { model: Model }) {
       conversationIsOwner={conversationIsOwner}
       organizationDefaultAgentId={organizationDefaultAgentId}
       userDefaultAgentId={userDefaultAgentId}
-      canChat={canChat}
+      isLoading={isLoading}
+      needsSetup={needsSetup}
       canCreateAgent={canCreateAgent}
       canRunSetup={canRunSetup}
       onSelectAgent={selectAgent}
@@ -186,6 +189,7 @@ export function ChatPageView({ model }: { model: Model }) {
             <ChatComposer
               input={input}
               canChat={canChat}
+              needsSetup={needsSetup}
               sending={sending}
               queuedMessages={queuedMessages}
               onInputChange={setInput}
@@ -225,7 +229,7 @@ export function ChatPageView({ model }: { model: Model }) {
       ) : (
         <section className="min-h-0 flex-1 overflow-hidden">
           {!loadingMessages && messages.length === 0 ? (
-            <EmptyConversationState canChat={canChat} t={t} />
+            <EmptyConversationState needsSetup={needsSetup} t={t} />
           ) : null}
           <div className="size-full min-h-0">
             <ChatMessageList
@@ -258,6 +262,7 @@ export function ChatPageView({ model }: { model: Model }) {
         <ChatComposer
           input={input}
           canChat={canChat}
+          needsSetup={needsSetup}
           sending={sending}
           queuedMessages={queuedMessages}
           onInputChange={setInput}

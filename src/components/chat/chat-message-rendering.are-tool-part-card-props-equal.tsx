@@ -66,7 +66,7 @@ export function SuggestionsPart({
           type={BUTTON_TYPE}
           variant={OUTLINE_VARIANT}
           size="sm"
-          className="h-auto rounded-full px-3 py-1.5 text-xs"
+          className="h-auto max-w-full shrink items-start justify-start rounded-xl px-3 py-1.5 text-left text-xs text-pretty whitespace-normal"
           onClick={() => onSuggestionClick?.(suggestion)}
         >
           {suggestion}

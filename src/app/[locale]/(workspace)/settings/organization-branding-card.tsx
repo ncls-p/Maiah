@@ -11,13 +11,12 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { applyOrganizationTheme } from "@/components/organization-theme";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
-  resolveOrganizationTheme,
-  themeCss,
   type OrganizationTheme,
   type OrganizationThemeConfig,
 } from "@/modules/organization/themes";
@@ -124,15 +123,7 @@ export function OrganizationBrandingCard() {
         }),
       });
       if (!response.ok) throw new Error("save_failed");
-      document.documentElement.dataset.brandTheme = theme;
-      const style = document.querySelector<HTMLStyleElement>(
-        "style[data-organization-theme]",
-      );
-      if (style) {
-        style.textContent = themeCss(
-          resolveOrganizationTheme(theme, themeConfig),
-        );
-      }
+      applyOrganizationTheme(theme, themeConfig);
       await refresh();
       setBranding({ ...branding, logoUrl, theme, themeConfig, heroConfig });
       toast.success(t("saved"));
