@@ -131,13 +131,17 @@ export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
                 {todoList.completedCount}/{todoList.totalCount}
               </span>
             </div>
-            <p className="truncate text-xs leading-4 text-muted-foreground">
-              {currentItem?.label ??
-                t("todoProgress", {
-                  completed: todoList.completedCount,
-                  total: todoList.totalCount,
-                })}
-            </p>
+            {/* Teaser only while collapsed: the expanded list already shows the
+                current task, and duplicating its label reads as a glitch. */}
+            {open ? null : (
+              <p className="truncate text-xs leading-4 text-muted-foreground">
+                {currentItem?.label ??
+                  t("todoProgress", {
+                    completed: todoList.completedCount,
+                    total: todoList.totalCount,
+                  })}
+              </p>
+            )}
           </div>
           <Button
             type="button"

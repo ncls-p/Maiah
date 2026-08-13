@@ -1748,7 +1748,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     auth: ["session", "apiKey"],
     permissions: ["knowledgeBases.viewAllowed"],
     pathParameters: ["knowledgeBaseId"],
-    queryParameters: ["workspaceId"],
+    queryParameters: ["limit", "offset", "q", "status", "workspaceId"],
     bodyKind: "none",
     responseKind: "json",
   },

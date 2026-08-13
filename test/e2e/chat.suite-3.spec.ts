@@ -342,7 +342,14 @@ test.describe("chat page", () => {
       });
       await expect(todoProgress).toHaveAttribute("aria-valuenow", "1");
       await expect(todoProgress).toHaveAttribute("aria-valuemax", "2");
-      await expect(todoDock.getByText("Verify the fix")).toBeVisible();
+
+      // The dock starts expanded: task details are visible right away.
+      await expect(
+        todoDock.getByText("1/2 tasks completed", { exact: true }),
+      ).toBeVisible();
+      const currentTask = todoDock.locator('[aria-current="step"]');
+      await expect(currentTask).toContainText("Verify the fix");
+      await expect(currentTask).toContainText("In progress");
 
       const composer = page.getByRole("textbox", { name: "Message" });
       const [dockBox, composerBox] = await Promise.all([
@@ -353,23 +360,28 @@ test.describe("chat page", () => {
       expect(composerBox).not.toBeNull();
       expect(dockBox!.y + dockBox!.height).toBeLessThanOrEqual(composerBox!.y);
 
+      // Collapsing swaps the list for the current-task teaser in the header.
+      await todoDock.getByRole("button", { name: "Hide task details" }).click();
+      await expect(
+        todoDock.getByText("1/2 tasks completed", { exact: true }),
+      ).toBeHidden();
+      await expect(todoDock.getByText("Verify the fix")).toBeVisible();
       await todoDock.getByRole("button", { name: "Show task details" }).click();
       await expect(
         todoDock.getByText("1/2 tasks completed", { exact: true }),
       ).toBeVisible();
-      const currentTask = todoDock.locator('[aria-current="step"]');
-      await expect(currentTask).toContainText("Verify the fix");
-      await expect(currentTask).toContainText("In progress");
 
-      await todoDock.getByRole("button", { name: "Hide task details" }).click();
       await todoDock.getByRole("button", { name: "Hide plan" }).click();
       await expect(todoDock).toBeHidden();
       const showPlan = page.getByRole("button", { name: "Show plan" });
       await expect(showPlan).toBeVisible();
       await showPlan.click();
       await expect(todoDock).toBeVisible();
+      // Re-showing the plan restores the expanded presentation.
+      await expect(
+        todoDock.getByRole("button", { name: "Hide task details" }),
+      ).toBeVisible();
 
-      await todoDock.getByRole("button", { name: "Show task details" }).click();
       const transcriptViewport = page.locator(
         '[data-slot="message-scroller-viewport"]',
       );
@@ -377,7 +389,7 @@ test.describe("chat page", () => {
       await page.mouse.wheel(0, -200);
       await expect(todoDock).toBeVisible();
       await expect(
-        todoDock.getByRole("button", { name: "Show task details" }),
+        todoDock.getByRole("button", { name: "Hide task details" }),
       ).toBeVisible();
       await expect(showPlan).toBeHidden();
 
