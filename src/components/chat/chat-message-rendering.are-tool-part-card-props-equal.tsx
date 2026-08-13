@@ -11,6 +11,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useIsTextClamped } from "@/hooks/use-is-text-clamped";
 import { cn } from "@/lib/utils";
 import { BrainIcon, CheckCircle2Icon, ChevronDownIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -61,18 +67,45 @@ export function SuggestionsPart({
   return (
     <div className="mt-1 flex flex-wrap gap-2">
       {suggestions.map((suggestion) => (
-        <Button
+        <SuggestionPill
           key={suggestion}
+          suggestion={suggestion}
+          onSuggestionClick={onSuggestionClick}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SuggestionPill({
+  suggestion,
+  onSuggestionClick,
+}: {
+  suggestion: string;
+  onSuggestionClick?: (suggestion: string) => void;
+}) {
+  const { ref, clamped } = useIsTextClamped<HTMLSpanElement>();
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
           type={BUTTON_TYPE}
           variant={OUTLINE_VARIANT}
           size="sm"
           className="h-auto max-w-full shrink items-start justify-start rounded-xl px-3 py-1.5 text-left text-xs text-pretty whitespace-normal"
           onClick={() => onSuggestionClick?.(suggestion)}
         >
-          {suggestion}
+          <span ref={ref} className="line-clamp-2">
+            {suggestion}
+          </span>
         </Button>
-      ))}
-    </div>
+      </TooltipTrigger>
+      {clamped ? (
+        <TooltipContent side="top" className="max-w-72">
+          {suggestion}
+        </TooltipContent>
+      ) : null}
+    </Tooltip>
   );
 }
 

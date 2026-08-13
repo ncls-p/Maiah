@@ -10,6 +10,12 @@ import { ChatTodoListDock } from "@/components/chat/chat-todo-list-card";
 import { AttachmentGroup } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useIsTextClamped } from "@/hooks/use-is-text-clamped";
 import { cn } from "@/lib/utils";
 import {
   AttachmentPreview,
@@ -33,6 +39,40 @@ interface ChatComposerBodyProps {
   onPromptSuggestionClick: ChatComposerProps["onPromptSuggestionClick"];
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onPaste: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+}
+
+function PromptSuggestionButton({
+  index,
+  suggestion,
+  onClick,
+}: {
+  index: number;
+  suggestion: string;
+  onClick?: (suggestion: string) => void;
+}) {
+  const { ref, clamped } = useIsTextClamped<HTMLButtonElement>();
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          ref={ref}
+          type="button"
+          className="group min-h-10 truncate rounded-xl border border-border/70 bg-card/55 px-3 text-left text-xs text-muted-foreground transition-[border-color,background-color,color,transform] hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          onClick={() => onClick?.(suggestion)}
+        >
+          <span className="mr-2 font-mono text-[0.62rem] text-primary">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          {suggestion}
+        </button>
+      </TooltipTrigger>
+      {clamped ? (
+        <TooltipContent side="top" className="max-w-72">
+          {suggestion}
+        </TooltipContent>
+      ) : null}
+    </Tooltip>
+  );
 }
 
 function resizeComposerTextarea(element: HTMLTextAreaElement) {
@@ -207,17 +247,12 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
       props.promptSuggestions.length > 0 ? (
         <div className="mt-2 grid gap-2 sm:grid-cols-3 animate-in-fade">
           {props.promptSuggestions.slice(0, 3).map((suggestion, index) => (
-            <button
+            <PromptSuggestionButton
               key={suggestion}
-              type="button"
-              className="group min-h-10 truncate rounded-xl border border-border/70 bg-card/55 px-3 text-left text-xs text-muted-foreground transition-[border-color,background-color,color,transform] hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              onClick={() => props.onPromptSuggestionClick?.(suggestion)}
-            >
-              <span className="mr-2 font-mono text-[0.62rem] text-primary">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              {suggestion}
-            </button>
+              index={index}
+              suggestion={suggestion}
+              onClick={props.onPromptSuggestionClick}
+            />
           ))}
         </div>
       ) : null}
