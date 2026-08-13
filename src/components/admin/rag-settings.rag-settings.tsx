@@ -75,10 +75,13 @@ export function useRagSettingsController({
     );
     return likelyRerankers.length > 0 ? likelyRerankers : models;
   }, [models]);
-  const visionModels = useMemo(() => {
-    const explicitlySupported = models.filter((model) => model.vision);
-    return explicitlySupported.length > 0 ? explicitlySupported : models;
-  }, [models]);
+  // Never hide models: many OpenAI-compatible /models payloads omit modality
+  // metadata, so a missing vision flag doesn't mean the model can't see.
+  // Models that do declare vision are simply listed first.
+  const visionModels = useMemo(
+    () => [...models].sort((a, b) => Number(b.vision) - Number(a.vision)),
+    [models],
+  );
 
   function modelValue(model: DiscoveredModel) {
     return `${model.providerId}:${model.modelId}`;

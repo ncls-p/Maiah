@@ -29,9 +29,12 @@ export function useRagConfigFieldsController({
   )
     ? models.filter((model) => model.modelId.toLowerCase().includes("rerank"))
     : models;
-  const visionModels = models.some((model) => model.vision)
-    ? models.filter((model) => model.vision)
-    : models;
+  // Never hide models: providers often omit modality metadata in /models, so
+  // a missing vision flag doesn't mean the model can't see. Declared vision
+  // models are just listed first.
+  const visionModels = [...models].sort(
+    (a, b) => Number(b.vision) - Number(a.vision),
+  );
   const modelValue = (model: RagModelOption) =>
     `${model.providerId}:${model.modelId}`;
 
