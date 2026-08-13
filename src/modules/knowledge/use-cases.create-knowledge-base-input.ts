@@ -1,6 +1,7 @@
 import {
   getDefaultRagConfig,
   hasSameRagModelSelection,
+  inheritRagConfigDefaults,
   parseRagConfig,
   type RagConfig,
 } from "@/modules/knowledge/rag-config";
@@ -36,7 +37,16 @@ export class RagModelConfigurationPermissionError extends Error {
 export type KnowledgeBaseRow = typeof knowledgeBases.$inferSelect;
 
 export async function effectiveRagConfig(value: unknown) {
-  return value === null ? getDefaultRagConfig() : parseRagConfig(value);
+  if (value === null) return getDefaultRagConfig();
+  const config = parseRagConfig(value);
+  if (
+    config.embedding.modelId &&
+    config.reranking.modelId &&
+    config.extraction.ocr.modelId
+  ) {
+    return config;
+  }
+  return inheritRagConfigDefaults(config, await getDefaultRagConfig());
 }
 
 export function canManageKnowledgeBase(
@@ -87,7 +97,10 @@ export async function assertCanManageKnowledgeBase(
 export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
   if (input.ragConfig && !input.canManageModels) {
     const defaults = await getDefaultRagConfig();
-    if (!hasSameRagModelSelection(input.ragConfig, defaults)) {
+    // Untouched (empty) model sections inherit the defaults, so they are not
+    // a model change the caller needs permission for.
+    const requested = inheritRagConfigDefaults(input.ragConfig, defaults);
+    if (!hasSameRagModelSelection(requested, defaults)) {
       throw new RagModelConfigurationPermissionError();
     }
   }

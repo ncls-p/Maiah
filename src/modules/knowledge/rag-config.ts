@@ -22,6 +22,7 @@ import {
 export {
   DEFAULT_RAG_CONFIG,
   hasSameRagModelSelection,
+  inheritRagConfigDefaults,
   parseRagConfig,
   ragConfigSchema,
   type RagConfig,

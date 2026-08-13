@@ -104,6 +104,34 @@ export function parseRagConfig(value: unknown): RagConfig {
   return parsed.success ? parsed.data : DEFAULT_RAG_CONFIG;
 }
 
+/**
+ * Per-collection configs saved by the UI often carry empty model ids for the
+ * sections the user never touched. An empty model id cannot mean "disable"
+ * (the schema rejects enabled sections without a model), so it means
+ * "inherit the workspace default" — otherwise collections silently skip
+ * embedding/reranking/OCR that admins configured globally.
+ */
+export function inheritRagConfigDefaults(
+  config: RagConfig,
+  defaults: RagConfig,
+): RagConfig {
+  return {
+    ...config,
+    embedding: config.embedding.modelId
+      ? config.embedding
+      : defaults.embedding,
+    reranking: config.reranking.modelId
+      ? config.reranking
+      : defaults.reranking,
+    extraction: {
+      ...config.extraction,
+      ocr: config.extraction.ocr.modelId
+        ? config.extraction.ocr
+        : defaults.extraction.ocr,
+    },
+  };
+}
+
 export function hasSameRagModelSelection(left: RagConfig, right: RagConfig) {
   return (
     left.embedding.providerId === right.embedding.providerId &&

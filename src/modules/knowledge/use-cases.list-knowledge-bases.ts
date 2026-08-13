@@ -2,6 +2,7 @@ import { applyResourceAccessSelection } from "@/modules/iam/resource-access-scop
 import {
   getDefaultRagConfig,
   hasSameRagModelSelection,
+  inheritRagConfigDefaults,
   parseRagConfig,
   ragConfigSchema,
   type RagConfig,
@@ -38,18 +39,16 @@ export async function listKnowledgeBases(
       sql`${knowledgeBases.isGlobal} DESC`,
       sql`${knowledgeBases.createdAt} DESC`,
     );
-  const defaultRagConfig = rows.some(
-    (knowledgeBase) => knowledgeBase.ragConfigJson === null,
-  )
-    ? await getDefaultRagConfig()
-    : null;
+  const defaultRagConfig = await getDefaultRagConfig();
   const withRagConfig = (knowledgeBase: KnowledgeBaseRow) => ({
     ...knowledgeBase,
-    effectiveRagConfig: parseRagConfig(
+    effectiveRagConfig:
       knowledgeBase.ragConfigJson === null
         ? defaultRagConfig
-        : knowledgeBase.ragConfigJson,
-    ),
+        : inheritRagConfigDefaults(
+            parseRagConfig(knowledgeBase.ragConfigJson),
+            defaultRagConfig,
+          ),
     usesDefaultRagConfig: knowledgeBase.ragConfigJson === null,
   });
   if (!userId) {
@@ -140,7 +139,13 @@ export async function updateKnowledgeBase(input: {
   }
   if (input.ragConfig && !input.canManageModels) {
     const currentConfig = await effectiveRagConfig(existing.ragConfigJson);
-    if (!hasSameRagModelSelection(input.ragConfig, currentConfig)) {
+    // Compare after default inheritance on both sides so a form submitted
+    // with untouched (empty) model sections doesn't read as a model change.
+    const requestedConfig = inheritRagConfigDefaults(
+      input.ragConfig,
+      await getDefaultRagConfig(),
+    );
+    if (!hasSameRagModelSelection(requestedConfig, currentConfig)) {
       throw new RagModelConfigurationPermissionError();
     }
   }

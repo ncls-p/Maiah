@@ -24,6 +24,18 @@ vi.mock("@/modules/knowledge/queue", () => ({
   recoverDocumentIngestionJob: vi.fn().mockResolvedValue("enqueued"),
 }));
 
+// effectiveRagConfig now loads workspace defaults whenever a config leaves
+// model sections empty; stub that read so it doesn't shift the positional
+// db-mock scripts below.
+vi.mock("@/modules/knowledge/rag-config", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/modules/knowledge/rag-config")>();
+  return {
+    ...actual,
+    getDefaultRagConfig: vi.fn(async () => actual.DEFAULT_RAG_CONFIG),
+  };
+});
+
 type Chain = {
   select: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;

@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RAG_CONFIG,
   hasSameRagModelSelection,
+  inheritRagConfigDefaults,
   parseRagConfig,
   ragConfigSchema,
+  type RagConfig,
 } from "@/modules/knowledge/rag-config";
 import { chunkText } from "@/modules/knowledge/use-cases";
 
@@ -70,6 +72,55 @@ describe("knowledge RAG configuration", () => {
     expect(hasSameRagModelSelection(modelOverride, DEFAULT_RAG_CONFIG)).toBe(
       false,
     );
+  });
+});
+
+describe("per-collection RAG config default inheritance", () => {
+  const workspaceDefaults: RagConfig = ragConfigSchema.parse({
+    embedding: { modelId: "qwen3-embedding:0.6b" },
+    chunking: {},
+    retrieval: {},
+    reranking: { enabled: true, modelId: "Qwen/Qwen3-Reranker-0.6B" },
+    extraction: {
+      engine: "anydoc",
+      ocr: { enabled: true, modelId: "gemma4:31b" },
+    },
+  });
+
+  it("inherits every section whose model id was left empty", () => {
+    const untouchedForm = ragConfigSchema.parse({
+      embedding: {},
+      chunking: { maxCharacters: 800, overlapCharacters: 100 },
+      retrieval: {},
+      reranking: {},
+    });
+
+    const effective = inheritRagConfigDefaults(
+      untouchedForm,
+      workspaceDefaults,
+    );
+    expect(effective.embedding.modelId).toBe("qwen3-embedding:0.6b");
+    expect(effective.reranking).toEqual(workspaceDefaults.reranking);
+    expect(effective.extraction.ocr).toEqual(
+      workspaceDefaults.extraction.ocr,
+    );
+    // Non-model tuning stays collection-specific.
+    expect(effective.chunking.maxCharacters).toBe(800);
+  });
+
+  it("keeps explicit per-collection model choices", () => {
+    const pinned = ragConfigSchema.parse({
+      embedding: { modelId: "qwen3-embedding:8b" },
+      chunking: {},
+      retrieval: {},
+      reranking: { enabled: false, modelId: "BAAI/bge-reranker-large" },
+    });
+
+    const effective = inheritRagConfigDefaults(pinned, workspaceDefaults);
+    expect(effective.embedding.modelId).toBe("qwen3-embedding:8b");
+    // Reranking was explicitly disabled while naming a model: respected.
+    expect(effective.reranking.enabled).toBe(false);
+    expect(effective.reranking.modelId).toBe("BAAI/bge-reranker-large");
   });
 });
 
