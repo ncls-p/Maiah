@@ -143,6 +143,80 @@ describe("listDocuments", () => {
   });
 });
 
+// ─── listDocuments (paged) ────────────────────────────────────────────
+
+function thenableChain(result: unknown[]) {
+  const chain = {} as Record<string, unknown>;
+  const promise = Promise.resolve(result);
+  for (const key of [
+    "from",
+    "where",
+    "orderBy",
+    "limit",
+    "offset",
+    "innerJoin",
+    "leftJoin",
+    "groupBy",
+  ]) {
+    chain[key] = () => chain;
+  }
+  chain.then = promise.then.bind(promise);
+  return chain;
+}
+
+describe("listDocuments with pagination options", () => {
+  it("returns a filtered page with total and status counts", async () => {
+    // Query order: knowledge base, page rows, filtered total, status counts,
+    // chunk/embedding progress for the page.
+    const queue: unknown[][] = [
+      [fakeKb],
+      [fakeDoc],
+      [{ total: 25 }],
+      [{ ready: 20, processing: 3, failed: 2 }],
+      [{ documentId: "doc-1", chunkCount: 2, embeddingCount: 1 }],
+    ];
+    dbModule.db.select.mockImplementation(() =>
+      thenableChain(queue.shift() ?? []),
+    );
+
+    const result = await listDocuments("kb-1", "ws-1", undefined, {
+      limit: 12,
+      offset: 12,
+      status: "processing",
+      search: "test",
+    });
+
+    expect(result.total).toBe(25);
+    expect(result.counts).toEqual({ ready: 20, processing: 3, failed: 2 });
+    expect(result.documents).toHaveLength(1);
+    expect(result.documents[0]?.processingProgress).toBe(58);
+  });
+
+  it("skips the progress query when the page is empty", async () => {
+    const queue: unknown[][] = [
+      [fakeKb],
+      [],
+      [{ total: 0 }],
+      [{ ready: 0, processing: 0, failed: 0 }],
+    ];
+    dbModule.db.select.mockImplementation(() =>
+      thenableChain(queue.shift() ?? []),
+    );
+
+    const result = await listDocuments("kb-1", "ws-1", undefined, {
+      limit: 12,
+      offset: 0,
+    });
+
+    expect(result).toEqual({
+      documents: [],
+      total: 0,
+      counts: { ready: 0, processing: 0, failed: 0 },
+    });
+    expect(dbModule.db.select).toHaveBeenCalledTimes(4);
+  });
+});
+
 // ─── archiveDocument ──────────────────────────────────────────────────
 
 describe("archiveDocument", () => {

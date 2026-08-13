@@ -18,6 +18,7 @@ type Chain = {
   limit: ReturnType<typeof vi.fn>;
   values: ReturnType<typeof vi.fn>;
   onConflictDoNothing: ReturnType<typeof vi.fn>;
+  returning: ReturnType<typeof vi.fn>;
   then: Promise<unknown[]>["then"];
 };
 
@@ -97,9 +98,16 @@ function chain(result: unknown[] = []): Chain {
     return query;
   });
   query.onConflictDoNothing = vi.fn(() => query);
+  query.returning = vi.fn(() => query);
   query.then = promise.then.bind(promise);
   return query;
 }
+
+const viewerRoleRow = { id: "viewer-role", name: "workspace.viewer" };
+const editorRoleRow = {
+  id: "editor-role",
+  name: "workspace.knowledge_editor",
+};
 
 beforeEach(() => {
   selectResults.length = 0;
@@ -133,12 +141,12 @@ beforeEach(() => {
 describe("direct resource sharing", () => {
   it("loads active members and current direct shares", async () => {
     selectResults.push(
-      [{ id: "viewer-role", name: "workspace.viewer" }],
+      [viewerRoleRow, editorRoleRow],
       [
         { id: "owner-1", name: "Owner", email: "owner@example.com" },
         { id: "member-1", name: "Member", email: "member@example.com" },
       ],
-      [{ userId: "member-1" }],
+      [{ userId: "member-1", roleId: "viewer-role" }],
     );
 
     await expect(
@@ -153,6 +161,36 @@ describe("direct resource sharing", () => {
         { id: "member-1", name: "Member", email: "member@example.com" },
       ],
       sharedUserIds: ["member-1"],
+      shares: [{ userId: "member-1", access: "view" }],
+    });
+  });
+
+  it("reports edit access for users bound to the knowledge editor role", async () => {
+    selectResults.push(
+      [viewerRoleRow, editorRoleRow],
+      [
+        { id: "member-1", name: "Member", email: "member@example.com" },
+        { id: "member-2", name: "Other", email: "other@example.com" },
+      ],
+      [
+        { userId: "member-1", roleId: "editor-role" },
+        { userId: "member-2", roleId: "viewer-role" },
+      ],
+    );
+
+    await expect(
+      getDirectResourceSharing({
+        actorUserId: "owner-1",
+        workspaceId: "workspace-1",
+        resourceType: "knowledge_base",
+        resourceId: "kb-1",
+      }),
+    ).resolves.toMatchObject({
+      sharedUserIds: ["member-1", "member-2"],
+      shares: [
+        { userId: "member-1", access: "edit" },
+        { userId: "member-2", access: "view" },
+      ],
     });
   });
 
@@ -161,11 +199,7 @@ describe("direct resource sharing", () => {
     authorizationModule.authorization.hasDirectPermission.mockResolvedValue(
       false,
     );
-    selectResults.push(
-      [{ id: "viewer-role", name: "workspace.viewer" }],
-      [],
-      [],
-    );
+    selectResults.push([viewerRoleRow], [], []);
 
     await expect(
       getDirectResourceSharing({
@@ -174,7 +208,7 @@ describe("direct resource sharing", () => {
         resourceType: "mcp_server",
         resourceId: "kb-1",
       }),
-    ).resolves.toEqual({ members: [], sharedUserIds: [] });
+    ).resolves.toEqual({ members: [], sharedUserIds: [], shares: [] });
   });
 
   it("rejects unknown and unauthorized resources", async () => {
@@ -214,7 +248,7 @@ describe("direct resource sharing", () => {
   });
 
   it("rejects selected users outside the organization", async () => {
-    selectResults.push([{ id: "viewer-role", name: "workspace.viewer" }], []);
+    selectResults.push([viewerRoleRow, editorRoleRow], []);
     await expect(
       replaceDirectResourceSharing({
         actorUserId: "owner-1",
@@ -229,7 +263,7 @@ describe("direct resource sharing", () => {
   it("rejects organization members without project access", async () => {
     authorizationModule.authorization.hasPermission.mockResolvedValue(false);
     selectResults.push(
-      [{ id: "viewer-role", name: "workspace.viewer" }],
+      [viewerRoleRow, editorRoleRow],
       [{ userId: "member-1" }],
     );
     await expect(
@@ -253,10 +287,7 @@ describe("direct resource sharing", () => {
       { type: "mcp_server", id: "mcp-1" },
     ]);
     selectResults.push(
-      [
-        { id: "agent-user-role", name: "workspace.agent_user" },
-        { id: "viewer-role", name: "workspace.viewer" },
-      ],
+      [{ id: "agent-user-role", name: "workspace.agent_user" }, viewerRoleRow],
       [{ userId: "member-1" }, { userId: "member-2" }],
       [{ userId: "old-member" }],
     );
@@ -308,10 +339,7 @@ describe("direct resource sharing", () => {
   });
 
   it("removes all direct shares without inserting replacements", async () => {
-    selectResults.push(
-      [{ id: "viewer-role", name: "workspace.viewer" }],
-      [{ userId: "old-member" }],
-    );
+    selectResults.push([viewerRoleRow], [{ userId: "old-member" }]);
     await expect(
       replaceDirectResourceSharing({
         actorUserId: "owner-1",
@@ -324,6 +352,168 @@ describe("direct resource sharing", () => {
     expect(dbModule.db.insert).not.toHaveBeenCalled();
     expect(resourceSharing.listResourceShareTargets).toHaveBeenCalledWith(
       expect.objectContaining({ includeDependencies: false }),
+    );
+  });
+
+  it("binds the knowledge editor role for edit-level shares", async () => {
+    selectResults.push(
+      [viewerRoleRow, editorRoleRow],
+      [{ userId: "member-1" }, { userId: "member-2" }],
+      [],
+    );
+
+    await expect(
+      replaceDirectResourceSharing({
+        actorUserId: "owner-1",
+        workspaceId: "workspace-1",
+        resourceType: "knowledge_base",
+        resourceId: "kb-1",
+        shares: [
+          { userId: "member-1", access: "edit" },
+          { userId: "member-2", access: "view" },
+        ],
+      }),
+    ).resolves.toEqual({
+      userIds: ["member-1", "member-2"],
+      resourceCount: 1,
+    });
+    expect(insertedValues).toContainEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          principalId: "member-1",
+          roleId: "editor-role",
+          resourceType: "knowledge_base",
+          resourceId: "kb-1",
+        }),
+        expect.objectContaining({
+          principalId: "member-2",
+          roleId: "viewer-role",
+          resourceType: "knowledge_base",
+          resourceId: "kb-1",
+        }),
+      ]),
+    );
+    expect(auditModule.audit.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          access: { view: ["member-2"], edit: ["member-1"] },
+        }),
+      }),
+    );
+  });
+
+  it("downgrades an editor to view access", async () => {
+    selectResults.push(
+      [viewerRoleRow, editorRoleRow],
+      [{ userId: "member-1" }],
+      [{ userId: "member-1" }],
+    );
+
+    await expect(
+      replaceDirectResourceSharing({
+        actorUserId: "owner-1",
+        workspaceId: "workspace-1",
+        resourceType: "knowledge_base",
+        resourceId: "kb-1",
+        shares: [{ userId: "member-1", access: "view" }],
+      }),
+    ).resolves.toEqual({ userIds: ["member-1"], resourceCount: 1 });
+    expect(dbModule.db.delete).toHaveBeenCalledOnce();
+    expect(insertedValues).toContainEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          principalId: "member-1",
+          roleId: "viewer-role",
+        }),
+      ]),
+    );
+  });
+
+  it("revokes both viewer and editor bindings when shares are omitted", async () => {
+    selectResults.push(
+      [viewerRoleRow, editorRoleRow],
+      [{ userId: "member-1" }],
+    );
+
+    await expect(
+      replaceDirectResourceSharing({
+        actorUserId: "owner-1",
+        workspaceId: "workspace-1",
+        resourceType: "knowledge_base",
+        resourceId: "kb-1",
+        shares: [],
+      }),
+    ).resolves.toEqual({ userIds: [], resourceCount: 1 });
+    expect(dbModule.db.delete).toHaveBeenCalledOnce();
+    expect(dbModule.db.insert).not.toHaveBeenCalled();
+    expect(
+      authorizationModule.authorization.invalidatePermissionCache,
+    ).toHaveBeenCalledWith("member-1", "knowledge_base", "kb-1");
+  });
+
+  it("lazily creates the knowledge editor role when it is missing", async () => {
+    dbModule.db.insert.mockImplementationOnce(() =>
+      chain([editorRoleRow]),
+    );
+    selectResults.push([viewerRoleRow], [{ userId: "member-1" }], []);
+
+    await expect(
+      replaceDirectResourceSharing({
+        actorUserId: "owner-1",
+        workspaceId: "workspace-1",
+        resourceType: "knowledge_base",
+        resourceId: "kb-1",
+        shares: [{ userId: "member-1", access: "edit" }],
+      }),
+    ).resolves.toEqual({ userIds: ["member-1"], resourceCount: 1 });
+    expect(insertedValues).toContainEqual(
+      expect.objectContaining({
+        name: "workspace.knowledge_editor",
+        isSystem: true,
+        createdById: "owner-1",
+      }),
+    );
+    expect(insertedValues).toContainEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          principalId: "member-1",
+          roleId: "editor-role",
+        }),
+      ]),
+    );
+  });
+
+  it("coerces edit shares to view access for agents", async () => {
+    resourceRepository.findAccessResource.mockResolvedValue({
+      id: "agent-1",
+      workspaceId: "workspace-1",
+    });
+    resourceSharing.listResourceShareTargets.mockResolvedValue([
+      { type: "agent", id: "agent-1" },
+    ]);
+    selectResults.push(
+      [{ id: "agent-user-role", name: "workspace.agent_user" }, viewerRoleRow],
+      [{ userId: "member-1" }],
+      [],
+    );
+
+    await expect(
+      replaceDirectResourceSharing({
+        actorUserId: "owner-1",
+        workspaceId: "workspace-1",
+        resourceType: "agent",
+        resourceId: "agent-1",
+        shares: [{ userId: "member-1", access: "edit" }],
+      }),
+    ).resolves.toEqual({ userIds: ["member-1"], resourceCount: 1 });
+    expect(insertedValues).toContainEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          principalId: "member-1",
+          roleId: "agent-user-role",
+          resourceType: "agent",
+        }),
+      ]),
     );
   });
 });

@@ -11,8 +11,13 @@ export function KnowledgeDocumentListSection1({
 }: {
   model: KnowledgePageViewModel;
 }) {
-  const { documents, documentsError, selectedBase, selectedBaseCanEdit, t } =
-    model;
+  const {
+    documentTotalCount,
+    documentsError,
+    selectedBase,
+    selectedBaseCanEdit,
+    t,
+  } = model;
   return (
     <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/55">
       <header className="flex flex-col gap-3 border-b border-border/60 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -47,10 +52,10 @@ export function KnowledgeDocumentListSection1({
         {documentsError ? (
           <KnowledgeDocumentTableBranch3 model={model} />
         ) : null}
-        {!documentsError && documents.length === 0 ? (
+        {!documentsError && documentTotalCount === 0 ? (
           <KnowledgeDocumentTableBranch2 model={model} />
         ) : null}
-        {!documentsError && documents.length > 0 ? (
+        {!documentsError && documentTotalCount > 0 ? (
           <KnowledgeDocumentTableBranch1 model={model} />
         ) : null}
       </div>

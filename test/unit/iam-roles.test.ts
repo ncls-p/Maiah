@@ -32,6 +32,7 @@ describe("SYSTEM_ROLES", () => {
     expect(workspaceRoleNames.sort()).toEqual([
       "workspace.admin",
       "workspace.agent_user",
+      "workspace.knowledge_editor",
       "workspace.member",
       "workspace.viewer",
     ]);

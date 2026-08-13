@@ -13,7 +13,7 @@ export function KnowledgeDocumentTableBranch4({
   const {
     docForm,
     documentInputRef,
-    documents,
+    documentTotalCount,
     dragActive,
     folderInputRef,
     handleFileDrop,
@@ -29,10 +29,10 @@ export function KnowledgeDocumentTableBranch4({
   return (
     <div className="p-3">
       <AdvancedSection
-        key={`${selectedId}:${documents.length === 0 ? "empty" : "populated"}`}
+        key={`${selectedId}:${documentTotalCount === 0 ? "empty" : "populated"}`}
         label={t("addDocuments")}
         hint={t("addDocumentsHint")}
-        defaultOpen={documents.length === 0}
+        defaultOpen={documentTotalCount === 0}
       >
         <input
           id="knowledge-file-upload"

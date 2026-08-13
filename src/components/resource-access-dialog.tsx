@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchIcon, Share2Icon } from "lucide-react";
+import { SearchIcon, Share2Icon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -25,6 +25,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import type {
   ResourceAccessOptions,
@@ -34,6 +41,8 @@ import type {
 
 type ResourceType = "agent" | "knowledge_base" | "mcp_server";
 type SharingMember = { id: string; name: string; email: string };
+type ShareAccess = "view" | "edit";
+type ShareEntry = { userId: string; access: ShareAccess };
 
 export function ResourceAccessDialog({
   open,
@@ -62,7 +71,7 @@ export function ResourceAccessDialog({
   const [scope, setScope] = useState<ResourceAccessScope>(selection.scope);
   const [teamId, setTeamId] = useState(selection.teamId ?? "");
   const [members, setMembers] = useState<SharingMember[]>([]);
-  const [sharedUserIds, setSharedUserIds] = useState<string[]>([]);
+  const [shares, setShares] = useState<ShareEntry[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingScope, setSavingScope] = useState(false);
@@ -83,11 +92,18 @@ export function ResourceAccessDialog({
       const result = (await response.json().catch(() => ({}))) as {
         members?: SharingMember[];
         sharedUserIds?: string[];
+        shares?: ShareEntry[];
         error?: string;
       };
       if (!response.ok) throw new Error(result.error || t("loadFailed"));
       setMembers(result.members ?? []);
-      setSharedUserIds(result.sharedUserIds ?? []);
+      setShares(
+        result.shares ??
+          (result.sharedUserIds ?? []).map((userId) => ({
+            userId,
+            access: "view" as const,
+          })),
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("loadFailed"));
     } finally {
@@ -113,6 +129,12 @@ export function ResourceAccessDialog({
       ),
     );
   }, [members, query]);
+
+  const memberById = useMemo(
+    () => new Map(members.map((member) => [member.id, member])),
+    [members],
+  );
+  const supportsAccessLevels = resource?.type === "knowledge_base";
 
   async function saveScope() {
     if (!onScopeSaveAction) return;
@@ -142,7 +164,9 @@ export function ResourceAccessDialog({
           workspaceId,
           resourceType: resource.type,
           resourceId: resource.id,
-          userIds: sharedUserIds,
+          ...(supportsAccessLevels
+            ? { shares }
+            : { userIds: shares.map(({ userId }) => userId) }),
           includeDependencies,
         }),
       });
@@ -198,11 +222,103 @@ export function ResourceAccessDialog({
           ) : null}
 
           <Field>
+            <FieldLabel>{t("sharedWithTitle")}</FieldLabel>
+            <FieldDescription aria-live="polite">
+              {t("sharedWithCount", { count: shares.length })}
+            </FieldDescription>
+            {loading ? (
+              <div className="flex items-center justify-center rounded-lg border p-4">
+                <Spinner />
+                <span className="sr-only">{t("loading")}</span>
+              </div>
+            ) : shares.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                {t("sharedWithEmpty")}
+              </p>
+            ) : (
+              <ul className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-lg border p-2">
+                {shares.map((share) => {
+                  const member = memberById.get(share.userId);
+                  const memberName = member?.name ?? t("unknownMember");
+                  return (
+                    <li
+                      key={share.userId}
+                      className="flex items-center gap-2 rounded-md p-2 hover:bg-muted/50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {memberName}
+                        </p>
+                        {member ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {member.email}
+                          </p>
+                        ) : null}
+                      </div>
+                      {supportsAccessLevels ? (
+                        <Select
+                          value={share.access}
+                          onValueChange={(access) =>
+                            setShares((current) =>
+                              current.map((entry) =>
+                                entry.userId === share.userId
+                                  ? {
+                                      ...entry,
+                                      access: access as ShareAccess,
+                                    }
+                                  : entry,
+                              ),
+                            )
+                          }
+                        >
+                          <SelectTrigger
+                            size="sm"
+                            aria-label={t("accessLabel", {
+                              name: memberName,
+                            })}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="view">
+                              {t("accessView")}
+                            </SelectItem>
+                            <SelectItem value="edit">
+                              {t("accessEdit")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={t("revoke", { name: memberName })}
+                        onClick={() =>
+                          setShares((current) =>
+                            current.filter(
+                              (entry) => entry.userId !== share.userId,
+                            ),
+                          )
+                        }
+                      >
+                        <XIcon aria-hidden="true" />
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Field>
+
+          <Field>
             <FieldLabel>{t("peopleTitle")}</FieldLabel>
             <FieldDescription>
-              {includeDependencies
+              {resource?.type === "agent"
                 ? t("peopleAgentDescription")
-                : t("peopleDescription")}
+                : resource?.type === "knowledge_base"
+                  ? t("peopleKnowledgeDescription")
+                  : t("peopleDescription")}
             </FieldDescription>
             <div className="relative">
               <SearchIcon
@@ -230,7 +346,9 @@ export function ResourceAccessDialog({
               ) : (
                 <div className="flex flex-col gap-1 p-2">
                   {filteredMembers.map((member) => {
-                    const checked = sharedUserIds.includes(member.id);
+                    const checked = shares.some(
+                      ({ userId }) => userId === member.id,
+                    );
                     const checkboxId = `share-member-${member.id}`;
                     return (
                       <Field
@@ -242,10 +360,19 @@ export function ResourceAccessDialog({
                           id={checkboxId}
                           checked={checked}
                           onCheckedChange={(nextChecked) =>
-                            setSharedUserIds((current) =>
+                            setShares((current) =>
                               nextChecked === true
-                                ? [...new Set([...current, member.id])]
-                                : current.filter((id) => id !== member.id),
+                                ? current.some(
+                                    ({ userId }) => userId === member.id,
+                                  )
+                                  ? current
+                                  : [
+                                      ...current,
+                                      { userId: member.id, access: "view" },
+                                    ]
+                                : current.filter(
+                                    ({ userId }) => userId !== member.id,
+                                  ),
                             )
                           }
                         />

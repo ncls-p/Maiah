@@ -7,14 +7,149 @@ import {
   documentEmbeddings,
   documents,
 } from "@/server/infrastructure/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, sql } from "drizzle-orm";
 import { assertCanManageKnowledgeBase } from "./use-cases.create-knowledge-base-input";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
+
+export interface ListDocumentsOptions {
+  limit: number;
+  offset: number;
+  status?: "ready" | "processing" | "failed";
+  search?: string;
+}
+
+export interface DocumentStatusCounts {
+  ready: number;
+  processing: number;
+  failed: number;
+}
+
+type DocumentListItem = typeof documents.$inferSelect;
+
+function withDerivedProgress(
+  document: DocumentListItem,
+  chunkCount: number,
+  embeddingCount: number,
+) {
+  return {
+    ...document,
+    processingProgress:
+      document.status === "ready" || document.status === "failed"
+        ? 100
+        : chunkCount > 0 && embeddingCount > 0
+          ? Math.max(
+              document.processingProgress,
+              20 + Math.round((embeddingCount / chunkCount) * 75),
+            )
+          : document.processingProgress,
+  };
+}
+
+async function listDocumentsPage(
+  knowledgeBaseId: string,
+  workspaceId: string,
+  options: ListDocumentsOptions,
+) {
+  const baseWhere = and(
+    eq(documents.knowledgeBaseId, knowledgeBaseId),
+    eq(documents.workspaceId, workspaceId),
+  );
+  const search = options.search?.trim();
+  const filteredWhere = and(
+    baseWhere,
+    options.status ? eq(documents.status, options.status) : undefined,
+    search
+      ? ilike(documents.title, `%${search.replace(/[\\%_]/g, "\\$&")}%`)
+      : undefined,
+  );
+
+  const [pageRows, [totalRow], [countsRow]] = await Promise.all([
+    db
+      .select()
+      .from(documents)
+      .where(filteredWhere)
+      .orderBy(sql`${documents.createdAt} DESC`)
+      .limit(options.limit)
+      .offset(options.offset),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(documents)
+      .where(filteredWhere)
+      .limit(1),
+    db
+      .select({
+        ready: sql<number>`count(*) filter (where ${documents.status} = 'ready')::int`,
+        processing: sql<number>`count(*) filter (where ${documents.status} = 'processing')::int`,
+        failed: sql<number>`count(*) filter (where ${documents.status} not in ('ready', 'processing'))::int`,
+      })
+      .from(documents)
+      .where(baseWhere)
+      .limit(1),
+  ]);
+
+  const documentIds = pageRows.map(({ id }) => id);
+  const progressRows =
+    documentIds.length > 0
+      ? await db
+          .select({
+            documentId: documentChunks.documentId,
+            chunkCount: sql<number>`count(distinct ${documentChunks.id})::int`,
+            embeddingCount: sql<number>`count(distinct ${documentEmbeddings.id})::int`,
+          })
+          .from(documentChunks)
+          .leftJoin(
+            documentEmbeddings,
+            eq(documentEmbeddings.chunkId, documentChunks.id),
+          )
+          .where(inArray(documentChunks.documentId, documentIds))
+          .groupBy(documentChunks.documentId)
+      : [];
+  const progressByDocumentId = new Map(
+    progressRows.map(({ documentId, chunkCount, embeddingCount }) => [
+      documentId,
+      { chunkCount, embeddingCount },
+    ]),
+  );
+
+  const counts: DocumentStatusCounts = {
+    ready: countsRow?.ready ?? 0,
+    processing: countsRow?.processing ?? 0,
+    failed: countsRow?.failed ?? 0,
+  };
+  return {
+    documents: pageRows.map((document) => {
+      const progress = progressByDocumentId.get(document.id);
+      return withDerivedProgress(
+        document,
+        progress?.chunkCount ?? 0,
+        progress?.embeddingCount ?? 0,
+      );
+    }),
+    total: totalRow?.total ?? 0,
+    counts,
+  };
+}
 
 export async function listDocuments(
   knowledgeBaseId: string,
   workspaceId: string,
   userId?: string,
+): Promise<ReturnType<typeof withDerivedProgress>[]>;
+export async function listDocuments(
+  knowledgeBaseId: string,
+  workspaceId: string,
+  userId: string | undefined,
+  options: ListDocumentsOptions,
+): Promise<{
+  documents: ReturnType<typeof withDerivedProgress>[];
+  total: number;
+  counts: DocumentStatusCounts;
+}>;
+export async function listDocuments(
+  knowledgeBaseId: string,
+  workspaceId: string,
+  userId?: string,
+  options?: ListDocumentsOptions,
 ) {
   const knowledgeBase = await getKnowledgeBase(
     knowledgeBaseId,
@@ -22,6 +157,9 @@ export async function listDocuments(
     userId,
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
+  if (options) {
+    return listDocumentsPage(knowledgeBaseId, workspaceId, options);
+  }
   return db
     .select({
       document: documents,
@@ -43,18 +181,9 @@ export async function listDocuments(
     .groupBy(documents.id)
     .orderBy(sql`${documents.createdAt} DESC`)
     .then((rows) =>
-      rows.map(({ document, chunkCount, embeddingCount }) => ({
-        ...document,
-        processingProgress:
-          document.status === "ready" || document.status === "failed"
-            ? 100
-            : chunkCount > 0 && embeddingCount > 0
-              ? Math.max(
-                  document.processingProgress,
-                  20 + Math.round((embeddingCount / chunkCount) * 75),
-                )
-              : document.processingProgress,
-      })),
+      rows.map(({ document, chunkCount, embeddingCount }) =>
+        withDerivedProgress(document, chunkCount, embeddingCount),
+      ),
     );
 }
 

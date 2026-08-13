@@ -201,6 +201,16 @@ export const SYSTEM_ROLES: Omit<Role, "createdAt" | "updatedAt">[] = [
   {
     id: "",
     scopeType: "workspace",
+    name: "workspace.knowledge_editor",
+    displayName: "Knowledge Editor",
+    description:
+      "Can view and update one explicitly shared knowledge collection.",
+    permissions: ["knowledgeBases.viewAllowed", "knowledgeBases.manage"],
+    isSystem: true,
+  },
+  {
+    id: "",
+    scopeType: "workspace",
     name: "workspace.agent_user",
     displayName: "Assistant User",
     description:

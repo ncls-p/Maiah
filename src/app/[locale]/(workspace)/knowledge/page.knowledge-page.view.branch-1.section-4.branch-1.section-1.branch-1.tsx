@@ -21,10 +21,10 @@ export function KnowledgeDocumentTableBranch1({
   const {
     documentCounts,
     documentFilter,
+    documentFilteredCount,
     documentPageCount,
     documentSearch,
-    documents,
-    filteredDocuments,
+    documentTotalCount,
     openDocumentPreview,
     retryDocument,
     safeDocumentPage,
@@ -90,8 +90,8 @@ export function KnowledgeDocumentTableBranch1({
             aria-live="polite"
           >
             {t("documentListCount", {
-              visible: filteredDocuments.length,
-              total: documents.length,
+              visible: documentFilteredCount,
+              total: documentTotalCount,
             })}
           </p>
         </div>

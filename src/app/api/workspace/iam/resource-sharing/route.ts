@@ -14,10 +14,24 @@ const querySchema = z.object({
   resourceType: resourceTypeSchema,
   resourceId: z.uuid(),
 });
-const mutationSchema = querySchema.extend({
-  userIds: z.array(z.uuid()).max(100),
-  includeDependencies: z.boolean().optional(),
+const shareSchema = z.object({
+  userId: z.uuid(),
+  access: z.enum(["view", "edit"]),
 });
+const mutationSchema = querySchema
+  .extend({
+    userIds: z.array(z.uuid()).max(100).optional(),
+    shares: z.array(shareSchema).max(100).optional(),
+    includeDependencies: z.boolean().optional(),
+  })
+  .refine((data) => data.userIds !== undefined || data.shares !== undefined, {
+    message: "Either userIds or shares must be provided",
+    path: ["userIds"],
+  })
+  .refine(
+    (data) => (data.userIds?.length ?? 0) + (data.shares?.length ?? 0) <= 100,
+    { message: "Too many share entries", path: ["shares"] },
+  );
 
 function expectedIamError(error: unknown) {
   if (error instanceof IamOperationError) {

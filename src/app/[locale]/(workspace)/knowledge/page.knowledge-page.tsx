@@ -43,7 +43,14 @@ export function useKnowledgePageController() {
     "all" | "ready" | "processing" | "failed"
   >("all");
   const [documentSearch, setDocumentSearch] = useState("");
+  const [debouncedDocumentSearch, setDebouncedDocumentSearch] = useState("");
   const [documentPage, setDocumentPage] = useState(1);
+  const [documentFilteredCount, setDocumentFilteredCount] = useState(0);
+  const [documentCounts, setDocumentCounts] = useState({
+    ready: 0,
+    processing: 0,
+    failed: 0,
+  });
   const [baseForm, setBaseForm] = useState({
     name: "",
     description: "",
@@ -110,17 +117,55 @@ export function useKnowledgePageController() {
     }));
   }, [workspaceId]);
 
+  const documentsPerPage = 12;
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedDocumentSearch(documentSearch.trim());
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [documentSearch]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination when switching collections
+    setDocumentPage(1);
+  }, [selectedId]);
+
   const loadDocuments = useCallback(async () => {
     if (!workspaceId || !selectedId) {
       setDocuments([]);
+      setDocumentFilteredCount(0);
+      setDocumentCounts({ ready: 0, processing: 0, failed: 0 });
       return;
     }
+    const params = new URLSearchParams({
+      workspaceId,
+      limit: String(documentsPerPage),
+      offset: String((documentPage - 1) * documentsPerPage),
+    });
+    if (documentFilter !== "all") params.set("status", documentFilter);
+    if (debouncedDocumentSearch) params.set("q", debouncedDocumentSearch);
     const res = await fetch(
-      `/api/workspace/knowledge-bases/${selectedId}/documents?workspaceId=${workspaceId}`,
+      `/api/workspace/knowledge-bases/${selectedId}/documents?${params}`,
     );
     if (!res.ok) throw new Error("Failed to load documents");
-    setDocuments(await res.json());
-  }, [workspaceId, selectedId]);
+    const data = (await res.json()) as {
+      documents: DocumentRow[];
+      total: number;
+      counts: { ready: number; processing: number; failed: number };
+    };
+    setDocuments(data.documents);
+    setDocumentFilteredCount(data.total);
+    setDocumentCounts(data.counts);
+    const pageCount = Math.max(1, Math.ceil(data.total / documentsPerPage));
+    if (documentPage > pageCount) setDocumentPage(pageCount);
+  }, [
+    workspaceId,
+    selectedId,
+    documentPage,
+    documentFilter,
+    debouncedDocumentSearch,
+  ]);
 
   const {
     docForm,
@@ -269,15 +314,14 @@ export function useKnowledgePageController() {
 
   useEffect(() => {
     if (!workspaceId || !selectedId) return;
-    const hasProcessing = documents.some((doc) => doc.status === "processing");
-    if (!hasProcessing) return;
+    if (documentCounts.processing === 0) return;
 
     const interval = window.setInterval(() => {
       void loadDocuments().catch(() => {});
     }, 3_000);
 
     return () => window.clearInterval(interval);
-  }, [documents, loadDocuments, selectedId, workspaceId]);
+  }, [documentCounts.processing, loadDocuments, selectedId, workspaceId]);
 
   async function createBase() {
     const hasBaseName = Boolean(baseForm.name.trim());
@@ -415,32 +459,14 @@ export function useKnowledgePageController() {
     return <PageLoading label={tCommon("loading")} />;
   }
 
-  const documentCounts = documents.reduce(
-    (counts, document) => {
-      if (document.status === "ready") counts.ready += 1;
-      else if (document.status === "processing") counts.processing += 1;
-      else counts.failed += 1;
-      return counts;
-    },
-    { ready: 0, processing: 0, failed: 0 },
-  );
-  const normalizedDocumentSearch = documentSearch.trim().toLocaleLowerCase();
-  const filteredDocuments = documents.filter(
-    (document) =>
-      (documentFilter === "all" || document.status === documentFilter) &&
-      (!normalizedDocumentSearch ||
-        document.title.toLocaleLowerCase().includes(normalizedDocumentSearch)),
-  );
-  const documentsPerPage = 12;
+  const documentTotalCount =
+    documentCounts.ready + documentCounts.processing + documentCounts.failed;
   const documentPageCount = Math.max(
     1,
-    Math.ceil(filteredDocuments.length / documentsPerPage),
+    Math.ceil(documentFilteredCount / documentsPerPage),
   );
   const safeDocumentPage = Math.min(documentPage, documentPageCount);
-  const visibleDocuments = filteredDocuments.slice(
-    (safeDocumentPage - 1) * documentsPerPage,
-    safeDocumentPage * documentsPerPage,
-  );
+  const visibleDocuments = documents;
 
   if (loadError) return <KnowledgeLoadError />;
 
@@ -466,15 +492,16 @@ export function useKnowledgePageController() {
     docForm,
     documentCounts,
     documentFilter,
+    documentFilteredCount,
     documentInputRef,
     documentPageCount,
     documentSearch,
+    documentTotalCount,
     documents,
     documentsError,
     dragActive,
     editBaseForm,
     editingBase,
-    filteredDocuments,
     folderInputRef,
     handleFileDrop,
     ingestDocument,

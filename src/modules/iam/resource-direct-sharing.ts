@@ -9,6 +9,7 @@ import {
   users,
 } from "@/server/infrastructure/db/schema";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
+import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { listResourceShareTargets } from "./resource-sharing";
 import {
@@ -23,6 +24,15 @@ const SHARE_PERMISSIONS = {
 } as const satisfies Partial<Record<AccessResourceType, string>>;
 
 export type DirectlyShareableResourceType = keyof typeof SHARE_PERMISSIONS;
+
+export type DirectShareAccess = "view" | "edit";
+
+export interface DirectShare {
+  userId: string;
+  access: DirectShareAccess;
+}
+
+const KNOWLEDGE_EDITOR_ROLE_NAME = "workspace.knowledge_editor";
 
 async function sharingContext(input: {
   actorUserId: string;
@@ -57,13 +67,68 @@ async function sharingContext(input: {
   return { organization, resource };
 }
 
-async function sharingRoles(resourceType: DirectlyShareableResourceType) {
+async function ensureKnowledgeEditorRole(actorUserId: string) {
+  const definition = SYSTEM_ROLES.find(
+    ({ name }) => name === KNOWLEDGE_EDITOR_ROLE_NAME,
+  );
+  if (!definition) {
+    throw new IamOperationError(
+      "The project roles required for sharing are missing",
+      409,
+    );
+  }
+  // Existing databases were seeded before this role existed, so create it on
+  // first use (same onConflictDoNothing + reselect pattern as seedSystemRoles).
+  const [insertedRole] = await db
+    .insert(roles)
+    .values({
+      scopeType: definition.scopeType,
+      ownerResourceType: null,
+      ownerResourceId: null,
+      name: definition.name,
+      displayName: definition.displayName,
+      description: definition.description,
+      permissionsJson: definition.permissions,
+      isSystem: true,
+      createdById: actorUserId,
+    })
+    .onConflictDoNothing()
+    .returning();
+  if (insertedRole) return insertedRole;
+  const [existingRole] = await db
+    .select()
+    .from(roles)
+    .where(
+      and(
+        eq(roles.scopeType, definition.scopeType),
+        eq(roles.name, definition.name),
+        eq(roles.isSystem, true),
+      ),
+    )
+    .limit(1);
+  if (!existingRole) {
+    throw new IamOperationError(
+      "The project roles required for sharing are missing",
+      409,
+    );
+  }
+  return existingRole;
+}
+
+async function sharingRoles(
+  resourceType: DirectlyShareableResourceType,
+  actorUserId: string,
+) {
   const roleRows = await db
     .select()
     .from(roles)
     .where(
       and(
-        inArray(roles.name, ["workspace.agent_user", "workspace.viewer"]),
+        inArray(roles.name, [
+          "workspace.agent_user",
+          "workspace.viewer",
+          KNOWLEDGE_EDITOR_ROLE_NAME,
+        ]),
         eq(roles.scopeType, "workspace"),
         eq(roles.isSystem, true),
       ),
@@ -79,7 +144,29 @@ async function sharingRoles(resourceType: DirectlyShareableResourceType) {
       409,
     );
   }
-  return { rootRole, viewerRole };
+  const editorRole =
+    resourceType === "knowledge_base"
+      ? (roleRows.find(({ name }) => name === KNOWLEDGE_EDITOR_ROLE_NAME) ??
+        (await ensureKnowledgeEditorRole(actorUserId)))
+      : undefined;
+  return { rootRole, viewerRole, editorRole };
+}
+
+function directShareRoleIds(
+  resourceType: DirectlyShareableResourceType,
+  sharing: {
+    rootRole: { id: string };
+    viewerRole: { id: string };
+    editorRole?: { id: string };
+  },
+) {
+  if (resourceType === "agent") {
+    return [sharing.rootRole.id, sharing.viewerRole.id];
+  }
+  if (resourceType === "knowledge_base" && sharing.editorRole) {
+    return [sharing.rootRole.id, sharing.editorRole.id];
+  }
+  return [sharing.rootRole.id];
 }
 
 export async function getDirectResourceSharing(input: {
@@ -88,9 +175,9 @@ export async function getDirectResourceSharing(input: {
   resourceType: DirectlyShareableResourceType;
   resourceId: string;
 }) {
-  const [{ organization }, { rootRole, viewerRole }] = await Promise.all([
+  const [{ organization }, sharing] = await Promise.all([
     sharingContext(input),
-    sharingRoles(input.resourceType),
+    sharingRoles(input.resourceType, input.actorUserId),
   ]);
   const [members, bindings] = await Promise.all([
     db
@@ -105,7 +192,10 @@ export async function getDirectResourceSharing(input: {
       )
       .orderBy(asc(users.name), asc(users.email)),
     db
-      .select({ userId: roleBindings.principalId })
+      .select({
+        userId: roleBindings.principalId,
+        roleId: roleBindings.roleId,
+      })
       .from(roleBindings)
       .where(
         and(
@@ -114,13 +204,22 @@ export async function getDirectResourceSharing(input: {
           eq(roleBindings.principalType, "user"),
           inArray(
             roleBindings.roleId,
-            input.resourceType === "agent"
-              ? [rootRole.id, viewerRole.id]
-              : [rootRole.id],
+            directShareRoleIds(input.resourceType, sharing),
           ),
         ),
       ),
   ]);
+  const accessByUserId = new Map<string, DirectShareAccess>();
+  for (const binding of bindings) {
+    const access: DirectShareAccess =
+      sharing.editorRole && binding.roleId === sharing.editorRole.id
+        ? "edit"
+        : "view";
+    // A user bound to both roles keeps the strongest access.
+    if (access === "edit" || !accessByUserId.has(binding.userId)) {
+      accessByUserId.set(binding.userId, access);
+    }
+  }
   const candidateMembers = members.filter(({ id }) => id !== input.actorUserId);
   const projectAccess = await Promise.all(
     candidateMembers.map(({ id }) =>
@@ -134,7 +233,11 @@ export async function getDirectResourceSharing(input: {
   );
   return {
     members: candidateMembers.filter((_, index) => projectAccess[index]),
-    sharedUserIds: bindings.map(({ userId }) => userId),
+    sharedUserIds: [...accessByUserId.keys()],
+    shares: [...accessByUserId.entries()].map(([userId, access]) => ({
+      userId,
+      access,
+    })),
   };
 }
 
@@ -143,16 +246,33 @@ export async function replaceDirectResourceSharing(input: {
   workspaceId: string;
   resourceType: DirectlyShareableResourceType;
   resourceId: string;
-  userIds: string[];
+  userIds?: string[];
+  shares?: DirectShare[];
   includeDependencies?: boolean;
 }) {
-  const userIds = [...new Set(input.userIds)].filter(
-    (userId) => userId !== input.actorUserId,
-  );
-  const [{ organization }, { rootRole, viewerRole }] = await Promise.all([
+  const requestedShares: DirectShare[] =
+    input.shares ??
+    (input.userIds ?? []).map((userId) => ({ userId, access: "view" }));
+  const sharesByUserId = new Map<string, DirectShareAccess>();
+  for (const { userId, access } of requestedShares) {
+    if (userId === input.actorUserId) continue;
+    // "edit" only applies to knowledge bases; other resources keep view-only shares.
+    const effectiveAccess =
+      input.resourceType === "knowledge_base" ? access : "view";
+    if (effectiveAccess === "edit" || !sharesByUserId.has(userId)) {
+      sharesByUserId.set(userId, effectiveAccess);
+    }
+  }
+  const shares = [...sharesByUserId.entries()].map(([userId, access]) => ({
+    userId,
+    access,
+  }));
+  const userIds = shares.map(({ userId }) => userId);
+  const [{ organization }, sharing] = await Promise.all([
     sharingContext(input),
-    sharingRoles(input.resourceType),
+    sharingRoles(input.resourceType, input.actorUserId),
   ]);
+  const { rootRole, viewerRole, editorRole } = sharing;
   if (userIds.length > 0) {
     const validMembers = await db
       .select({ userId: organizationMembers.userId })
@@ -198,9 +318,7 @@ export async function replaceDirectResourceSharing(input: {
         eq(roleBindings.principalType, "user"),
         inArray(
           roleBindings.roleId,
-          input.resourceType === "agent"
-            ? [rootRole.id, viewerRole.id]
-            : [rootRole.id],
+          directShareRoleIds(input.resourceType, sharing),
         ),
       ),
     );
@@ -215,9 +333,7 @@ export async function replaceDirectResourceSharing(input: {
             eq(roleBindings.resourceId, input.resourceId),
             inArray(
               roleBindings.roleId,
-              input.resourceType === "agent"
-                ? [rootRole.id, viewerRole.id]
-                : [rootRole.id],
+              directShareRoleIds(input.resourceType, sharing),
             ),
           ),
           input.resourceType === "agent"
@@ -236,18 +352,20 @@ export async function replaceDirectResourceSharing(input: {
     includeDependencies:
       input.resourceType === "agent" && input.includeDependencies !== false,
   });
-  if (userIds.length > 0) {
+  if (shares.length > 0) {
     await db
       .insert(roleBindings)
       .values(
-        userIds.flatMap((userId) =>
+        shares.flatMap(({ userId, access }) =>
           targets.map((target) => ({
             principalType: "user" as const,
             principalId: userId,
             roleId:
               target.type === input.resourceType &&
               target.id === input.resourceId
-                ? rootRole.id
+                ? access === "edit" && editorRole
+                  ? editorRole.id
+                  : rootRole.id
                 : viewerRole.id,
             resourceType: target.type,
             resourceId: target.id,
@@ -286,6 +404,18 @@ export async function replaceDirectResourceSharing(input: {
     outcome: "success",
     metadata: {
       userIds,
+      ...(input.resourceType === "knowledge_base"
+        ? {
+            access: {
+              view: shares
+                .filter(({ access }) => access === "view")
+                .map(({ userId }) => userId),
+              edit: shares
+                .filter(({ access }) => access === "edit")
+                .map(({ userId }) => userId),
+            },
+          }
+        : {}),
       includeDependencies:
         input.resourceType === "agent" && input.includeDependencies !== false,
       sharedResourceCount: targets.length,
