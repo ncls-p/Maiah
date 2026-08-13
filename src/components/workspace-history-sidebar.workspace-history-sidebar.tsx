@@ -147,7 +147,13 @@ export function WorkspaceHistoryMobileTrigger({
             <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[min(100vw-1rem,20rem)] p-0">
+        <SheetContent
+          side="left"
+          className="w-[min(100vw-1rem,20rem)] p-0"
+          // Autofocusing the first button opens its tooltip on mobile; let
+          // users focus the drawer content themselves.
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>{t("conversations")}</SheetTitle>
           </SheetHeader>
