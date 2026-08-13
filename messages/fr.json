@@ -1625,7 +1625,14 @@
     "shareAria": "Gérer l’accès à {name}",
     "previewAria": "Prévisualiser {name}",
     "deleteAria": "Supprimer {name}",
-    "retryAria": "Relancer {name}"
+    "retryAria": "Relancer {name}",
+    "reindexAria": "Réindexer {name}",
+    "reindexAll": "Tout réindexer",
+    "reindexAllConfirmTitle": "Réindexer tous les documents ?",
+    "reindexAllConfirmDescription": "Tous les documents de {name} seront remis en file et réindexés avec la configuration de modèles actuelle. Cela peut prendre du temps pour les grandes collections.",
+    "reindexQueued": "{count, plural, =0 {Aucun document à réindexer} one {# document remis en file pour réindexation} other {# documents remis en file pour réindexation}}",
+    "reindexFailed": "Échec de la réindexation",
+    "toastDocumentReindexed": "Document remis en file pour réindexation"
   },
   "tools": {
     "title": "Outils & intégrations",

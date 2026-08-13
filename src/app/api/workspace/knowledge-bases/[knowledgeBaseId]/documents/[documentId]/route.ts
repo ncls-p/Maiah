@@ -7,12 +7,16 @@ import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   archiveDocument,
   readKnowledgeDocument,
+  reindexDocument,
   retryDocumentIngestion,
 } from "@/modules/knowledge/use-cases";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
+const patchBodySchema = z.object({
+  action: z.enum(["retry", "reindex"]).optional(),
+});
 
 export async function GET(
   req: NextRequest,
@@ -118,6 +122,11 @@ export async function PATCH(
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
+      const body = await req.json().catch(() => ({}));
+      const parsedBody = patchBodySchema.safeParse(body ?? {});
+      if (!parsedBody.success) {
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
       const { knowledgeBaseId, documentId } = await params;
       const forbidden = await requireResourcePermissionAsync(
         session.user.id,
@@ -131,7 +140,11 @@ export async function PATCH(
         session,
         parsed.data.workspaceId,
       );
-      await retryDocumentIngestion({
+      const requeue =
+        parsedBody.data.action === "reindex"
+          ? reindexDocument
+          : retryDocumentIngestion;
+      await requeue({
         documentId,
         knowledgeBaseId,
         workspaceId: parsed.data.workspaceId,

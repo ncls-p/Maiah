@@ -13,6 +13,8 @@ export {
 export {
   archiveDocument,
   listDocuments,
+  reindexDocument,
+  reindexKnowledgeBaseDocuments,
   retryDocumentIngestion,
   scoreContent,
 } from "./use-cases.list-documents";

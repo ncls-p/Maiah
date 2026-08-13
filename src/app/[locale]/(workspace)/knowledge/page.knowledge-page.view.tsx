@@ -54,11 +54,16 @@ export function KnowledgePageView({
     deleting,
     loading,
     pendingDelete,
+    reindexAllDocuments,
+    reindexAllOpen,
+    reindexingAll,
     resourceAccessOptions,
     saveBaseAccess,
+    selectedBase,
     setAccessBase,
     setBaseForm,
     setPendingDelete,
+    setReindexAllOpen,
     setShowCreateDialog,
     showCreateDialog,
     t,
@@ -233,6 +238,37 @@ export function KnowledgePageView({
               }}
             >
               {deleting ? t("deleting") : tCommon("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={reindexAllOpen}
+        onOpenChange={(open) => {
+          if (!open && !reindexingAll) setReindexAllOpen(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("reindexAllConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("reindexAllConfirmDescription", {
+                name: selectedBase?.name ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reindexingAll}>
+              {tCommon("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={reindexingAll}
+              onClick={(event) => {
+                event.preventDefault();
+                void reindexAllDocuments();
+              }}
+            >
+              {t("reindexAll")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

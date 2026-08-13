@@ -8,6 +8,7 @@ import {
   EyeIcon,
   FileTextIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -26,6 +27,7 @@ export function KnowledgeDocumentTableBranch1({
     documentSearch,
     documentTotalCount,
     openDocumentPreview,
+    reindexDocument,
     retryDocument,
     safeDocumentPage,
     selectedBaseCanEdit,
@@ -171,7 +173,15 @@ export function KnowledgeDocumentTableBranch1({
                   </span>
                 </div>
                 {doc.errorMessage ? (
-                  <p className="mt-1 truncate text-[0.65rem] text-destructive">
+                  <p
+                    className={cn(
+                      "mt-1 truncate text-[0.65rem]",
+                      doc.status === "ready"
+                        ? "text-warning"
+                        : "text-destructive",
+                    )}
+                    title={doc.errorMessage}
+                  >
                     {doc.errorMessage}
                   </p>
                 ) : null}
@@ -207,6 +217,20 @@ export function KnowledgeDocumentTableBranch1({
                     onClick={() => void retryDocument(doc.id)}
                   >
                     <RefreshCwIcon aria-hidden="true" />
+                  </Button>
+                ) : null}
+                {selectedBaseCanEdit ? (
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    disabled={doc.status === "processing"}
+                    aria-label={t("reindexAria", {
+                      name: doc.title,
+                    })}
+                    onClick={() => void reindexDocument(doc.id)}
+                  >
+                    <RotateCcwIcon aria-hidden="true" />
                   </Button>
                 ) : null}
                 {selectedBaseCanEdit ? (

@@ -1626,7 +1626,14 @@
     "shareAria": "Manage access to {name}",
     "previewAria": "Preview {name}",
     "deleteAria": "Delete {name}",
-    "retryAria": "Retry {name}"
+    "retryAria": "Retry {name}",
+    "reindexAria": "Reindex {name}",
+    "reindexAll": "Reindex all",
+    "reindexAllConfirmTitle": "Reindex every document?",
+    "reindexAllConfirmDescription": "All documents in {name} will be queued and re-embedded with the current model configuration. This can take a while for large collections.",
+    "reindexQueued": "{count, plural, =0 {No documents to reindex} one {# document queued for reindexing} other {# documents queued for reindexing}}",
+    "reindexFailed": "Failed to reindex",
+    "toastDocumentReindexed": "Document queued for reindexing"
   },
   "tools": {
     "title": "Tools & integrations",

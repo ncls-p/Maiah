@@ -32,6 +32,8 @@ export function useKnowledgeDocumentActions(input: {
     | null
   >(null);
   const [deleting, setDeleting] = useState(false);
+  const [reindexAllOpen, setReindexAllOpen] = useState(false);
+  const [reindexingAll, setReindexingAll] = useState(false);
   async function deleteBase(baseId: string) {
     if (!workspaceId) return;
     const base = bases.find((item) => item.id === baseId);
@@ -92,6 +94,49 @@ export function useKnowledgeDocumentActions(input: {
     }
   }
 
+  async function reindexDocument(documentId: string) {
+    if (!selectedBaseCanEdit || !workspaceId || !selectedId) return;
+    try {
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reindex" }),
+        },
+      );
+      if (!res.ok) return toast.error(t("reindexFailed"));
+      await loadDocuments();
+      toast.success(t("toastDocumentReindexed"));
+    } catch {
+      toast.error(t("reindexFailed"));
+    }
+  }
+
+  async function reindexAllDocuments() {
+    if (!selectedBaseCanEdit || !workspaceId || !selectedId) return;
+    setReindexingAll(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/reindex`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId }),
+        },
+      );
+      if (!res.ok) return toast.error(t("reindexFailed"));
+      const data = (await res.json()) as { queued: number };
+      setReindexAllOpen(false);
+      await loadDocuments();
+      toast.success(t("reindexQueued", { count: data.queued }));
+    } catch {
+      toast.error(t("reindexFailed"));
+    } finally {
+      setReindexingAll(false);
+    }
+  }
+
   async function openDocumentPreview(documentId: string) {
     if (!workspaceId || !selectedId) return;
     setPreviewDocument(null);
@@ -123,6 +168,11 @@ export function useKnowledgeDocumentActions(input: {
     deleteBase,
     deleteDocument,
     retryDocument,
+    reindexDocument,
+    reindexAllDocuments,
+    reindexAllOpen,
+    setReindexAllOpen,
+    reindexingAll,
     openDocumentPreview,
   };
 }

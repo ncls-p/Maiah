@@ -1,13 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   archiveDocument,
   archiveKnowledgeBase,
   ingestTextDocument,
   listDocuments,
+  reindexDocument,
+  reindexKnowledgeBaseDocuments,
   scoreContent,
   updateKnowledgeBase,
 } from "@/modules/knowledge/use-cases";
+import { recoverDocumentIngestionJob } from "@/modules/knowledge/queue";
 import {
   dbModule,
   fakeDoc,
@@ -257,6 +260,106 @@ describe("archiveDocument", () => {
     });
 
     expect(dbModule.db.delete).toHaveBeenCalled();
+  });
+});
+
+// ─── reindexDocument ──────────────────────────────────────────────────
+
+describe("reindexDocument", () => {
+  it("requeues a ready document and clears its error message", async () => {
+    const readyDoc = {
+      ...fakeDoc,
+      status: "ready",
+      processingProgress: 100,
+      errorMessage: "Embedding model unavailable; indexed for keyword search only",
+    };
+    dbModule._c.limit
+      .mockResolvedValueOnce([fakeKb])
+      .mockResolvedValueOnce([readyDoc]);
+
+    await reindexDocument({
+      documentId: "doc-1",
+      knowledgeBaseId: "kb-1",
+      workspaceId: "ws-1",
+      userId: "user-1",
+    });
+
+    expect(dbModule.db.update).toHaveBeenCalled();
+    expect(dbModule._c.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "processing",
+        processingStage: "queued",
+        errorMessage: null,
+      }),
+    );
+    expect(recoverDocumentIngestionJob).toHaveBeenCalledWith({
+      documentId: "doc-1",
+      workspaceId: "ws-1",
+      knowledgeBaseId: "kb-1",
+    });
+  });
+
+  it("rejects documents that are already processing", async () => {
+    dbModule._c.limit
+      .mockResolvedValueOnce([fakeKb])
+      .mockResolvedValueOnce([{ ...fakeDoc, status: "processing" }]);
+
+    await expect(
+      reindexDocument({
+        documentId: "doc-1",
+        knowledgeBaseId: "kb-1",
+        workspaceId: "ws-1",
+        userId: "user-1",
+      }),
+    ).rejects.toThrow("Document is already processing");
+    expect(recoverDocumentIngestionJob).not.toHaveBeenCalled();
+  });
+
+  it("throws when the document does not exist", async () => {
+    dbModule._c.limit
+      .mockResolvedValueOnce([fakeKb])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      reindexDocument({
+        documentId: "doc-404",
+        knowledgeBaseId: "kb-1",
+        workspaceId: "ws-1",
+        userId: "user-1",
+      }),
+    ).rejects.toThrow("Document not found");
+  });
+});
+
+// ─── reindexKnowledgeBaseDocuments ────────────────────────────────────
+
+describe("reindexKnowledgeBaseDocuments", () => {
+  it("requeues every non-processing document and reports the count", async () => {
+    const readyDoc = { ...fakeDoc, status: "ready" };
+    const failedDoc = { ...fakeDoc, id: "doc-2", status: "failed" };
+    dbModule._c.limit.mockResolvedValueOnce([fakeKb]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c) // knowledge base lookup → chains to limit
+      .mockResolvedValueOnce([readyDoc, failedDoc]); // non-processing documents
+
+    const result = await reindexKnowledgeBaseDocuments({
+      knowledgeBaseId: "kb-1",
+      workspaceId: "ws-1",
+      userId: "user-1",
+    });
+
+    expect(result).toEqual({ queued: 2 });
+    expect(vi.mocked(recoverDocumentIngestionJob)).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws when knowledge base not found", async () => {
+    await expect(
+      reindexKnowledgeBaseDocuments({
+        knowledgeBaseId: "nonexistent",
+        workspaceId: "ws-1",
+        userId: "user-1",
+      }),
+    ).rejects.toThrow("Knowledge base not found");
   });
 });
 

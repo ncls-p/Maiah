@@ -7,6 +7,7 @@ import {
   type RagConfig,
 } from "@/modules/knowledge/rag-config-schema";
 import { isCloudTempleBaseUrl } from "@/modules/provider/cloud-temple-catalog";
+import { discoverWorkspaceModels } from "@/modules/provider/use-cases.update-model";
 import { db } from "@/server/infrastructure/db";
 import {
   aiModels,
@@ -76,6 +77,62 @@ async function toRuntimeConfig(
   };
 }
 
+const LIVE_CATALOG_TTL_MS = 60_000;
+const LIVE_CATALOG_TIMEOUT_MS = 10_000;
+
+type LiveCatalog = Array<{ providerId: string; modelIds: Set<string> }>;
+
+const liveCatalogCache = new Map<
+  string,
+  { expiresAt: number; catalog: Promise<LiveCatalog> }
+>();
+
+async function loadLiveCatalog(workspaceId: string): Promise<LiveCatalog> {
+  // discoverWorkspaceModels already isolates each provider failure; the
+  // race guards against a provider whose /models endpoint never answers.
+  const discovery = discoverWorkspaceModels(workspaceId).then((results) =>
+    results.map((result) => ({
+      providerId: result.provider.id,
+      modelIds: new Set(result.models.map((model) => model.modelId)),
+    })),
+  );
+  const timeout = new Promise<LiveCatalog>((resolve) => {
+    setTimeout(() => resolve([]), LIVE_CATALOG_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([discovery, timeout]);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns the ids of enabled providers whose live model catalog contains the
+ * requested model. Results are cached per workspace for a short TTL because
+ * this runs at ingestion time and on every knowledge search.
+ */
+async function liveProviderIdsWithModel(workspaceId: string, modelId: string) {
+  const now = Date.now();
+  let entry = liveCatalogCache.get(workspaceId);
+  if (!entry || entry.expiresAt <= now) {
+    entry = {
+      expiresAt: now + LIVE_CATALOG_TTL_MS,
+      catalog: loadLiveCatalog(workspaceId),
+    };
+    liveCatalogCache.set(workspaceId, entry);
+  }
+  const catalog = await entry.catalog;
+  return new Set(
+    catalog
+      .filter((provider) => provider.modelIds.has(modelId))
+      .map((provider) => provider.providerId),
+  );
+}
+
+export function clearLiveCatalogCacheForTesting() {
+  liveCatalogCache.clear();
+}
+
 async function resolveProvider(input: {
   workspaceId: string;
   providerId: string | null;
@@ -99,20 +156,44 @@ async function resolveProvider(input: {
         isNull(aiProviders.archivedAt),
       ),
     );
-  const selected = input.providerId
-    ? rows.find((row) => row.provider.id === input.providerId)
-    : (rows.find(
-        (row) =>
-          row.model !== null && isCloudTempleBaseUrl(row.provider.baseUrl),
-      ) ??
-      rows.find((row) => row.model !== null) ??
-      rows.find((row) => isCloudTempleBaseUrl(row.provider.baseUrl)));
+
+  const buildSelection = async (row: (typeof rows)[number]) => ({
+    provider: row.provider,
+    adapter: getAdapter(row.provider.kind),
+    runtime: await toRuntimeConfig(row.provider),
+  });
+
+  if (input.providerId) {
+    const selected = rows.find((row) => row.provider.id === input.providerId);
+    return selected ? buildSelection(selected) : null;
+  }
+
+  // First choice: a provider with the model registered and enabled in the
+  // ai_models table (cheap, already loaded), Cloud Temple preferred.
+  const registered =
+    rows.find(
+      (row) => row.model !== null && isCloudTempleBaseUrl(row.provider.baseUrl),
+    ) ?? rows.find((row) => row.model !== null);
+  if (registered) return buildSelection(registered);
+  if (rows.length === 0) return null;
+
+  // The RAG settings UI lists live-discovered models, so admins can select a
+  // model that was never registered in ai_models. Fall back to the providers'
+  // live catalogs before giving up, keeping the Cloud Temple preference.
+  const liveProviderIds = await liveProviderIdsWithModel(
+    input.workspaceId,
+    input.modelId,
+  );
+  const selected =
+    rows.find(
+      (row) =>
+        liveProviderIds.has(row.provider.id) &&
+        isCloudTempleBaseUrl(row.provider.baseUrl),
+    ) ??
+    rows.find((row) => liveProviderIds.has(row.provider.id)) ??
+    rows.find((row) => isCloudTempleBaseUrl(row.provider.baseUrl));
   if (!selected) return null;
-  return {
-    provider: selected.provider,
-    adapter: getAdapter(selected.provider.kind),
-    runtime: await toRuntimeConfig(selected.provider),
-  };
+  return buildSelection(selected);
 }
 
 export async function resolveEmbeddingModel(

@@ -1807,7 +1807,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     permissions: ["knowledgeBases.manage", "roles.manage"],
     pathParameters: ["knowledgeBaseId", "documentId"],
     queryParameters: ["workspaceId"],
-    bodyKind: "none",
+    bodyKind: "json",
     responseKind: "json",
   },
   {
@@ -1824,6 +1824,20 @@ export const OPENAPI_ROUTE_MANIFEST = [
     queryParameters: ["workspaceId"],
     bodyKind: "none",
     responseKind: "stream",
+  },
+  {
+    path: "/api/workspace/knowledge-bases/{knowledgeBaseId}/reindex",
+    method: "POST",
+    operationId: "postWorkspaceKnowledgeBasesKnowledgeBaseIdReindex",
+    summary:
+      "Create or execute workspace · knowledge-bases · {knowledgeBaseId} · reindex",
+    tag: "knowledge-bases",
+    auth: ["session", "apiKey"],
+    permissions: ["knowledgeBases.manage", "roles.manage"],
+    pathParameters: ["knowledgeBaseId"],
+    queryParameters: [],
+    bodyKind: "json",
+    responseKind: "json",
   },
   {
     path: "/api/workspace/knowledge-bases/{knowledgeBaseId}/search",

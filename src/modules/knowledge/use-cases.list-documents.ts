@@ -7,7 +7,7 @@ import {
   documentEmbeddings,
   documents,
 } from "@/server/infrastructure/db/schema";
-import { and, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, ne, sql } from "drizzle-orm";
 import { assertCanManageKnowledgeBase } from "./use-cases.create-knowledge-base-input";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
@@ -290,6 +290,117 @@ export async function retryDocumentIngestion(input: {
       error: error instanceof Error ? error.message : String(error),
     });
   }
+}
+
+async function requeueDocumentForIngestion(
+  document: typeof documents.$inferSelect,
+) {
+  await db
+    .update(documents)
+    .set({
+      status: "processing",
+      processingProgress: Math.min(document.processingProgress, 20),
+      processingStage: "queued",
+      errorMessage: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(documents.id, document.id));
+
+  try {
+    await recoverDocumentIngestionJob({
+      documentId: document.id,
+      workspaceId: document.workspaceId,
+      knowledgeBaseId: document.knowledgeBaseId,
+    });
+  } catch (error) {
+    logger.warn("Document reindex will be recovered by the worker", {
+      documentId: document.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+export async function reindexDocument(input: {
+  documentId: string;
+  knowledgeBaseId: string;
+  workspaceId: string;
+  userId: string;
+  canManageGlobal?: boolean;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+  );
+  if (!knowledgeBase) throw new Error("Knowledge base not found");
+  await assertCanManageKnowledgeBase(
+    knowledgeBase,
+    input.userId,
+    input.canManageGlobal,
+  );
+
+  const [document] = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.id, input.documentId),
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+      ),
+    )
+    .limit(1);
+  if (!document) throw new Error("Document not found");
+  if (document.status === "processing") {
+    throw new Error("Document is already processing");
+  }
+
+  await requeueDocumentForIngestion(document);
+}
+
+export async function reindexKnowledgeBaseDocuments(input: {
+  knowledgeBaseId: string;
+  workspaceId: string;
+  userId: string;
+  canManageGlobal?: boolean;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+  );
+  if (!knowledgeBase) throw new Error("Knowledge base not found");
+  await assertCanManageKnowledgeBase(
+    knowledgeBase,
+    input.userId,
+    input.canManageGlobal,
+  );
+
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+        ne(documents.status, "processing"),
+      ),
+    );
+
+  for (const document of rows) {
+    await requeueDocumentForIngestion(document);
+  }
+
+  await audit.emit({
+    workspaceId: input.workspaceId,
+    actorPrincipalType: "user",
+    actorPrincipalId: input.userId,
+    action: "knowledgeBase.reindexed",
+    resourceType: "knowledge_base",
+    resourceId: input.knowledgeBaseId,
+    outcome: "success",
+    metadata: { queued: rows.length },
+  });
+
+  return { queued: rows.length };
 }
 
 export function scoreContent(content: string, query: string) {

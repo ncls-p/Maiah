@@ -21,6 +21,7 @@ vi.mock("@/lib/crypto", () => ({
 
 vi.mock("@/modules/knowledge/queue", () => ({
   enqueueDocumentIngestion: vi.fn().mockResolvedValue({ queued: true }),
+  recoverDocumentIngestionJob: vi.fn().mockResolvedValue("enqueued"),
 }));
 
 type Chain = {

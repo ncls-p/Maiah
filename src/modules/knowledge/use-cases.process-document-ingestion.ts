@@ -1,4 +1,5 @@
 import { decryptValue } from "@/lib/crypto";
+import { logger } from "@/lib/logger";
 import { resolveEmbeddingModel } from "@/modules/knowledge/rag-config";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -91,13 +92,32 @@ export async function processDocumentIngestion(documentId: string) {
     }
   }
 
+  const embeddingSkipped = chunks.length > 0 && !embeddingSelection;
+  if (embeddingSkipped) {
+    logger.warn(
+      "Embedding model unavailable; document indexed for keyword search only",
+      {
+        documentId,
+        knowledgeBaseId: document.knowledgeBaseId,
+        workspaceId: document.workspaceId,
+        embeddingModelId: config.embedding.modelId,
+        embeddingProviderId: config.embedding.providerId,
+      },
+    );
+  }
+
   await db
     .update(documents)
     .set({
       status: chunks.length > 0 ? "ready" : "failed",
       processingProgress: 100,
       processingStage: chunks.length > 0 ? "ready" : "failed",
-      errorMessage: chunks.length > 0 ? null : "No chunks generated",
+      errorMessage:
+        chunks.length > 0
+          ? embeddingSkipped
+            ? "Embedding model unavailable; indexed for keyword search only"
+            : null
+          : "No chunks generated",
       updatedAt: new Date(),
     })
     .where(eq(documents.id, documentId));
