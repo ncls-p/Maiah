@@ -176,7 +176,7 @@ test("shows the live checklist, approves an agentic run, and opens debug details
     expect(composerBox).not.toBeNull();
     expect(dockBox!.y + dockBox!.height).toBeLessThanOrEqual(composerBox!.y);
 
-    await todoDock.getByRole("button", { name: "Show task details" }).click();
+    // The dock starts expanded, so task details are already visible.
     await expect(todoDock.getByText("2/2 tasks completed")).toBeVisible();
     await expect(
       page.getByRole("heading", {
