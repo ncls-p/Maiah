@@ -34,11 +34,18 @@ markdown
 markdownify
 html2text
 
-# Images and media helpers
+# Images, plots, and CPU machine learning
 pillow
 imageio
 imageio-ffmpeg
 qrcode
+opencv-python-headless
+scikit-image
+kaleido
+
+# CPU PyTorch wheels (CUDA builds are too large for the sandbox image)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 
 # Web, scraping, parsing
 requests

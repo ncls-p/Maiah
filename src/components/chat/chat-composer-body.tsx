@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2Icon, PaperclipIcon, SendIcon, SquareIcon } from "lucide-react";
+import { PaperclipIcon, SendIcon, SquareIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLayoutEffect, useRef } from "react";
 
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsTextClamped } from "@/hooks/use-is-text-clamped";
 import { cn } from "@/lib/utils";
+import { ChatComposerMediaControls } from "./chat-composer-media-controls";
+import { useComposerDictation } from "./chat-composer.use-dictation";
 import {
   AttachmentPreview,
   ChatComposerProps,
@@ -90,8 +92,12 @@ function resizeComposerTextarea(element: HTMLTextAreaElement) {
 
 export function ChatComposerBody(props: ChatComposerBodyProps) {
   const t = useTranslations("chat.composer");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { listening, toggleDictation } = useComposerDictation({
+    enabled: props.canChat && !props.needsSetup,
+    value: props.input,
+    onTranscript: props.onInputChange,
+  });
 
   useLayoutEffect(() => {
     const element = textareaRef.current;
@@ -137,13 +143,6 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
       ) : null}
       <div className="composer-box overflow-hidden rounded-3xl">
         <div className="px-3 pt-2 sm:px-4 sm:pt-2.5">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            multiple
-            onChange={props.onFileChange}
-          />
           <Textarea
             ref={textareaRef}
             aria-label={t("messageLabel")}
@@ -171,23 +170,16 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           />
         </div>
         <div className="grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 border-t border-border/55 px-2 py-1 sm:gap-x-2 sm:px-3">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="col-start-1 row-start-1 size-10 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label={t("uploadFiles")}
-            disabled={
-              props.uploadingAttachment || props.sending || props.needsSetup
-            }
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {props.uploadingAttachment ? (
-              <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <PaperclipIcon className="size-4" aria-hidden="true" />
-            )}
-          </Button>
+          <div className="col-start-1 row-start-1">
+            <ChatComposerMediaControls
+              disabled={!props.canChat || props.needsSetup}
+              uploading={props.uploadingAttachment}
+              sending={props.sending}
+              listening={listening}
+              onFileChange={props.onFileChange}
+              onToggleDictation={toggleDictation}
+            />
+          </div>
           <div
             data-slot="chat-composer-primary-controls"
             className="col-start-2 row-start-1 min-w-0"

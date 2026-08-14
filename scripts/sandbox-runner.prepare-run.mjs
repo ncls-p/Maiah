@@ -2,10 +2,34 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { chmod, chown, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  chown,
+  mkdir,
+  mkdtemp,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
-import { appendLimited, appendTailLimited, chownRecursive, commandForLanguage, executionCommandForLanguage, nodePrelude, writeInputFiles } from "./sandbox-runner.read-json-body.mjs";
-import { canSwitchUser, maxStderrBytes, maxStdoutBytes, maxStdoutFileBytes, runRoot, sandboxGid, sandboxUid, textExtensions } from "./sandbox-runner.socket-path.mjs";
+import {
+  appendLimited,
+  appendTailLimited,
+  chownRecursive,
+  commandForLanguage,
+  executionCommandForLanguage,
+  nodePrelude,
+  writeInputFiles,
+} from "./sandbox-runner.read-json-body.mjs";
+import {
+  canSwitchUser,
+  maxStderrBytes,
+  maxStdoutBytes,
+  maxStdoutFileBytes,
+  runRoot,
+  sandboxGid,
+  sandboxUid,
+  textExtensions,
+} from "./sandbox-runner.socket-path.mjs";
 
 export async function prepareRun(input) {
   await mkdir(runRoot, { recursive: true });
@@ -25,11 +49,23 @@ export async function prepareRun(input) {
     }
   }
   const { entryFile } = commandForLanguage(input.language);
-  const source = input.language === "node" ? `${nodePrelude()}\n${input.code}\n` : input.language === "bash" ? `set -euo pipefail\n${input.code}\n` : `${input.code}\n`;
+  const source =
+    input.language === "node"
+      ? `${nodePrelude()}\n${input.code}\n`
+      : input.language === "bash"
+        ? `set -euo pipefail\n${input.code}\n`
+        : `${input.code}\n`;
   await writeFile(path.join(workdir, entryFile), source, "utf8");
   if (input.language === "node") {
-    await writeFile(path.join(workdir, "package.json"), '{"type":"module"}\n', "utf8");
-    await symlink("/opt/sandbox/node_modules", path.join(workdir, "node_modules")).catch(() => undefined);
+    await writeFile(
+      path.join(workdir, "package.json"),
+      '{"type":"module"}\n',
+      "utf8",
+    );
+    await symlink(
+      "/opt/sandbox/node_modules",
+      path.join(workdir, "node_modules"),
+    ).catch(() => undefined);
   }
   await mkdir(path.join(workdir, "tmp"), { recursive: true });
   await mkdir(path.join(workdir, "home"), { recursive: true });
@@ -61,6 +97,7 @@ export function executeProcess(input, workdir) {
         PATH: "/usr/local/bin:/usr/bin:/bin",
         HOME: path.join(workdir, "home"),
         TMPDIR: path.join(workdir, "tmp"),
+        MPLBACKEND: "Agg",
         MPLCONFIGDIR: path.join(workdir, "tmp", "matplotlib"),
         XDG_CACHE_HOME: path.join(workdir, "tmp", "cache"),
         PYTHONDONTWRITEBYTECODE: "1",
@@ -80,10 +117,16 @@ export function executeProcess(input, workdir) {
         NODE_USE_ENV_PROXY: "1",
       },
     });
-    const stdinStream = input.stdinFile ? createReadStream(path.join(workdir, ".stdin")) : null;
+    const stdinStream = input.stdinFile
+      ? createReadStream(path.join(workdir, ".stdin"))
+      : null;
     stdoutFile.on("error", (error) => {
       stdoutFileFailed = true;
-      stderr = appendTailLimited(stderr, Buffer.from(`Failed to capture complete stdout: ${error.message}`), maxStderrBytes);
+      stderr = appendTailLimited(
+        stderr,
+        Buffer.from(`Failed to capture complete stdout: ${error.message}`),
+        maxStderrBytes,
+      );
     });
 
     child.stdout.on("data", (chunk) => {
@@ -94,7 +137,8 @@ export function executeProcess(input, workdir) {
         stdoutFileTruncated = true;
         return;
       }
-      const captured = chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
+      const captured =
+        chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
       stdoutFileBytes += captured.byteLength;
       stdoutFile.write(captured);
       if (captured.byteLength < chunk.byteLength) {
@@ -111,11 +155,19 @@ export function executeProcess(input, workdir) {
         stdinStream?.destroy();
         return;
       }
-      stderr = appendTailLimited(stderr, Buffer.from(error.message), maxStderrBytes);
+      stderr = appendTailLimited(
+        stderr,
+        Buffer.from(error.message),
+        maxStderrBytes,
+      );
     });
     if (stdinStream) {
       stdinStream.on("error", (error) => {
-        stderr = appendTailLimited(stderr, Buffer.from(error.message), maxStderrBytes);
+        stderr = appendTailLimited(
+          stderr,
+          Buffer.from(error.message),
+          maxStderrBytes,
+        );
         child.stdin.destroy(error);
       });
       stdinStream.pipe(child.stdin);
@@ -157,7 +209,11 @@ export function executeProcess(input, workdir) {
     }
 
     child.on("error", (error) => {
-      stderr = appendTailLimited(stderr, Buffer.from(error.message), maxStderrBytes);
+      stderr = appendTailLimited(
+        stderr,
+        Buffer.from(error.message),
+        maxStderrBytes,
+      );
       finish(127, null);
     });
     child.on("close", finish);
@@ -173,6 +229,9 @@ export function mimeTypeForPath(filePath) {
   if (extension === ".png") return "image/png";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
   if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  if (extension === ".bmp") return "image/bmp";
+  if (extension === ".tif" || extension === ".tiff") return "image/tiff";
   if (extension === ".pdf") return "application/pdf";
   if (textExtensions.has(extension)) return "text/plain";
   return "application/octet-stream";
@@ -181,5 +240,7 @@ export function mimeTypeForPath(filePath) {
 export function isProbablyText(bytes, filePath) {
   if (textExtensions.has(path.extname(filePath).toLowerCase())) return true;
   if (bytes.includes(0)) return false;
-  return bytes.subarray(0, Math.min(bytes.length, 4096)).every((byte) => byte === 9 || byte === 10 || byte === 13 || byte >= 32);
+  return bytes
+    .subarray(0, Math.min(bytes.length, 4096))
+    .every((byte) => byte === 9 || byte === 10 || byte === 13 || byte >= 32);
 }

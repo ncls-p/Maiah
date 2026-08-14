@@ -109,6 +109,9 @@ export function FilePreviewDialog({
   const isPdf =
     mimeType?.split(";", 1)[0]?.toLowerCase() === "application/pdf" ||
     fileName.toLowerCase().endsWith(".pdf");
+  const isImage =
+    mimeType?.split(";", 1)[0]?.toLowerCase().startsWith("image/") ||
+    /\.(png|jpe?g|gif|webp|svg|bmp|tiff?)$/i.test(fileName);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85dvh] max-w-3xl flex-col overflow-hidden">
@@ -125,7 +128,7 @@ export function FilePreviewDialog({
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 px-2 text-xs"
-              disabled={isPdf || !previewText}
+              disabled={isPdf || isImage || !previewText}
               onClick={() => {
                 if (!previewText) return;
                 void navigator.clipboard.writeText(previewText);
@@ -154,6 +157,15 @@ export function FilePreviewDialog({
               title={fileName}
               className="h-[min(68dvh,52rem)] w-full rounded-xl border bg-background"
             />
+          ) : isImage ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt={fileName}
+                className="mx-auto max-h-[min(68dvh,52rem)] w-full rounded-xl object-contain"
+              />
+            </>
           ) : loadingPreview ? (
             <Skeleton className="h-64 w-full rounded-xl" />
           ) : previewError ? (

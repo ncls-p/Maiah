@@ -63,6 +63,22 @@ describe("chat composer layout", () => {
     expect(selectorSource).toContain("SelectedAssistantTrigger");
   });
 
+  it("offers camera capture and dictation from the composer", () => {
+    const mediaSource = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/chat/chat-composer-media-controls.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(mediaSource).toContain("accept={COMPOSER_FILE_ACCEPT}");
+    expect(mediaSource).toContain('accept="image/*"');
+    expect(mediaSource).toContain('capture="environment"');
+    expect(mediaSource).toContain('t("takePhoto")');
+    expect(mediaSource).toContain('t("dictation")');
+  });
+
   it("keeps the capability catalog bounded and independently scrollable", () => {
     const menuSource = fs.readFileSync(
       path.join(

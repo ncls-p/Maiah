@@ -26,6 +26,10 @@ export function SandboxOutputFileCard({
   const isPdf =
     file.mimeType === "application/pdf" ||
     file.path.toLowerCase().endsWith(".pdf");
+  const isImage =
+    file.mimeType.startsWith("image/") ||
+    /\.(png|jpe?g|gif|webp|svg|bmp|tiff?)$/i.test(file.path);
+  const canPreview = Boolean(file.downloadUrl) && (isPdf || isImage);
 
   return (
     <>
@@ -39,7 +43,7 @@ export function SandboxOutputFileCard({
           </div>
           {file.downloadUrl ? (
             <div className="flex items-center gap-1">
-              {isPdf ? (
+              {canPreview ? (
                 <Button
                   type="button"
                   variant={OUTLINE_VARIANT}
@@ -75,20 +79,35 @@ export function SandboxOutputFileCard({
             {omittedLabel}
           </p>
         ) : null}
-        {file.textPreview ? (
+        {file.downloadUrl && isImage ? (
+          <button
+            type="button"
+            className="mt-2 block w-full overflow-hidden rounded-lg bg-muted/30 text-left"
+            onClick={() => setPreviewOpen(true)}
+            aria-label={t("view")}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={file.downloadUrl}
+              alt={file.path}
+              className="max-h-72 w-full object-contain"
+            />
+          </button>
+        ) : null}
+        {file.textPreview && !isImage ? (
           <pre className="mt-2 max-h-32 overflow-auto rounded-md bg-muted/30 p-2 whitespace-pre-wrap font-mono text-[10px] leading-4 text-muted-foreground">
             {file.textPreview}
             {file.truncated ? "\n…" : ""}
           </pre>
         ) : null}
       </div>
-      {file.downloadUrl && isPdf ? (
+      {file.downloadUrl && canPreview ? (
         <FilePreviewDialog
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           fileName={file.path}
           url={file.downloadUrl}
-          mimeType="application/pdf"
+          mimeType={file.mimeType}
           subtitle={`${file.mimeType} · ${formatBytes(file.size)}`}
           previewText={null}
           previewError={null}

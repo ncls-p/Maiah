@@ -9,8 +9,11 @@ import {
   WORKSPACE_HISTORY_REFRESH_EVENT,
 } from "@/lib/workspace-history-events";
 import {
+  readStreamingConversationIds,
   readUnreadConversationIds,
+  reduceConversationLiveStatus,
   updateUnreadConversationIds,
+  writeStreamingConversationIds,
   writeUnreadConversationIds,
 } from "@/lib/workspace-history-unread";
 import type { ChatConversation } from "@/components/chat/chat-types";
@@ -73,6 +76,48 @@ describe("workspace history live events", () => {
     ).toBe(0);
   });
 
+  it("persists streaming conversation ids per workspace", () => {
+    vi.stubGlobal("window", { localStorage: memoryStorage() });
+    writeStreamingConversationIds("workspace-1", new Set(["conversation-1"]));
+    expect([...readStreamingConversationIds("workspace-1")]).toEqual([
+      "conversation-1",
+    ]);
+    expect(readStreamingConversationIds("workspace-2").size).toBe(0);
+  });
+
+  it("keeps streaming when the user leaves a generating chat", () => {
+    expect(reduceConversationLiveStatus(null, "a", true)).toEqual({
+      trackedStreamingId: "a",
+      startId: "a",
+      stopId: null,
+      markStopUnread: false,
+    });
+    expect(reduceConversationLiveStatus("a", "a", true)).toEqual({
+      trackedStreamingId: "a",
+      startId: null,
+      stopId: null,
+      markStopUnread: false,
+    });
+    expect(reduceConversationLiveStatus("a", "b", false)).toEqual({
+      trackedStreamingId: "a",
+      startId: null,
+      stopId: null,
+      markStopUnread: false,
+    });
+    expect(reduceConversationLiveStatus("a", "b", true)).toEqual({
+      trackedStreamingId: "b",
+      startId: "b",
+      stopId: "a",
+      markStopUnread: false,
+    });
+    expect(reduceConversationLiveStatus("a", "a", false)).toEqual({
+      trackedStreamingId: null,
+      startId: null,
+      stopId: "a",
+      markStopUnread: true,
+    });
+  });
+
   it("notifies same-tab listeners when a reply starts streaming", () => {
     const listeners = new Map<string, Set<EventListener>>();
     vi.stubGlobal("window", {
@@ -108,9 +153,21 @@ describe("workspace history live events", () => {
     });
 
     notifyConversationStreaming("conversation-1", true);
+    notifyConversationStreaming("conversation-1", false, { markUnread: false });
     notifyConversationRead("conversation-1");
 
-    expect(onStreaming).toHaveBeenCalledWith("conversation-1", true);
+    expect(onStreaming).toHaveBeenNthCalledWith(
+      1,
+      "conversation-1",
+      true,
+      false,
+    );
+    expect(onStreaming).toHaveBeenNthCalledWith(
+      2,
+      "conversation-1",
+      false,
+      false,
+    );
     expect(onUnread).toHaveBeenCalledWith("conversation-1", false);
     expect(onRefresh).toHaveBeenCalled();
     expect(CONVERSATION_STREAMING_EVENT).toBe("maiah:conversation-streaming");

@@ -8,12 +8,18 @@ const STORAGE_KEY = "maiah:workspace-history-revision";
 
 type HistoryChannelMessage =
   | { type: "refresh" }
-  | { type: "streaming"; conversationId: string; streaming: boolean }
+  | {
+      type: "streaming";
+      conversationId: string;
+      streaming: boolean;
+      markUnread: boolean;
+    }
   | { type: "unread"; conversationId: string; unread: boolean };
 
 type ConversationStreamingDetail = {
   conversationId: string;
   streaming: boolean;
+  markUnread: boolean;
 };
 
 type ConversationUnreadDetail = {
@@ -56,9 +62,14 @@ export function notifyWorkspaceHistoryChanged() {
 export function notifyConversationStreaming(
   conversationId: string | null | undefined,
   streaming: boolean,
+  options?: { markUnread?: boolean },
 ) {
   if (typeof window === "undefined" || !conversationId) return;
-  const detail: ConversationStreamingDetail = { conversationId, streaming };
+  const detail: ConversationStreamingDetail = {
+    conversationId,
+    streaming,
+    markUnread: streaming ? false : options?.markUnread !== false,
+  };
   window.dispatchEvent(
     new CustomEvent<ConversationStreamingDetail>(CONVERSATION_STREAMING_EVENT, {
       detail,
@@ -86,7 +97,11 @@ export function notifyConversationRead(
 
 export function subscribeWorkspaceHistoryLive(handlers: {
   onRefresh: () => void;
-  onStreaming?: (conversationId: string, streaming: boolean) => void;
+  onStreaming?: (
+    conversationId: string,
+    streaming: boolean,
+    markUnread: boolean,
+  ) => void;
   onUnread?: (conversationId: string, unread: boolean) => void;
 }) {
   if (typeof window === "undefined") return () => undefined;
@@ -95,7 +110,11 @@ export function subscribeWorkspaceHistoryLive(handlers: {
   const onStreamingEvent = (event: Event) => {
     const detail = (event as CustomEvent<ConversationStreamingDetail>).detail;
     if (!detail?.conversationId) return;
-    handlers.onStreaming?.(detail.conversationId, detail.streaming);
+    handlers.onStreaming?.(
+      detail.conversationId,
+      detail.streaming,
+      detail.markUnread,
+    );
   };
   const onUnreadEvent = (event: Event) => {
     const detail = (event as CustomEvent<ConversationUnreadDetail>).detail;
@@ -126,7 +145,11 @@ export function subscribeWorkspaceHistoryLive(handlers: {
           return;
         }
         if (message?.type === "streaming") {
-          handlers.onStreaming?.(message.conversationId, message.streaming);
+          handlers.onStreaming?.(
+            message.conversationId,
+            message.streaming,
+            message.markUnread,
+          );
           return;
         }
         if (message?.type === "unread") {

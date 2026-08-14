@@ -4,6 +4,8 @@ import { BotIcon, UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { ChatMarkdown } from "@/components/chat/chat-markdown";
+
 type Payload = {
   conversation: {
     title: string;
@@ -87,14 +89,11 @@ export function PublicConversation({
                     ? payload.conversation.agentName
                     : t("user")}
                 </p>
-                {message.parts.map((part, index) => (
-                  <p
-                    key={index}
-                    className="whitespace-pre-wrap break-words text-sm leading-7"
-                  >
-                    {part.content}
-                  </p>
-                ))}
+                {message.parts
+                  .filter((part) => part.content.trim().length > 0)
+                  .map((part, index) => (
+                    <ChatMarkdown key={index}>{part.content}</ChatMarkdown>
+                  ))}
               </div>
             </article>
           ))}
