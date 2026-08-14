@@ -33,4 +33,21 @@ describe("agent runtime policy", () => {
     expect(deadline.signal.aborted).toBe(true);
     expect(deadline.timeoutSignal.aborted).toBe(false);
   });
+
+  it("treats a 0 timeout as unlimited and never arms a timer", async () => {
+    const deadline = createRuntimeDeadline(0);
+    expect(deadline.signal.aborted).toBe(false);
+    expect(deadline.timeoutSignal.aborted).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(deadline.timeoutSignal.aborted).toBe(false);
+  });
+
+  it("keeps an unlimited deadline when a parent signal is provided", () => {
+    const controller = new AbortController();
+    const deadline = createRuntimeDeadline(0, controller.signal);
+    expect(deadline.timeoutSignal.aborted).toBe(false);
+    controller.abort("cancelled");
+    expect(deadline.signal.aborted).toBe(true);
+    expect(deadline.timeoutSignal.aborted).toBe(false);
+  });
 });

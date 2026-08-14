@@ -62,6 +62,17 @@
     );
   }
 
+  /* Top-only fade: a bottom fade sits on the newest streamed tokens and
+     makes follow-scroll corrections look like the last line is trembling. */
+  .scroll-fade-t {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      black 1.5rem,
+      black 100%
+    );
+  }
+
   .scroll-fade-x {
     mask-image: linear-gradient(
       to right,

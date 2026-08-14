@@ -1093,7 +1093,7 @@
       "maxChildStepsDescription": "The final step is always reserved for the answer after tool use.",
       "maxTotalTokens": "Total token budget",
       "timeoutMs": "Maximum duration (ms)",
-      "timeoutMsDescription": "The complete run shares this deadline. Time is reserved after each delegation so the parent can still explain or synthesize the result.",
+      "timeoutMsDescription": "The complete run shares this deadline. Use 0 for no deadline — the run continues until it finishes or is stopped. When a deadline is set, time is reserved after each delegation so the parent can still explain or synthesize the result.",
       "resultMaxChars": "Specialist result size",
       "save": "Save orchestration",
       "saved": "Orchestration saved",

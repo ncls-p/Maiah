@@ -1,12 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ChatAgentSelector } from "@/components/chat/chat-agent-selector";
 import { ChatComposerImpact } from "@/components/chat/chat-composer-impact";
 import { ChatReasoningSlider } from "@/components/chat/chat-reasoning-slider";
 import { useWorkspace } from "@/hooks/use-workspace";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 import { ChatLayoutProps } from "./chat-layout.chat-composer-controls-context";
 import { ChatLayoutView } from "./chat-layout.chat-layout.view";
 
@@ -14,6 +15,13 @@ export function useChatLayoutController(props: ChatLayoutProps) {
   const t = useTranslations("chat");
   const { workspaceId } = useWorkspace();
   const [setupOpen, setSetupOpen] = useState(false);
+  const { onReasoningEffortChange } = props;
+  const handleReasoningEffortChange = useCallback(
+    (value: ReasoningPreset) => {
+      onReasoningEffortChange?.(value);
+    },
+    [onReasoningEffortChange],
+  );
   const hasImpact = Boolean(
     props.conversationImpact &&
     (props.conversationImpact.cost !== null ||
@@ -41,7 +49,7 @@ export function useChatLayoutController(props: ChatLayoutProps) {
             presets={props.reasoningPresets}
             value={props.reasoningEffort}
             disabled={props.isLoading || props.needsSetup}
-            onChange={(value) => props.onReasoningEffortChange?.(value)}
+            onChange={handleReasoningEffortChange}
           />
         ) : null}
       </div>

@@ -244,9 +244,9 @@ export function OrchestrationTab({
               (policy) => setConfig({ ...config, policy }),
               "timeoutMs",
               t("timeoutMs"),
-              5000,
+              0,
               300000,
-              5000,
+              1000,
               t("timeoutMsDescription"),
             )}
             {policyField(

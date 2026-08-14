@@ -4,6 +4,7 @@ import {
   cancelsChatStreamFollow,
   getChatStreamFollowKey,
   isChatViewportAtEnd,
+  pinChatViewportToEnd,
   shouldUseMessageScrollAnchor,
 } from "@/components/chat/chat-scroll";
 import type { ChatMessage } from "@/components/chat/chat-types";
@@ -57,6 +58,14 @@ describe("stream following", () => {
         clientHeight: 1000,
       }),
     ).toBe(false);
+  });
+
+  it("pins the viewport to the last pixel without a delayed frame", () => {
+    const viewport = { scrollTop: 900, scrollHeight: 2000, clientHeight: 1000 };
+    pinChatViewportToEnd(viewport);
+    expect(viewport.scrollTop).toBe(1000);
+    pinChatViewportToEnd(viewport);
+    expect(viewport.scrollTop).toBe(1000);
   });
 
   it("changes the follow key for streamed reasoning and tool input", () => {

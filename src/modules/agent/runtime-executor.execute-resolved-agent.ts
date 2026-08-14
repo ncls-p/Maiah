@@ -7,6 +7,7 @@ import {
 import {
   createRuntimeDeadline,
   resolveAgentRuntimeLimits,
+  timeoutMsUntil,
 } from "@/modules/agent/runtime-policy";
 import { resolveProviderForVersion } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
@@ -160,7 +161,7 @@ export async function executeResolvedAgent(
       .filter(Boolean)
       .join("\n\n");
     const deadline = createRuntimeDeadline(
-      Math.max(1, input.deadlineAt.getTime() - Date.now()),
+      timeoutMsUntil(input.deadlineAt),
       input.budget.controller.signal,
     );
     let completedStepInputTokens = 0;

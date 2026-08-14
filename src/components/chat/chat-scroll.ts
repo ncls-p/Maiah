@@ -12,6 +12,16 @@ export function isChatViewportAtEnd(
   );
 }
 
+/** Pin before paint. A rAF-delayed scroll lets one frame render off-end,
+ *  which reads as a tremble while following a stream. */
+export function pinChatViewportToEnd(
+  viewport: Pick<HTMLElement, "scrollTop" | "scrollHeight" | "clientHeight">,
+) {
+  const top = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+  if (Math.abs(viewport.scrollTop - top) < 0.5) return;
+  viewport.scrollTop = top;
+}
+
 export function getChatStreamFollowKey(messages: ChatMessage[]) {
   const lastMessage = messages[messages.length - 1];
   if (!lastMessage) return "empty";

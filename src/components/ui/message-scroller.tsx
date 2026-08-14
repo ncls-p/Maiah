@@ -45,7 +45,7 @@ function MessageScrollerViewport({
         // overflow-anchor:none — the scroller pins to bottom itself; native
         // scroll anchoring fights it one frame behind and makes streaming
         // content (especially growing code blocks) tremble.
-        "size-full min-h-0 min-w-0 scroll-fade-b scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain [overflow-anchor:none] data-autoscrolling:scrollbar-ghost",
+        "size-full min-h-0 min-w-0 scroll-fade-t scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain [overflow-anchor:none] data-autoscrolling:scrollbar-ghost",
         className,
       )}
       {...props}
@@ -75,7 +75,7 @@ function MessageScrollerItem({
     <MessageScrollerPrimitive.Item
       data-slot="message-scroller-item"
       scrollAnchor={scrollAnchor}
-      className={cn("min-w-0 shrink-0", className)}
+      className={cn("min-w-0 shrink-0 [overflow-anchor:none]", className)}
       {...props}
     />
   );

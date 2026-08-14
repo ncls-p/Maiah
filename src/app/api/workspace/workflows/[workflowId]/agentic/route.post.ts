@@ -217,7 +217,7 @@ export async function POST(
         builder.provider.runtimeConfig,
         builder.provider.modelId,
       );
-      const deadline = createRuntimeDeadline(120_000, req.signal);
+      const deadline = createRuntimeDeadline(0, req.signal);
       const result = streamText({
         model,
         system,

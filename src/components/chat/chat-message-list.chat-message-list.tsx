@@ -7,6 +7,7 @@ import {
   cancelsChatStreamFollow,
   getChatStreamFollowKey,
   isChatViewportAtEnd,
+  pinChatViewportToEnd,
 } from "@/components/chat/chat-scroll";
 import { type ChatMessage } from "@/components/chat/chat-types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -169,13 +170,7 @@ export function useChatMessageListController({
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || !shouldFollowStreamRef.current) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      if (!shouldFollowStreamRef.current) return;
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
+    pinChatViewportToEnd(viewport);
   }, [scrollFollowKey, pendingApprovals.length]);
 
   useLayoutEffect(() => {
@@ -184,22 +179,13 @@ export function useChatMessageListController({
     const content = contentRef.current;
     if (!viewport || !content || typeof ResizeObserver === "undefined") return;
 
-    let frame: number | null = null;
     const observer = new ResizeObserver(() => {
       if (!shouldFollowStreamRef.current) return;
-      if (frame !== null) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        frame = null;
-        if (!shouldFollowStreamRef.current) return;
-        viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
-      });
+      pinChatViewportToEnd(viewport);
     });
     observer.observe(content);
 
-    return () => {
-      observer.disconnect();
-      if (frame !== null) window.cancelAnimationFrame(frame);
-    };
+    return () => observer.disconnect();
   }, [hasTranscript]);
 
   if (loading) {

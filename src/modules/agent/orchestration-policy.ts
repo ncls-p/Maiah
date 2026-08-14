@@ -16,7 +16,7 @@ export const orchestrationPolicyDefaults = {
   maxParallel: 2,
   maxChildSteps: 8,
   maxTotalTokens: 50_000,
-  timeoutMs: 120_000,
+  timeoutMs: 0,
   resultMaxChars: 8_000,
 } as const;
 
@@ -38,7 +38,7 @@ export const orchestrationPolicySchema = z.object({
     .int()
     .min(1_000)
     .max(orchestrationPolicyCaps.maxTotalTokens),
-  timeoutMs: z.number().int().min(5_000).max(orchestrationPolicyCaps.timeoutMs),
+  timeoutMs: z.number().int().min(0).max(orchestrationPolicyCaps.timeoutMs),
   resultMaxChars: z
     .number()
     .int()

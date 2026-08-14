@@ -1093,7 +1093,7 @@
       "maxChildStepsDescription": "La dernière étape est toujours réservée à la réponse finale après les outils.",
       "maxTotalTokens": "Budget total de jetons",
       "timeoutMs": "Durée maximale (ms)",
-      "timeoutMsDescription": "Toute l’exécution partage cette échéance. Du temps est réservé après chaque délégation pour que le parent puisse encore expliquer ou synthétiser le résultat.",
+      "timeoutMsDescription": "Toute l’exécution partage cette échéance. 0 désactive l’échéance : l’exécution continue jusqu’à la fin ou jusqu’à l’arrêt. Quand une échéance est définie, du temps est réservé après chaque délégation pour que le parent puisse encore expliquer ou synthétiser le résultat.",
       "resultMaxChars": "Taille d’un résultat enfant",
       "save": "Enregistrer l’orchestration",
       "saved": "Orchestration enregistrée",

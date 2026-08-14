@@ -2,6 +2,7 @@ import {
   createAgentRun,
   readAgentRunPayload,
 } from "@/modules/agent/run-use-cases";
+import { runtimeDeadlineAt } from "@/modules/agent/runtime-policy";
 import { authorization } from "@/server/domain/services/authorization";
 import { executeResolvedAgent } from "./runtime-executor.execute-resolved-agent";
 import {
@@ -31,7 +32,7 @@ export async function executeAgent(
   }
   const resolved = await resolveAgent(input);
   const policy = executionPolicy(resolved);
-  const deadlineAt = new Date(Date.now() + policy.timeoutMs);
+  const deadlineAt = runtimeDeadlineAt(policy.timeoutMs);
   const created = await createAgentRun({
     workspaceId: input.workspaceId,
     agentId: resolved.agent.id,

@@ -178,10 +178,7 @@ export function executionPolicy(resolved: ResolvedAgent) {
     maxParallel: 1,
     maxChildSteps: 1,
     maxTotalTokens: Math.min(100_000, Math.max(1_000, limits.maxOutputTokens)),
-    timeoutMs: Math.min(
-      orchestrationPolicyDefaults.timeoutMs,
-      agentRuntimePolicy.chatTimeoutMs,
-    ),
+    timeoutMs: agentRuntimePolicy.chatTimeoutMs,
   } satisfies OrchestrationPolicy;
 }
 
