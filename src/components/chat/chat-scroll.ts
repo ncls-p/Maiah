@@ -22,6 +22,29 @@ export function pinChatViewportToEnd(
   viewport.scrollTop = top;
 }
 
+export function nextChatStreamFollowState(input: {
+  following: boolean;
+  streaming: boolean;
+  atEnd: boolean;
+}) {
+  if (!input.following) return { follow: false, pin: false };
+  if (!input.streaming && !input.atEnd) return { follow: false, pin: false };
+  return { follow: true, pin: true };
+}
+
+export function applyChatStreamFollowPin(
+  viewport: Pick<HTMLElement, "scrollTop" | "scrollHeight" | "clientHeight">,
+  input: { following: boolean; streaming: boolean },
+) {
+  const next = nextChatStreamFollowState({
+    following: input.following,
+    streaming: input.streaming,
+    atEnd: isChatViewportAtEnd(viewport),
+  });
+  if (next.pin) pinChatViewportToEnd(viewport);
+  return next.follow;
+}
+
 export function getChatStreamFollowKey(messages: ChatMessage[]) {
   const lastMessage = messages[messages.length - 1];
   if (!lastMessage) return "empty";

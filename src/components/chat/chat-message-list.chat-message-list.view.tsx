@@ -175,9 +175,9 @@ export function ChatMessageListView({
                   className={cn(
                     "scroll-mt-6",
                     !isStreamingAssistant &&
+                      !isLast &&
                       "animate-in-up [contain-intrinsic-size:auto_10rem] [content-visibility:auto]",
                   )}
-                  style={{ animationDelay: isLast ? "0s" : undefined }}
                 >
                   <MessagePrimitive align={align}>
                     <MessagePrimitiveContent

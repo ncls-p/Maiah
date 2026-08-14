@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyChatStreamFollowPin,
   cancelsChatStreamFollow,
   getChatStreamFollowKey,
   isChatViewportAtEnd,
+  nextChatStreamFollowState,
   pinChatViewportToEnd,
   shouldUseMessageScrollAnchor,
 } from "@/components/chat/chat-scroll";
@@ -128,5 +130,50 @@ describe("stream following", () => {
     expect(cancelsChatStreamFollow({ key: "ArrowDown" })).toBe(false);
     expect(cancelsChatStreamFollow({ key: "End" })).toBe(false);
     expect(cancelsChatStreamFollow({ key: " " })).toBe(false);
+  });
+
+  it("does not yank the reader when a stream finishes away from the end", () => {
+    expect(
+      nextChatStreamFollowState({
+        following: true,
+        streaming: false,
+        atEnd: false,
+      }),
+    ).toEqual({ follow: false, pin: false });
+  });
+
+  it("keeps pinning while a live stream is followed even if the end moved", () => {
+    expect(
+      nextChatStreamFollowState({
+        following: true,
+        streaming: true,
+        atEnd: false,
+      }),
+    ).toEqual({ follow: true, pin: true });
+  });
+
+  it("leaves the viewport alone after the reader opts out", () => {
+    expect(
+      nextChatStreamFollowState({
+        following: false,
+        streaming: true,
+        atEnd: false,
+      }),
+    ).toEqual({ follow: false, pin: false });
+  });
+
+  it("does not move a mid-transcript viewport when the stream settles", () => {
+    const viewport = {
+      scrollTop: 400,
+      scrollHeight: 4000,
+      clientHeight: 800,
+    };
+    expect(
+      applyChatStreamFollowPin(viewport, {
+        following: true,
+        streaming: false,
+      }),
+    ).toBe(false);
+    expect(viewport.scrollTop).toBe(400);
   });
 });
