@@ -72,6 +72,7 @@ describe("chat composer layout", () => {
       "utf8",
     );
 
+    expect(mediaSource).toContain('data-slot="chat-composer-file-input"');
     expect(mediaSource).toContain("accept={COMPOSER_FILE_ACCEPT}");
     expect(mediaSource).toContain('accept="image/*"');
     expect(mediaSource).toContain('capture="environment"');

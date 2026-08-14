@@ -106,19 +106,23 @@ export function ChatComposerMediaControls({
       <input
         ref={fileInputRef}
         type="file"
+        data-slot="chat-composer-file-input"
         className="hidden"
         multiple
         accept={COMPOSER_FILE_ACCEPT}
         onChange={onFileChange}
       />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        className="hidden"
-        accept="image/*"
-        capture="environment"
-        onChange={onFileChange}
-      />
+      {cameraAvailable ? (
+        <input
+          ref={cameraInputRef}
+          type="file"
+          data-slot="chat-composer-camera-input"
+          className="hidden"
+          accept="image/*"
+          capture="environment"
+          onChange={onFileChange}
+        />
+      ) : null}
       {cameraAvailable ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

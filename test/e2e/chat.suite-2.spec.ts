@@ -153,7 +153,7 @@ test.describe("chat page", () => {
       messageInput,
       "Keep this unsent draft with every attachment.",
     );
-    const fileInput = page.locator('input[type="file"]');
+    const fileInput = page.locator('[data-slot="chat-composer-file-input"]');
     await expect(fileInput).toHaveCount(1);
     await fileInput.setInputFiles(
       Array.from({ length: 12 }, (_, index) => ({

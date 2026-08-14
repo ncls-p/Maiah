@@ -442,7 +442,7 @@ test("previews an uploaded PDF natively without requesting parsed text", async (
   await expect(
     page.getByRole("textbox", { name: "Message", exact: true }),
   ).toBeEnabled();
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('[data-slot="chat-composer-file-input"]').setInputFiles({
     name: "native-preview.pdf",
     mimeType: "application/pdf",
     buffer: Buffer.from("%PDF-1.4\n%%EOF"),
