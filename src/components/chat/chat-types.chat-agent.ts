@@ -34,6 +34,8 @@ export interface ChatConversation {
     kind: "title" | "message";
     snippet: string;
   };
+  isStreaming?: boolean;
+  isUnread?: boolean;
 }
 
 export interface ChatConversationFolder {

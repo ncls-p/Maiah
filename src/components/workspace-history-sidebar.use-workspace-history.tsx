@@ -11,11 +11,12 @@ import type {
 } from "@/components/chat/chat-types";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
-import { WORKSPACE_HISTORY_REFRESH_EVENT } from "@/lib/workspace-history-events";
+import { useWorkspaceHistoryLiveSync } from "./workspace-history-sidebar.use-history-live-sync";
 import {
   AgentPayload,
   ConversationPayload,
   normalizeConversations,
+  withConversationLiveState,
 } from "./workspace-history-sidebar.conversation-payload";
 
 export function useWorkspaceHistory() {
@@ -34,13 +35,9 @@ export function useWorkspaceHistory() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [revision, setRevision] = useState(0);
-
-  useEffect(() => {
-    const refresh = () => setRevision((current) => current + 1);
-    window.addEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
-    return () =>
-      window.removeEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
-  }, []);
+  const live = useWorkspaceHistoryLiveSync(() =>
+    setRevision((current) => current + 1),
+  );
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -321,12 +318,14 @@ export function useWorkspaceHistory() {
 
   return {
     agents,
-    conversations,
+    conversations: withConversationLiveState(conversations, live),
     folders,
     loading: loading || resolvedWorkspaceId !== workspaceId,
     loadError,
     query,
-    searchResults: query.trim() ? searchResults : [],
+    searchResults: query.trim()
+      ? withConversationLiveState(searchResults, live)
+      : [],
     searching: Boolean(query.trim()) && searching,
     searchError: Boolean(query.trim()) && searchError,
     setQuery: (nextQuery: string) => {

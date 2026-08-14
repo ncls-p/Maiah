@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import {
   ArrowDownIcon,
@@ -77,10 +78,14 @@ export function ConversationItem({
   const locale = useLocale();
   const t = useTranslations("chat.sidebar");
   const pinned = Boolean(conversation.pinnedAt);
+  const unread =
+    Boolean(conversation.isUnread) && !isActive && !conversation.isStreaming;
   return (
     <div
       data-slot="chat-conversation-item"
       data-ephemeral={conversation.isEphemeral || undefined}
+      data-streaming={conversation.isStreaming || undefined}
+      data-unread={unread || undefined}
       draggable={!readOnly && !isEditing && !searchMatch}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -141,13 +146,22 @@ export function ConversationItem({
         </div>
       ) : (
         <div className="flex min-h-12 items-center gap-1 px-2 py-1">
-          <i
-            className={cn(
-              "size-1.5 shrink-0 rounded-full transition-colors",
-              isActive ? "bg-primary" : "bg-muted-foreground/45",
+          <span className="flex size-3 shrink-0 items-center justify-center">
+            {conversation.isStreaming ? (
+              <Spinner
+                className="size-3 text-primary motion-reduce:animate-none"
+                aria-label={t("replyStreaming")}
+              />
+            ) : (
+              <i
+                className={cn(
+                  "size-1.5 rounded-full transition-colors",
+                  isActive ? "bg-primary" : "bg-muted-foreground/45",
+                )}
+                aria-hidden="true"
+              />
             )}
-            aria-hidden="true"
-          />
+          </span>
           <button
             type={BUTTON_TYPE}
             onClick={onSelect}
@@ -156,7 +170,9 @@ export function ConversationItem({
             <span
               className={cn(
                 "block truncate text-[12px] leading-tight transition-[color]",
-                isActive ? "font-semibold text-foreground" : "font-medium",
+                isActive || unread
+                  ? "font-semibold text-foreground"
+                  : "font-medium",
               )}
             >
               {conversation.title}
@@ -190,6 +206,14 @@ export function ConversationItem({
               </span>
             </span>
           </button>
+          {unread ? (
+            <span
+              role="status"
+              aria-label={t("unreadReply")}
+              title={t("unreadReply")}
+              className="size-2 shrink-0 rounded-full bg-sky-400 shadow-[0_0_0_2px_color-mix(in_oklch,var(--background)_80%,transparent)]"
+            />
+          ) : null}
           {pinned && !searchMatch ? (
             <PinIcon
               className="size-3 shrink-0 text-primary"

@@ -13,10 +13,14 @@ const MAX_DRAFT_ATTACHMENTS = 8;
 
 function storageKey(
   workspaceId: string,
-  agentId: string,
+  _agentId: string,
   conversationId: string | null,
 ) {
-  return `${STORAGE_PREFIX}:${workspaceId}:${conversationId ?? `new:${agentId}`}`;
+  return `${STORAGE_PREFIX}:${workspaceId}:${conversationId ?? "new"}`;
+}
+
+function legacyNewChatKey(workspaceId: string, agentId: string) {
+  return `${STORAGE_PREFIX}:${workspaceId}:new:${agentId}`;
 }
 
 function emptyDraft(): ChatComposerDraft {
@@ -52,11 +56,14 @@ export function readChatComposerDraft(
 ): ChatComposerDraft {
   if (typeof window === "undefined") return emptyDraft();
   try {
-    const value = JSON.parse(
+    const stored =
       window.localStorage.getItem(
         storageKey(workspaceId, agentId, conversationId),
-      ) ?? "{}",
-    ) as Partial<ChatComposerDraft>;
+      ) ??
+      (conversationId
+        ? null
+        : window.localStorage.getItem(legacyNewChatKey(workspaceId, agentId)));
+    const value = JSON.parse(stored ?? "{}") as Partial<ChatComposerDraft>;
     return {
       input:
         typeof value.input === "string"
@@ -85,9 +92,15 @@ export function writeChatComposerDraft(
   };
   if (!normalizedDraft.input && normalizedDraft.attachments.length === 0) {
     window.localStorage.removeItem(key);
+    if (!conversationId) {
+      window.localStorage.removeItem(legacyNewChatKey(workspaceId, agentId));
+    }
     return;
   }
   window.localStorage.setItem(key, JSON.stringify(normalizedDraft));
+  if (!conversationId) {
+    window.localStorage.removeItem(legacyNewChatKey(workspaceId, agentId));
+  }
 }
 
 export function removeChatComposerDraft(
@@ -108,11 +121,14 @@ export function migrateNewChatComposerDraft(
 ) {
   if (typeof window === "undefined") return;
   const draftKey = storageKey(workspaceId, agentId, null);
-  const draft = window.localStorage.getItem(draftKey);
+  const draft =
+    window.localStorage.getItem(draftKey) ??
+    window.localStorage.getItem(legacyNewChatKey(workspaceId, agentId));
   if (!draft) return;
   window.localStorage.setItem(
     storageKey(workspaceId, agentId, conversationId),
     draft,
   );
   window.localStorage.removeItem(draftKey);
+  window.localStorage.removeItem(legacyNewChatKey(workspaceId, agentId));
 }

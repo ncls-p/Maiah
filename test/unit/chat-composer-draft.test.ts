@@ -53,21 +53,33 @@ describe("chat composer drafts", () => {
     ).toEqual({ input: "Second draft", attachments: [] });
   });
 
-  it("keeps unsent new-chat drafts isolated per assistant", () => {
+  it("shares unsent new-chat drafts across assistants", () => {
     writeChatComposerDraft("workspace-1", "agent-1", null, {
-      input: "Agent one",
-      attachments: [],
-    });
-    writeChatComposerDraft("workspace-1", "agent-2", null, {
-      input: "Agent two",
+      input: "Keep this",
       attachments: [],
     });
 
-    expect(readChatComposerDraft("workspace-1", "agent-1", null).input).toBe(
-      "Agent one",
-    );
     expect(readChatComposerDraft("workspace-1", "agent-2", null).input).toBe(
-      "Agent two",
+      "Keep this",
+    );
+
+    writeChatComposerDraft("workspace-1", "agent-2", null, {
+      input: "Updated while switching",
+      attachments: [],
+    });
+    expect(readChatComposerDraft("workspace-1", "agent-1", null).input).toBe(
+      "Updated while switching",
+    );
+  });
+
+  it("reads a legacy per-assistant new-chat draft", () => {
+    window.localStorage.setItem(
+      "maiah-chat-composer-draft:workspace-1:new:agent-1",
+      JSON.stringify({ input: "Legacy draft", attachments: [] }),
+    );
+
+    expect(readChatComposerDraft("workspace-1", "agent-1", null).input).toBe(
+      "Legacy draft",
     );
   });
 

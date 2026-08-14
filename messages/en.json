@@ -354,6 +354,8 @@
       "workspace": "Workspace",
       "assistant": "Assistant",
       "justNow": "just now",
+      "replyStreaming": "Reply in progress",
+      "unreadReply": "Unread reply",
       "minutesAgo": "{count}m ago",
       "hoursAgo": "{count}h ago",
       "daysAgo": "{count}d ago",

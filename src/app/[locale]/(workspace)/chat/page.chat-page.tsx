@@ -7,15 +7,7 @@ import {
   assistantSelectionNeedsSetup,
   isAssistantSelectionLoading,
 } from "@/components/chat/assistant-selection";
-import {
-  chatComposerDraftKey,
-  readChatComposerDraft,
-  writeChatComposerDraft,
-} from "@/components/chat/chat-composer-draft";
-import type {
-  ChatAttachment,
-  CodeWorkspaceArtifact,
-} from "@/components/chat/chat-types";
+import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import {
   CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
   DEFAULT_CHAT_WIDTH,
@@ -30,18 +22,16 @@ import { CHAT_INTERFACE_MODE, type InterfaceMode } from "./chat-interface-mode";
 import { rotatePromptSuggestions } from "./chat-page-helpers";
 import { useChatDirectory } from "./page.use-chat-directory";
 import { useConversationActions } from "./page.use-conversation-actions";
+import { useConversationHistoryLiveStatus } from "./page.use-conversation-live-status";
 import { useComposerActions } from "./page.use-composer-actions";
+import { useComposerDraft } from "./page.use-composer-draft";
 import { useMessageActions } from "./page.use-message-actions";
 import { useTemporaryConversationPersistence } from "./page.use-temporary-conversation";
 import { useChatSession } from "./page.use-chat-session";
 import { useCodeWorkspaceArtifactEvent } from "./page.use-code-workspace-artifact-event";
+import { useReasoningEffort } from "./page.use-reasoning-effort";
 import { ChatPageView } from "./page.chat-page.view";
 import { ChatPageBoundary } from "./page.chat-page-boundary";
-import {
-  defaultReasoningPreset,
-  normalizeReasoningPresets,
-  type ReasoningPreset,
-} from "@/modules/agent/reasoning-presets";
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const pathname = usePathname();
@@ -69,27 +59,16 @@ export function useChatPageController() {
   const effectiveEphemeralTtlMinutes = activeConversationId
     ? ephemeralTtlMinutes
     : routeTtlMinutes;
-  const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<QueuedChatMessage[]>([]);
   const [codeWorkspaceArtifact, setCodeWorkspaceArtifact] =
     useState<CodeWorkspaceArtifact | null>(null);
-  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [interfaceMode, setInterfaceMode] =
     useState<InterfaceMode>(CHAT_INTERFACE_MODE);
   const [codingChatWidth, setCodingChatWidth] = useState(DEFAULT_CHAT_WIDTH);
-  const [reasoningByAgent, setReasoningByAgent] = useState<
-    Record<string, ReasoningPreset>
-  >({});
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
   const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
-  const composerDraftScopeRef = useRef<{
-    workspaceId: string;
-    agentId: string;
-    conversationId: string | null;
-  } | null>(null);
   const newConversationAgentIdRef = useRef<string | null>(null);
-
   const {
     agents,
     selectedAgentId,
@@ -107,67 +86,18 @@ export function useChatPageController() {
     loadAgentDirectory,
     refreshConversations,
   } = useChatDirectory(workspaceId, t, setActiveConversationId, pathname);
-
-  const saveCurrentComposerDraft = useCallback(() => {
-    const scope = composerDraftScopeRef.current;
-    if (!scope) return;
-    writeChatComposerDraft(
-      scope.workspaceId,
-      scope.agentId,
-      scope.conversationId,
-      { input, attachments },
-    );
-  }, [attachments, input]);
-
-  const restoreComposerDraft = useCallback(
-    (nextAgentId: string, nextConversationId: string | null) => {
-      if (!workspaceId || !nextAgentId) return;
-      saveCurrentComposerDraft();
-      const nextDraft = readChatComposerDraft(
-        workspaceId,
-        nextAgentId,
-        nextConversationId,
-      );
-      composerDraftScopeRef.current = {
-        workspaceId,
-        agentId: nextAgentId,
-        conversationId: nextConversationId,
-      };
-      setInput(nextDraft.input);
-      setAttachments(nextDraft.attachments);
-    },
-    [saveCurrentComposerDraft, workspaceId],
-  );
-
-  useEffect(() => {
-    if (!workspaceId || !selectedAgentId) return;
-    newConversationAgentIdRef.current = selectedAgentId;
-    const expectedKey = chatComposerDraftKey(
-      workspaceId,
-      selectedAgentId,
-      activeConversationId,
-    );
-    const current = composerDraftScopeRef.current;
-    const currentKey = current
-      ? chatComposerDraftKey(
-          current.workspaceId,
-          current.agentId,
-          current.conversationId,
-        )
-      : null;
-    if (currentKey !== expectedKey) {
-      restoreComposerDraft(selectedAgentId, activeConversationId);
-    }
-  }, [
-    activeConversationId,
+  const {
+    attachments,
+    composerDraftScopeRef,
+    input,
     restoreComposerDraft,
-    selectedAgentId,
-    workspaceId,
-  ]);
-
+    saveCurrentComposerDraft,
+    setAttachments,
+    setInput,
+  } = useComposerDraft(workspaceId, selectedAgentId, activeConversationId);
   useEffect(() => {
-    saveCurrentComposerDraft();
-  }, [saveCurrentComposerDraft]);
+    if (selectedAgentId) newConversationAgentIdRef.current = selectedAgentId;
+  }, [selectedAgentId]);
 
   function chooseInterfaceMode(mode: InterfaceMode) {
     userSelectedInterfaceModeRef.current = mode;
@@ -289,6 +219,7 @@ export function useChatPageController() {
     setInterfaceMode,
     setLoadingContext,
   });
+  useConversationHistoryLiveStatus(activeConversationId, sending);
 
   const selectionLoading = isAssistantSelectionLoading({
     workspaceLoading,
@@ -301,24 +232,8 @@ export function useChatPageController() {
     selectedAgent,
     activeVersion,
   });
-  const reasoningPresets = normalizeReasoningPresets(
-    activeVersion?.generationSettingsJson?.reasoningPresets,
-  );
-  const configuredReasoningEffort = selectedAgentId
-    ? reasoningByAgent[selectedAgentId]
-    : undefined;
-  const reasoningEffort =
-    configuredReasoningEffort &&
-    reasoningPresets.includes(configuredReasoningEffort)
-      ? configuredReasoningEffort
-      : defaultReasoningPreset(reasoningPresets);
-  function setReasoningEffort(value: ReasoningPreset) {
-    if (!selectedAgentId || !reasoningPresets.includes(value)) return;
-    setReasoningByAgent((current) => ({
-      ...current,
-      [selectedAgentId]: value,
-    }));
-  }
+  const { reasoningPresets, reasoningEffort, setReasoningEffort } =
+    useReasoningEffort(workspaceId, selectedAgentId, activeVersion);
 
   const { selectAgent, selectConversation, startNewConversation } =
     useConversationActions({
