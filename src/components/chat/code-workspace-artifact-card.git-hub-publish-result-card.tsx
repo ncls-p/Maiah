@@ -3,10 +3,7 @@
 import { DownloadIcon, FileIcon, Maximize2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type {
-  ChatFileAttachment,
-  ChatImageAttachment,
-} from "@/components/chat/chat-types";
+import type { ChatFileAttachment } from "@/components/chat/chat-types";
 import {
   FilePreviewDialog,
   useFilePreview,
@@ -64,37 +61,6 @@ export function GitHubPublishResultCard({
         ) : null}
       </div>
     </div>
-  );
-}
-
-export function ChatImageAttachmentCard({
-  attachment,
-}: {
-  attachment: ChatImageAttachment;
-}) {
-  return (
-    <Attachment orientation="vertical" className="w-[min(24rem,80vw)]">
-      <AttachmentMedia variant="image" className="aspect-auto h-64">
-        <a
-          href={attachment.url}
-          target="_blank"
-          rel="noreferrer"
-          role="img"
-          aria-label={attachment.fileName}
-          className="block h-64 w-full bg-contain bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url("${attachment.url.replace(/"/g, '\\"')}")`,
-          }}
-        />
-      </AttachmentMedia>
-      <AttachmentContent>
-        <AttachmentTitle>{attachment.fileName}</AttachmentTitle>
-        <AttachmentDescription>
-          {attachment.mimeType.replace("image/", "").toUpperCase()} ·{" "}
-          {formatBytes(attachment.size)}
-        </AttachmentDescription>
-      </AttachmentContent>
-    </Attachment>
   );
 }
 

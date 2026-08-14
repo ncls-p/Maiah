@@ -10,6 +10,6 @@ export { CodeWorkspaceArtifactSummary } from "./code-workspace-artifact-card.cod
 export type { WorkspaceArtifactDisplay } from "./code-workspace-artifact-card.code-workspace-file-tree";
 export {
   ChatFileAttachmentCard,
-  ChatImageAttachmentCard,
   GitHubPublishResultCard,
 } from "./code-workspace-artifact-card.git-hub-publish-result-card";
+export { ChatImageAttachmentCard } from "./chat-image-attachment-card";
