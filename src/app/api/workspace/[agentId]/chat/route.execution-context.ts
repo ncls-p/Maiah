@@ -7,6 +7,7 @@ import type {
 } from "@/server/infrastructure/db/schema";
 import type { ModelMessage } from "ai";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 export type ChatAgentRow = typeof agents.$inferSelect;
 export type ChatConversationRow = typeof conversations.$inferSelect;
@@ -41,6 +42,7 @@ export type ChatExecutionContext = {
   availableAttachments: ChatAttachment[];
   useAiSdkUIStream: boolean;
   shouldRegenerateConversationTitle: boolean;
+  reasoningEffort?: ReasoningPreset;
   capabilityOverrides?: {
     disabledTools: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
     disabledSkillIds: string[];

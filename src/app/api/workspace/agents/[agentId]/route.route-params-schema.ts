@@ -96,6 +96,10 @@ export const updateAgentSchema = z.object({
       seed: z.number().int().optional(),
       maxRetries: z.number().int().min(0).optional(),
       stopSequences: z.array(z.string()).optional(),
+      reasoningPresets: z
+        .array(z.enum(["low", "medium", "high", "xhigh", "ultra"]))
+        .max(5)
+        .optional(),
     })
     .optional(),
   responseFormat: z.enum(["text", "json_object"]).optional(),

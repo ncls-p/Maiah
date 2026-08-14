@@ -11,6 +11,7 @@ import type {
 import { createQueuedMessage, uploadPathForFile } from "./chat-page-helpers";
 import { uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
 import type { useChatStream } from "@/hooks/use-chat-stream";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 import {
   CODING_INTERFACE_MODE,
@@ -42,6 +43,7 @@ type ComposerActionsContext = {
   userSelectedInterfaceModeRef: MutableRefObject<InterfaceMode | null>;
   lastAutoOpenedWorkspaceRef: MutableRefObject<string | null>;
   t: (key: string) => string;
+  reasoningEffort: ReasoningPreset | null;
 };
 
 export function useComposerActions(c: ComposerActionsContext) {
@@ -56,7 +58,10 @@ export function useComposerActions(c: ComposerActionsContext) {
     skipPendingSuggestions();
     c.setQueuedMessages((current) => [
       ...current,
-      createQueuedMessage(content),
+      {
+        ...createQueuedMessage(content),
+        reasoningEffort: c.reasoningEffort ?? undefined,
+      },
     ]);
   }
   function submitMessage() {
@@ -85,6 +90,7 @@ export function useComposerActions(c: ComposerActionsContext) {
       attachments,
       ephemeral: !c.activeConversationId && c.ephemeral,
       ephemeralTtlMinutes: c.ephemeral ? c.ephemeralTtlMinutes : undefined,
+      reasoningEffort: c.reasoningEffort ?? undefined,
     });
   }
 
@@ -132,6 +138,7 @@ export function useComposerActions(c: ComposerActionsContext) {
       toast.success(c.t("attachments.codeUploaded"));
       await c.handleSubmit(data.prompt, {
         codeWorkspaceArtifact: data.artifact,
+        reasoningEffort: c.reasoningEffort ?? undefined,
       });
     } catch (error) {
       toast.error(
@@ -178,6 +185,7 @@ export function useComposerActions(c: ComposerActionsContext) {
     void c.handleSubmit(trimmed, {
       ephemeral: !c.activeConversationId && c.ephemeral,
       ephemeralTtlMinutes: c.ephemeral ? c.ephemeralTtlMinutes : undefined,
+      reasoningEffort: c.reasoningEffort ?? undefined,
     });
   }
   async function setUserDefaultAgent(agentId: string | null) {

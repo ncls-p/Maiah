@@ -24,6 +24,9 @@ export const chatRequestSchema = z.object({
   codeWorkspaceId: z.uuid().optional(),
   attachmentIds: z.array(z.uuid()).optional(),
   imageAttachmentIds: z.array(z.uuid()).optional(),
+  reasoningEffort: z
+    .enum(["low", "medium", "high", "xhigh", "ultra"])
+    .optional(),
   capabilityOverrides: z
     .object({
       disabledTools: z

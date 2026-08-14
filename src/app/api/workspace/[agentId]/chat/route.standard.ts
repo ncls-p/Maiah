@@ -22,6 +22,7 @@ import { messageParts, messages } from "@/server/infrastructure/db/schema";
 import { stepCountIs, ToolLoopAgent, type LanguageModel } from "ai";
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
+import { reasoningCallSettings } from "@/modules/agent/reasoning-presets";
 import {
   knowledgeCitationsFromToolOutput,
   KNOWLEDGE_SEARCH_TOOL_NAME,
@@ -115,7 +116,12 @@ export async function runStandardChat(input: {
     seed?: number;
     maxRetries?: number;
     stopSequences?: string[];
+    reasoningPresets?: string[];
   } | null;
+  const reasoningSettings = reasoningCallSettings(
+    executionContext.reasoningEffort,
+    providerConfig.runtimeConfig,
+  );
   const runtimeAgent = new ToolLoopAgent({
     id: version.id,
     model,
@@ -133,6 +139,7 @@ export async function runStandardChat(input: {
       ? generationSettings.stopSequences
       : undefined,
     maxOutputTokens,
+    ...reasoningSettings,
     tools,
     toolChoice: configuredToolChoice,
     toolApproval: boundToolConfig.toolApproval,

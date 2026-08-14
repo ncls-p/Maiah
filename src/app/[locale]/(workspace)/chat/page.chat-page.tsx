@@ -37,6 +37,11 @@ import { useChatSession } from "./page.use-chat-session";
 import { useCodeWorkspaceArtifactEvent } from "./page.use-code-workspace-artifact-event";
 import { ChatPageView } from "./page.chat-page.view";
 import { ChatPageBoundary } from "./page.chat-page-boundary";
+import {
+  defaultReasoningPreset,
+  normalizeReasoningPresets,
+  type ReasoningPreset,
+} from "@/modules/agent/reasoning-presets";
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const pathname = usePathname();
@@ -72,6 +77,9 @@ export function useChatPageController() {
   const [interfaceMode, setInterfaceMode] =
     useState<InterfaceMode>(CHAT_INTERFACE_MODE);
   const [codingChatWidth, setCodingChatWidth] = useState(DEFAULT_CHAT_WIDTH);
+  const [reasoningByAgent, setReasoningByAgent] = useState<
+    Record<string, ReasoningPreset>
+  >({});
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
   const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
@@ -293,6 +301,24 @@ export function useChatPageController() {
     selectedAgent,
     activeVersion,
   });
+  const reasoningPresets = normalizeReasoningPresets(
+    activeVersion?.generationSettingsJson?.reasoningPresets,
+  );
+  const configuredReasoningEffort = selectedAgentId
+    ? reasoningByAgent[selectedAgentId]
+    : undefined;
+  const reasoningEffort =
+    configuredReasoningEffort &&
+    reasoningPresets.includes(configuredReasoningEffort)
+      ? configuredReasoningEffort
+      : defaultReasoningPreset(reasoningPresets);
+  function setReasoningEffort(value: ReasoningPreset) {
+    if (!selectedAgentId || !reasoningPresets.includes(value)) return;
+    setReasoningByAgent((current) => ({
+      ...current,
+      [selectedAgentId]: value,
+    }));
+  }
 
   const { selectAgent, selectConversation, startNewConversation } =
     useConversationActions({
@@ -395,6 +421,7 @@ export function useChatPageController() {
     userSelectedInterfaceModeRef,
     lastAutoOpenedWorkspaceRef,
     t,
+    reasoningEffort,
   });
 
   const {
@@ -414,6 +441,7 @@ export function useChatPageController() {
     activeConversationId,
     workspaceId,
     selectedAgentId,
+    reasoningEffort,
     messages,
     sending,
     setMessages,
@@ -507,6 +535,8 @@ export function useChatPageController() {
     messages,
     organizationDefaultAgentId,
     pendingApprovals,
+    reasoningEffort,
+    reasoningPresets,
     queuedMessages,
     quota,
     rejectToolInvocation,
@@ -521,6 +551,7 @@ export function useChatPageController() {
     sending,
     setAttachments,
     setInput,
+    setReasoningEffort,
     setUserDefaultAgent,
     stopGeneration,
     submitMessage,

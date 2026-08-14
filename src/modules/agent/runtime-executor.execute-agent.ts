@@ -117,6 +117,7 @@ export async function executeAgent(
     idempotencyKey: input.idempotencyKey,
     dryRun: input.trigger === "dry_run",
     onProgress: input.onProgress,
+    reasoningEffort: input.reasoningEffort,
   });
 }
 

@@ -53,6 +53,7 @@ export function buildEssentialPayload(
         .split(/\n|,/)
         .map((value) => value.trim())
         .filter(Boolean),
+      reasoningPresets: form.generationSettings.reasoningPresets,
     },
     responseFormat: form.responseFormat,
     memoryPolicy: form.memoryPolicy,

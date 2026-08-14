@@ -49,6 +49,9 @@ export interface AgentVersion {
   providerId: string | null;
   modelId: string | null;
   isActive: boolean;
+  generationSettingsJson?: {
+    reasoningPresets?: string[];
+  } | null;
 }
 
 export interface ChatMessagePart {

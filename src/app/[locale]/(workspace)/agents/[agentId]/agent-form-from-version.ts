@@ -1,5 +1,6 @@
 import type { Agent, AgentForm } from "./types";
 import { defaultGenParams } from "./types";
+import { normalizeReasoningPresets } from "@/modules/agent/reasoning-presets";
 
 export type AgentVersionPayload = {
   isActive?: boolean;
@@ -18,6 +19,7 @@ export type AgentVersionPayload = {
     seed?: number;
     maxRetries?: number;
     stopSequences?: string[];
+    reasoningPresets?: string[];
   } | null;
   responseFormatJson: { type?: "text" | "json_object" } | null;
   memoryPolicyJson: {
@@ -52,6 +54,7 @@ function buildGenerationSettings(activeVersion: AgentVersionPayload | null) {
     seed: optionalNumericField(gen?.seed),
     maxRetries: optionalNumericField(gen?.maxRetries),
     stopSequences: gen?.stopSequences?.join("\n") ?? "",
+    reasoningPresets: normalizeReasoningPresets(gen?.reasoningPresets),
   };
 }
 

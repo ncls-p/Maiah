@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { ChatAgentSelector } from "@/components/chat/chat-agent-selector";
 import { ChatComposerImpact } from "@/components/chat/chat-composer-impact";
+import { ChatReasoningSlider } from "@/components/chat/chat-reasoning-slider";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { ChatLayoutProps } from "./chat-layout.chat-composer-controls-context";
 import { ChatLayoutView } from "./chat-layout.chat-layout.view";
@@ -20,20 +21,30 @@ export function useChatLayoutController(props: ChatLayoutProps) {
   );
   const composerControls = {
     primary: (
-      <ChatAgentSelector
-        agents={props.agents}
-        selectedAgent={props.selectedAgent}
-        activeConversationId={props.activeConversationId}
-        conversationIsOwner={props.conversationIsOwner ?? true}
-        workspaceId={workspaceId}
-        organizationDefaultAgentId={props.organizationDefaultAgentId}
-        userDefaultAgentId={props.userDefaultAgentId}
-        isLoading={props.isLoading ?? false}
-        needsSetup={props.needsSetup ?? false}
-        canCreateAgent={props.canCreateAgent ?? false}
-        onSelectAgent={props.onSelectAgent}
-        onSetUserDefaultAgent={props.onSetUserDefaultAgent}
-      />
+      <div className="flex min-w-0 items-center gap-1">
+        <ChatAgentSelector
+          agents={props.agents}
+          selectedAgent={props.selectedAgent}
+          activeConversationId={props.activeConversationId}
+          conversationIsOwner={props.conversationIsOwner ?? true}
+          workspaceId={workspaceId}
+          organizationDefaultAgentId={props.organizationDefaultAgentId}
+          userDefaultAgentId={props.userDefaultAgentId}
+          isLoading={props.isLoading ?? false}
+          needsSetup={props.needsSetup ?? false}
+          canCreateAgent={props.canCreateAgent ?? false}
+          onSelectAgent={props.onSelectAgent}
+          onSetUserDefaultAgent={props.onSetUserDefaultAgent}
+        />
+        {props.reasoningPresets?.length && props.reasoningEffort ? (
+          <ChatReasoningSlider
+            presets={props.reasoningPresets}
+            value={props.reasoningEffort}
+            disabled={props.isLoading || props.needsSetup}
+            onChange={(value) => props.onReasoningEffortChange?.(value)}
+          />
+        ) : null}
+      </div>
     ),
     secondary:
       hasImpact && props.conversationImpact ? (

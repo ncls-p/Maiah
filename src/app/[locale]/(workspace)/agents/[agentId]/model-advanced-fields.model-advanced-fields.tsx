@@ -46,6 +46,7 @@ export function useModelAdvancedFieldsController({
         seed: "",
         maxRetries: "",
         stopSequences: "",
+        reasoningPresets: [],
       },
       responseFormat: "text",
     }));

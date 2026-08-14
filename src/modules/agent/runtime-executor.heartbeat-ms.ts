@@ -19,6 +19,7 @@ import {
 import { type ModelMessage } from "ai";
 import type { ChatAttachment } from "@/modules/chat/attachments";
 import type { AgentVisualOutput } from "./runtime-executor.visual-outputs";
+import type { ReasoningPreset } from "./reasoning-presets";
 
 export const HEARTBEAT_MS = 10_000;
 export const delegationFailureModelMessage =
@@ -127,6 +128,7 @@ export type InternalExecutionInput = {
   idempotencyKey?: string | null;
   dryRun?: boolean;
   onProgress?: AgentToolProgressCallback;
+  reasoningEffort?: ReasoningPreset;
 };
 
 export type ExecuteAgentInput = {
@@ -145,6 +147,7 @@ export type ExecuteAgentInput = {
   idempotencyKey?: string | null;
   abortSignal?: AbortSignal;
   onProgress?: AgentToolProgressCallback;
+  reasoningEffort?: ReasoningPreset;
 };
 
 export type AgentExecutionResult = {

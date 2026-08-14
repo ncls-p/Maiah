@@ -286,6 +286,7 @@ export function useChatSession(c: SessionContext) {
             ? codeWorkspaceArtifact?.projectId
             : undefined,
         ephemeral: !activeConversationId && ephemeral,
+        reasoningEffort: next.reasoningEffort,
       }).finally(() => {
         processingQueuedMessageRef.current = false;
       });

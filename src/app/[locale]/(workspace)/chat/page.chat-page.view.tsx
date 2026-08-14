@@ -62,6 +62,8 @@ export function ChatPageView({ model }: { model: Model }) {
     messages,
     organizationDefaultAgentId,
     pendingApprovals,
+    reasoningEffort,
+    reasoningPresets,
   } = model;
   const {
     queuedMessages,
@@ -81,6 +83,7 @@ export function ChatPageView({ model }: { model: Model }) {
   const {
     setInput,
     setUserDefaultAgent,
+    setReasoningEffort,
     stopGeneration,
     submitMessage,
     submitSuggestion,
@@ -111,6 +114,9 @@ export function ChatPageView({ model }: { model: Model }) {
         void setUserDefaultAgent(agentId)
       }
       onSetupComplete={() => void reloadAgentContext()}
+      reasoningPresets={reasoningPresets}
+      reasoningEffort={reasoningEffort}
+      onReasoningEffortChange={setReasoningEffort}
     >
       <ChatContextBar quota={quota} />
       {effectiveEphemeral ? (

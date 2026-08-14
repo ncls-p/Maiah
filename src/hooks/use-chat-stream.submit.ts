@@ -267,6 +267,7 @@ export function useChatSubmitHandler(input: {
           conversationId: conversationId ?? undefined,
           ephemeral: options.ephemeral,
           ephemeralTtlMinutes: options.ephemeralTtlMinutes,
+          reasoningEffort: options.reasoningEffort,
           resendFromMessageId: options.resendFromMessageId,
           regenerateAssistantMessageId: options.regenerateAssistantMessageId,
           continueFromMessageId: options.continueFromMessageId,

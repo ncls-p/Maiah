@@ -334,6 +334,15 @@
       "queueMessage": "Mettre le message en attente",
       "sendMessage": "Envoyer le message",
       "stopGeneration": "Arrêter la génération",
+      "reasoningLevel": "Niveau de raisonnement",
+      "reasoningSelected": "Raisonnement : {level}",
+      "reasoningLevels": {
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé",
+        "xhigh": "Très élevé",
+        "ultra": "Ultra"
+      },
       "needsSetup": "Cet assistant a besoin d’un fournisseur et d’un modèle.",
       "configureAssistant": "Configurer l’assistant",
       "codeFiles": "ZIP/code",
@@ -813,6 +822,16 @@
       "temperatureHelp": "Une valeur basse produit des réponses plus stables et prévisibles ; une valeur haute autorise davantage de variations.",
       "topP": "Variété du vocabulaire",
       "topPHelp": "Limite les choix du modèle aux mots les plus probables. Modifiez ce réglage seulement si la créativité ne suffit pas.",
+      "reasoningPresets": "Niveaux de raisonnement disponibles",
+      "reasoningPresetsHelp": "Activez les niveaux que les utilisateurs pourront choisir dans la barre de chat. Ultra utilise le maximum du fournisseur lorsqu’il existe, sinon le niveau le plus élevé compatible.",
+      "reasoningPresetLabel": "Activer le niveau {level}",
+      "reasoningLevels": {
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé",
+        "xhigh": "Très élevé",
+        "ultra": "Ultra"
+      },
       "maxOutputTokens": "Longueur maximale de la réponse",
       "maxOutputTokensHelp": "Plafond technique de génération. Une réponse peut s’arrêter plus tôt lorsqu’elle est terminée.",
       "maxToolCalls": "Nombre maximal d’outils par réponse",

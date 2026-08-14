@@ -3,6 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 import type { ChatAgent, ChatUsageImpact } from "@/components/chat/chat-types";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 export interface ChatComposerControls {
   primary: ReactNode;
@@ -26,6 +27,9 @@ export interface ChatLayoutProps {
   agents: ChatAgent[];
   selectedAgent: ChatAgent | null;
   selectedAgentId: string | null;
+  reasoningPresets?: ReasoningPreset[];
+  reasoningEffort?: ReasoningPreset | null;
+  onReasoningEffortChange?: (value: ReasoningPreset) => void;
   activeConversationId: string | null;
   conversationIsOwner?: boolean;
   conversationImpact?: ChatUsageImpact | null;

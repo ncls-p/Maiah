@@ -334,6 +334,15 @@
       "queueMessage": "Queue message",
       "sendMessage": "Send message",
       "stopGeneration": "Stop generation",
+      "reasoningLevel": "Reasoning level",
+      "reasoningSelected": "Reasoning: {level}",
+      "reasoningLevels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "xhigh": "Very high",
+        "ultra": "Ultra"
+      },
       "needsSetup": "This assistant needs a provider and model.",
       "configureAssistant": "Configure assistant",
       "codeFiles": "ZIP/code",
@@ -813,6 +822,16 @@
       "temperatureHelp": "A low value produces more stable, predictable answers; a high value allows more variation.",
       "topP": "Vocabulary variety",
       "topPHelp": "Limits the model to the most likely words. Change this only when creativity alone is not enough.",
+      "reasoningPresets": "Available reasoning levels",
+      "reasoningPresetsHelp": "Enable the levels users can choose in the chat bar. Ultra uses the provider maximum when available and otherwise falls back to the highest portable level.",
+      "reasoningPresetLabel": "Enable {level}",
+      "reasoningLevels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "xhigh": "Very high",
+        "ultra": "Ultra"
+      },
       "maxOutputTokens": "Maximum response length",
       "maxOutputTokensHelp": "Technical generation ceiling. A response can stop sooner when it is complete.",
       "maxToolCalls": "Maximum tools per response",

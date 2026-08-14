@@ -91,6 +91,7 @@ export async function POST(
       attachmentIds = [],
       imageAttachmentIds = [],
       capabilityOverrides,
+      reasoningEffort,
     } = parsed.data;
     const streamProtocol =
       req.headers.get("X-AI-Hub-Stream-Protocol") ??
@@ -284,6 +285,7 @@ export async function POST(
       continueFromMessageId,
       codeWorkspaceAttachment,
       messageAttachments,
+      reasoningEffort,
       rejectChatRequest,
     });
     if (preparedConversation instanceof Response) return preparedConversation;
@@ -351,6 +353,7 @@ export async function POST(
       useAiSdkUIStream,
       shouldRegenerateConversationTitle,
       capabilityOverrides,
+      reasoningEffort,
     };
     if (agent.kind === "orchestrator")
       return runOrchestratorChat(executionContext);

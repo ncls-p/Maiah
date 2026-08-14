@@ -28,6 +28,7 @@ import { ModelAdvancedMainSection6 } from "./model-advanced-fields.model-advance
 import { ModelAdvancedMainSection7 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-7";
 import { ModelAdvancedMainSection8 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-8";
 import { ModelAdvancedMainSection9 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-9";
+import { ReasoningPresetsField } from "./model-advanced-fields.reasoning-presets";
 
 export function ModelAdvancedFieldsSection1({
   model,
@@ -132,6 +133,7 @@ export function ModelAdvancedFieldsSection1({
               />
             </FieldContent>
           </Field>
+          <ReasoningPresetsField model={model} />
           <ModelAdvancedMainSection13 model={model} />
           <ModelAdvancedMainSection12 model={model} />
           <ModelAdvancedMainSection6 model={model} />

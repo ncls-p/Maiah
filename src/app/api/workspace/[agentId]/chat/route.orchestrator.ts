@@ -87,6 +87,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
           );
           progress.queue(event);
         },
+        reasoningEffort: context.reasoningEffort,
       });
       completedRun = result;
       const timings = generationClock.snapshot();

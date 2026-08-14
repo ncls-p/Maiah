@@ -36,6 +36,7 @@ import {
 import { startResolvedAgentRun } from "./runtime-executor.start-run";
 import { collectAgentVisualOutputs } from "./runtime-executor.visual-outputs";
 import { recordAgentExecutionUsage } from "./runtime-executor.usage";
+import { reasoningCallSettings } from "./reasoning-presets";
 
 export async function executeResolvedAgent(
   input: InternalExecutionInput,
@@ -46,7 +47,8 @@ export async function executeResolvedAgent(
   let outputTokens = 0;
   let usageRecorded = false;
   let usageProvider:
-    Awaited<ReturnType<typeof resolveProviderForVersion>> | undefined;
+    | Awaited<ReturnType<typeof resolveProviderForVersion>>
+    | undefined;
   const startedAt = Date.now();
   try {
     const provider = await resolveProviderForVersion(input.resolved.version);
@@ -62,6 +64,10 @@ export async function executeResolvedAgent(
     const model = adapter.createChatModel(
       provider.runtimeConfig,
       provider.modelId,
+    );
+    const reasoningSettings = reasoningCallSettings(
+      input.reasoningEffort,
+      provider.runtimeConfig,
     );
     const runtimeLimits = resolveAgentRuntimeLimits({
       maxToolCalls: input.resolved.version.maxToolCalls,
@@ -177,6 +183,7 @@ export async function executeResolvedAgent(
           ? Number.parseFloat(input.resolved.version.topP)
           : undefined,
         maxOutputTokens,
+        ...reasoningSettings,
         tools,
         toolChoice: configuredToolChoice,
         toolApproval: bound.toolApproval,
@@ -338,6 +345,7 @@ export async function executeResolvedAgent(
                   recoveryRemainingTokens,
                 ),
               ),
+              ...reasoningSettings,
               abortSignal: deadline.signal,
               telemetry: {
                 functionId: "ai-hub.agent-run.empty-response-recovery",

@@ -6,6 +6,7 @@ import {
   type CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
 import type { AiSdkUIChatStartMetadata } from "@/hooks/ai-sdk-ui-chat-transport";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 export function compactErrorMessage(message: string) {
   const firstLine = message.split("\n", 1)[0]?.trim() || "Chat request failed";
@@ -49,4 +50,5 @@ export type SubmitOptions = {
   codeWorkspaceArtifact?: CodeWorkspaceArtifact;
   codeWorkspaceId?: string;
   attachments?: ChatAttachment[];
+  reasoningEffort?: ReasoningPreset;
 };

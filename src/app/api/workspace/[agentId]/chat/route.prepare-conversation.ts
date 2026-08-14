@@ -30,6 +30,10 @@ import {
   mergeUserFilePartMetadata,
 } from "./route-support";
 import type { ChatAgentRow } from "./route.execution-context";
+import {
+  normalizeReasoningPresets,
+  type ReasoningPreset,
+} from "@/modules/agent/reasoning-presets";
 
 type RejectRequest = (
   status: number,
@@ -51,6 +55,7 @@ export async function prepareChatConversation(input: {
   continueFromMessageId?: string | null;
   codeWorkspaceAttachment: unknown;
   messageAttachments: ChatAttachment[];
+  reasoningEffort?: ReasoningPreset;
   rejectChatRequest: RejectRequest;
 }) {
   const {
@@ -66,6 +71,7 @@ export async function prepareChatConversation(input: {
     continueFromMessageId,
     codeWorkspaceAttachment,
     messageAttachments,
+    reasoningEffort,
     rejectChatRequest,
   } = input;
   let conversation: typeof conversations.$inferSelect | null = null;
@@ -153,6 +159,23 @@ export async function prepareChatConversation(input: {
       400,
       "no_active_agent_version",
       { error: "No active agent version configured" },
+      { agentId, workspaceId: agent.workspaceId, userId: actorUserId },
+    );
+  }
+
+  const generationSettings = version.generationSettingsJson as {
+    reasoningPresets?: unknown;
+  } | null;
+  if (
+    reasoningEffort &&
+    !normalizeReasoningPresets(generationSettings?.reasoningPresets).includes(
+      reasoningEffort,
+    )
+  ) {
+    return rejectChatRequest(
+      400,
+      "reasoning_effort_not_enabled",
+      { error: "This reasoning level is not enabled for the assistant" },
       { agentId, workspaceId: agent.workspaceId, userId: actorUserId },
     );
   }

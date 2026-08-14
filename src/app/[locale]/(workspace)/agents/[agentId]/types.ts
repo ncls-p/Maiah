@@ -3,6 +3,7 @@ import type {
   AgentAccessOptions,
   AgentAccessScope,
 } from "@/modules/agent/access-scope";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 export type Agent = {
@@ -137,6 +138,7 @@ interface AgentGenerationSettings {
   seed: string;
   maxRetries: string;
   stopSequences: string;
+  reasoningPresets: ReasoningPreset[];
 }
 
 interface AgentMemoryPolicy {
@@ -229,6 +231,7 @@ export function createEmptyForm(): AgentForm {
       seed: "",
       maxRetries: "",
       stopSequences: "",
+      reasoningPresets: [],
     },
     responseFormat: "text",
     memoryPolicy: { enabled: false, summaryThresholdTokens: 24_000 },

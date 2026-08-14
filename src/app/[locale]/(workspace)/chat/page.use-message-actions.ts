@@ -12,6 +12,7 @@ import type {
 import { textFromMessage } from "@/components/chat/chat-types";
 import type { useChatStream } from "@/hooks/use-chat-stream";
 import { fetchJson } from "@/lib/api-client";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 import { latestCodeWorkspaceArtifact } from "./chat-page-helpers";
 
@@ -20,6 +21,7 @@ type Context = {
   activeConversationId: string | null;
   workspaceId: string | null | undefined;
   selectedAgentId: string | null;
+  reasoningEffort: ReasoningPreset | null;
   messages: ChatMessage[];
   sending: boolean;
   setMessages: Stream["setMessages"];
@@ -71,6 +73,7 @@ export function useMessageActions(c: Context) {
       await c.handleSubmit(trimmed, {
         resendFromMessageId: message.id,
         reuseUserMessage: true,
+        reasoningEffort: c.reasoningEffort ?? undefined,
       });
   }
   async function deleteMessage(message: ChatMessage) {
@@ -89,6 +92,7 @@ export function useMessageActions(c: Context) {
       await c.handleSubmit(content, {
         resendFromMessageId: message.id,
         reuseUserMessage: true,
+        reasoningEffort: c.reasoningEffort ?? undefined,
       });
   }
   async function regenerateAssistantResponse(message: ChatMessage) {
@@ -107,6 +111,7 @@ export function useMessageActions(c: Context) {
         c.activeConversationId,
       ],
       reuseUserMessage: true,
+      reasoningEffort: c.reasoningEffort ?? undefined,
     });
   }
   async function continueAssistantResponse(message: ChatMessage) {
@@ -114,6 +119,7 @@ export function useMessageActions(c: Context) {
     else
       await c.handleSubmit(c.t("messageList.continuePrompt"), {
         continueFromMessageId: message.id,
+        reasoningEffort: c.reasoningEffort ?? undefined,
       });
   }
   async function forkConversation(message: ChatMessage) {

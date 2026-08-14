@@ -19,10 +19,12 @@ import {
   AttachmentTitle,
 } from "@/components/ui/attachment";
 import type { ChatTodoList } from "@/modules/chat/todo-list";
+import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
 
 export interface QueuedChatMessage {
   id: string;
   content: string;
+  reasoningEffort?: ReasoningPreset;
 }
 
 export interface ChatComposerProps {
