@@ -337,6 +337,7 @@
       "reasoningLevel": "Niveau de raisonnement",
       "reasoningSelected": "Raisonnement : {level}",
       "reasoningLevels": {
+        "none": "Aucun",
         "low": "Faible",
         "medium": "Moyen",
         "high": "Élevé",
@@ -823,9 +824,10 @@
       "topP": "Variété du vocabulaire",
       "topPHelp": "Limite les choix du modèle aux mots les plus probables. Modifiez ce réglage seulement si la créativité ne suffit pas.",
       "reasoningPresets": "Niveaux de raisonnement disponibles",
-      "reasoningPresetsHelp": "Activez les niveaux que les utilisateurs pourront choisir dans la barre de chat. Ultra utilise le maximum du fournisseur lorsqu’il existe, sinon le niveau le plus élevé compatible.",
+      "reasoningPresetsHelp": "Activez les niveaux que les utilisateurs pourront choisir dans la barre de chat. Aucun désactive le raisonnement lorsque le modèle le permet. Ultra utilise le maximum du fournisseur lorsqu’il existe, sinon le niveau le plus élevé compatible.",
       "reasoningPresetLabel": "Activer le niveau {level}",
       "reasoningLevels": {
+        "none": "Aucun",
         "low": "Faible",
         "medium": "Moyen",
         "high": "Élevé",

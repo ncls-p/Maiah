@@ -8,6 +8,10 @@ import {
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
 import {
+  REASONING_PRESETS,
+  reasoningPresetSchema,
+} from "@/modules/agent/reasoning-presets";
+import {
   canEditAgentForScope,
   getVisibleAgentById,
   normalizePromptSuggestions,
@@ -97,8 +101,8 @@ export const updateAgentSchema = z.object({
       maxRetries: z.number().int().min(0).optional(),
       stopSequences: z.array(z.string()).optional(),
       reasoningPresets: z
-        .array(z.enum(["low", "medium", "high", "xhigh", "ultra"]))
-        .max(5)
+        .array(reasoningPresetSchema)
+        .max(REASONING_PRESETS.length)
         .optional(),
     })
     .optional(),

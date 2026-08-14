@@ -337,6 +337,7 @@
       "reasoningLevel": "Reasoning level",
       "reasoningSelected": "Reasoning: {level}",
       "reasoningLevels": {
+        "none": "Off",
         "low": "Low",
         "medium": "Medium",
         "high": "High",
@@ -823,9 +824,10 @@
       "topP": "Vocabulary variety",
       "topPHelp": "Limits the model to the most likely words. Change this only when creativity alone is not enough.",
       "reasoningPresets": "Available reasoning levels",
-      "reasoningPresetsHelp": "Enable the levels users can choose in the chat bar. Ultra uses the provider maximum when available and otherwise falls back to the highest portable level.",
+      "reasoningPresetsHelp": "Enable the levels users can choose in the chat bar. Off disables reasoning when the model supports it. Ultra uses the provider maximum when available and otherwise falls back to the highest portable level.",
       "reasoningPresetLabel": "Enable {level}",
       "reasoningLevels": {
+        "none": "Off",
         "low": "Low",
         "medium": "Medium",
         "high": "High",

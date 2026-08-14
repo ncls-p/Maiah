@@ -1,3 +1,4 @@
+import { reasoningPresetSchema } from "@/modules/agent/reasoning-presets";
 import { isEphemeralTtlMinutes } from "@/modules/chat/ephemeral-retention";
 import {
   projectToolMessagePayload,
@@ -24,9 +25,7 @@ export const chatRequestSchema = z.object({
   codeWorkspaceId: z.uuid().optional(),
   attachmentIds: z.array(z.uuid()).optional(),
   imageAttachmentIds: z.array(z.uuid()).optional(),
-  reasoningEffort: z
-    .enum(["low", "medium", "high", "xhigh", "ultra"])
-    .optional(),
+  reasoningEffort: reasoningPresetSchema.optional(),
   capabilityOverrides: z
     .object({
       disabledTools: z

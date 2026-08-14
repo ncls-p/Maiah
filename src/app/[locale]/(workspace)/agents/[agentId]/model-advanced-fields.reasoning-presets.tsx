@@ -41,7 +41,7 @@ export function ReasoningPresetsField({
     <Field className="sm:col-span-2">
       <FieldLabel>{t("reasoningPresets")}</FieldLabel>
       <FieldContent>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
           {REASONING_PRESETS.map((preset) => {
             const checked =
               form.generationSettings.reasoningPresets.includes(preset);

@@ -44,7 +44,9 @@ export function useChatLayoutController(props: ChatLayoutProps) {
           onSelectAgent={props.onSelectAgent}
           onSetUserDefaultAgent={props.onSetUserDefaultAgent}
         />
-        {props.reasoningPresets?.length && props.reasoningEffort ? (
+        {props.reasoningPresets &&
+        props.reasoningPresets.length > 0 &&
+        props.reasoningEffort != null ? (
           <ChatReasoningSlider
             presets={props.reasoningPresets}
             value={props.reasoningEffort}
