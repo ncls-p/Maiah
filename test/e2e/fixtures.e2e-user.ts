@@ -163,14 +163,17 @@ export async function ensureE2EAssistant() {
     const version = await client.query<{ id: string }>(
       `insert into agent_versions
        (id, agent_id, version_number, name, system_prompt, provider_id, model_id,
-        created_by_user_id, created_at)
+        generation_settings_json, created_by_user_id, created_at)
        values ($1, $2, 1, 'E2E version', 'You are an E2E test assistant.',
-               $3, $4, $5, now())
+               $3, $4,
+               '{"reasoningPresets":["low","medium","high","xhigh","ultra"]}'::jsonb,
+               $5, now())
        on conflict (agent_id, version_number) do update
        set name = excluded.name,
            system_prompt = excluded.system_prompt,
            provider_id = excluded.provider_id,
-           model_id = excluded.model_id
+           model_id = excluded.model_id,
+           generation_settings_json = excluded.generation_settings_json
        returning id`,
       [randomUUID(), agentId, providerId, modelId, userId],
     );

@@ -47,6 +47,7 @@ test.describe("chat composer", () => {
     await expect(dock).toBeVisible();
     await expect(textarea).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
+    await expect(page.getByRole("slider")).toBeVisible();
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
       "content",
       /interactive-widget=resizes-content/,
@@ -78,12 +79,16 @@ test.describe("chat composer", () => {
     expect(dockBox).not.toBeNull();
     expect(composerBounds).not.toBeNull();
     expect(navigationBox).not.toBeNull();
-    expect(
-      Math.abs(dockBox!.y + dockBox!.height - navigationBox!.y),
-    ).toBeLessThanOrEqual(1);
-    expect(
-      navigationBox!.y - (composerBounds!.y + composerBounds!.height),
-    ).toBeLessThanOrEqual(16);
+    const dockGap = navigationBox!.y - (dockBox!.y + dockBox!.height);
+    if ((await dock.getAttribute("data-centered")) === "true") {
+      expect(dockGap).toBeGreaterThanOrEqual(0);
+      expect(dockGap).toBeLessThanOrEqual(176);
+    } else {
+      expect(Math.abs(dockGap)).toBeLessThanOrEqual(1);
+      expect(
+        navigationBox!.y - (composerBounds!.y + composerBounds!.height),
+      ).toBeLessThanOrEqual(16);
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollHeight <= window.innerHeight,
