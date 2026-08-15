@@ -41,7 +41,7 @@ export const commonSchemasPart1 = {
       title: { type: "string", default: "Interactive preview" },
       html: {
         type: "string",
-        description: "HTML fragment for the isolated preview.",
+        description: "HTML fragment or full HTML document for the preview.",
       },
       css: { type: "string", default: "" },
       js: { type: "string", default: "" },

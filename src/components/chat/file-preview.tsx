@@ -114,7 +114,7 @@ export function FilePreviewDialog({
     /\.(png|jpe?g|gif|webp|svg|bmp|tiff?)$/i.test(fileName);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85dvh] max-w-3xl flex-col overflow-hidden">
+      <DialogContent className="flex max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-6xl flex-col overflow-hidden sm:max-w-6xl">
         <div className="flex min-w-0 items-start justify-between gap-3 border-b pb-3">
           <div className="min-w-0">
             <DialogTitle className="truncate text-base">{fileName}</DialogTitle>
@@ -163,7 +163,7 @@ export function FilePreviewDialog({
               <img
                 src={url}
                 alt={fileName}
-                className="mx-auto max-h-[min(68dvh,52rem)] w-full rounded-xl object-contain"
+                className="mx-auto max-h-[min(80dvh,64rem)] w-auto max-w-full rounded-xl object-contain"
               />
             </>
           ) : loadingPreview ? (

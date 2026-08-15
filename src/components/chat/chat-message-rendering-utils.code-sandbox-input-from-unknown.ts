@@ -67,7 +67,9 @@ export function shouldShowCodeSandboxToUser(
   if (parsedInput) return parsedInput.showToUser;
   if (!inputText) return false;
   try {
-    return codeSandboxInputFromUnknown(JSON.parse(inputText))?.showToUser === true;
+    return (
+      codeSandboxInputFromUnknown(JSON.parse(inputText))?.showToUser === true
+    );
   } catch {
     return /"showToUser"\s*:\s*true(?:\s*[,}])?/.test(inputText);
   }
@@ -168,63 +170,4 @@ export function htmlArtifactFromInputText(inputText: string | undefined) {
       height: heightMatch ? Number(heightMatch[1]) : 420,
     };
   }
-}
-
-function escapeClosingTags(value: string) {
-  return value.replace(/<\/(script|style)/gi, "<\\/$1");
-}
-
-export function artifactSourceDocument(
-  artifact: HtmlArtifactOutput,
-  options: { fullscreen?: boolean } = {},
-) {
-  const fullscreenCss = options.fullscreen
-    ? `
-html, body { width: 100%; min-height: 100%; }
-body { overflow: auto; }
-body > .container,
-body > .grid,
-body > main,
-body > section,
-body > article,
-body > div:first-child {
-	width: 100% !important;
-	max-width: none !important;
-}
-body > .container,
-body > main,
-body > section,
-body > article,
-body > div:first-child {
-	min-height: 100dvh;
-}
-`
-    : "";
-
-  return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob: https:; font-src data: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
-<style>
-:root { color-scheme: light dark; }
-* { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
-body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-${escapeClosingTags(artifact.css)}
-${fullscreenCss}
-</style>
-</head>
-<body>
-${artifact.html}
-<script>
-${escapeClosingTags(artifact.js)}
-</script>
-</body>
-</html>`;
-}
-
-export function artifactCombinedCode(artifact: HtmlArtifactOutput) {
-  return `<style>\n${artifact.css}\n</style>\n\n${artifact.html}\n\n<script>\n${artifact.js}\n</script>`;
 }

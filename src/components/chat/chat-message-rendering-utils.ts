@@ -1,6 +1,8 @@
 export {
   artifactCombinedCode,
   artifactSourceDocument,
+} from "./chat-message-rendering-utils.artifact-source-document";
+export {
   codeSandboxInputFromInputText,
   codeSandboxInputFromUnknown,
   htmlArtifactFromInputText,
