@@ -119,6 +119,10 @@ export function useChatMessageListController({
   }, [conversationId]);
 
   useLayoutEffect(() => {
+    if (sending) shouldFollowStreamRef.current = true;
+  }, [sending]);
+
+  useLayoutEffect(() => {
     if (!hasTranscript) return;
     const viewport = viewportRef.current;
     if (!viewport) return;

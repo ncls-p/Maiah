@@ -21,3 +21,15 @@ export function createChatHref({
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
+
+export function canAdoptRouteConversation(input: {
+  routeConversationId: string | null;
+  activeConversationId: string | null;
+  sending: boolean;
+}) {
+  return Boolean(
+    input.routeConversationId &&
+    input.routeConversationId !== input.activeConversationId &&
+    !input.sending,
+  );
+}

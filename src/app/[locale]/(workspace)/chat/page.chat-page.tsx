@@ -1,6 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
 import {
@@ -14,6 +14,7 @@ import {
   normalizeCodeWorkspaceChatWidth,
 } from "@/components/chat/code-workspace-layout";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { canAdoptRouteConversation } from "@/lib/chat-navigation";
 import {
   DEFAULT_EPHEMERAL_TTL_MINUTES,
   isEphemeralTtlMinutes,
@@ -35,7 +36,6 @@ import { ChatPageBoundary } from "./page.chat-page-boundary";
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [activeConversationId, setActiveConversationId] = useState<
@@ -169,9 +169,9 @@ export function useChatPageController() {
         params.set("temporary", "true");
         params.set("ttl", String(ttlMinutes));
       }
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
     },
-    [pathname, router],
+    [pathname],
   );
 
   const {
@@ -276,8 +276,14 @@ export function useChatPageController() {
       );
       return;
     }
-    if (routeConversationId && routeConversationId !== activeConversationId) {
-      selectConversation(routeConversationId, availableRouteAgentId);
+    if (
+      canAdoptRouteConversation({
+        routeConversationId,
+        activeConversationId,
+        sending,
+      })
+    ) {
+      selectConversation(routeConversationId!, availableRouteAgentId);
       return;
     }
     if (!routeConversationId && activeConversationId && !sending) {
