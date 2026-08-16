@@ -19,12 +19,12 @@ import {
 } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
 import { messageParts, messages } from "@/server/infrastructure/db/schema";
-import { stepCountIs, ToolLoopAgent, type LanguageModel } from "ai";
+import { isStepCount, ToolLoopAgent, type LanguageModel } from "ai";
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { reasoningCallSettings } from "@/modules/agent/reasoning-presets";
 import {
-  limitModelHistory,
+  fitModelHistoryToContext,
   type ConversationContextPolicy,
 } from "@/modules/chat/conversation-context-policy";
 import {
@@ -93,7 +93,7 @@ export async function runStandardChat(input: {
   });
   const contextPolicy =
     version.memoryPolicyJson as ConversationContextPolicy | null;
-  const modelHistory = limitModelHistory({
+  const fittedContext = fitModelHistoryToContext({
     messages: generationHistory,
     contextWindowTokens:
       contextPolicy?.contextWindowTokens && providerConfig.contextWindow
@@ -102,9 +102,10 @@ export async function runStandardChat(input: {
             providerConfig.contextWindow,
           )
         : (contextPolicy?.contextWindowTokens ?? providerConfig.contextWindow),
-    reservedOutputTokens: maxOutputTokens,
+    requestedOutputTokens: maxOutputTokens,
     systemPrompt,
   });
+  const modelHistory = fittedContext.messages;
   const startedAt = Date.now();
   const generationClock = createGenerationClock(startedAt);
   const partWriter = createStreamedPartWriter(
@@ -144,6 +145,9 @@ export async function runStandardChat(input: {
     id: version.id,
     model,
     instructions: systemPrompt,
+    // Conversation summaries are trusted server-generated system messages.
+    // AI SDK 7 rejects system messages in `messages` unless this is explicit.
+    allowSystemInMessages: true,
     temperature: version.temperature
       ? Number.parseFloat(version.temperature)
       : undefined,
@@ -156,7 +160,7 @@ export async function runStandardChat(input: {
     stopSequences: generationSettings?.stopSequences?.length
       ? generationSettings.stopSequences
       : undefined,
-    maxOutputTokens,
+    maxOutputTokens: fittedContext.maxOutputTokens,
     ...reasoningSettings,
     tools,
     toolChoice: configuredToolChoice,
@@ -181,7 +185,7 @@ export async function runStandardChat(input: {
         conversationId: true,
       },
     },
-    stopWhen: stepCountIs(maxSteps),
+    stopWhen: isStepCount(maxSteps),
     prepareStep:
       availableToolNames.length > 0
         ? ({ steps }) => {

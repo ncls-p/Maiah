@@ -47,7 +47,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
     assistantMessage,
     continuationClaim,
     content,
-    history,
+    generationHistory,
     availableAttachments,
     useAiSdkUIStream,
   } = context;
@@ -73,7 +73,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
         agentId,
         agentVersionId: version.id,
         prompt: content,
-        messages: history,
+        messages: generationHistory,
         availableAttachments,
         trigger: "chat",
         conversationId: conversation.id,

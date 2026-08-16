@@ -166,11 +166,16 @@ describe("agent runtime executor", () => {
   });
 
   it("executes and settles a bounded root run", async () => {
+    const messages = [
+      { role: "system" as const, content: "Earlier conversation summary" },
+      { role: "user" as const, content: "Current follow-up" },
+    ];
     const result = await executeAgent({
       workspaceId: rootAgent.workspaceId,
       userId: rootAgent.createdById,
       agentId: rootAgent.id,
       prompt: "Hello",
+      messages,
       trigger: "api",
     });
 
@@ -182,6 +187,13 @@ describe("agent runtime executor", () => {
     });
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({ reservationTokens: 30 }),
+    );
+    expect(mocks.generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instructions: "Help",
+        allowSystemInMessages: true,
+        messages,
+      }),
     );
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({

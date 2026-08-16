@@ -4,6 +4,7 @@ export const DEFAULT_MAX_INPUT_CHARACTERS = 32_000;
 export const MAX_INPUT_CHARACTERS = 200_000;
 export const DEFAULT_SUMMARY_THRESHOLD_TOKENS = 24_000;
 export const DEFAULT_SUMMARY_MAX_TOKENS = 1_200;
+export const MIN_GENERATION_OUTPUT_TOKENS = 1_024;
 
 export interface ConversationContextPolicy {
   enabled?: boolean;
@@ -43,21 +44,50 @@ export function estimateModelMessageTokens(message: ModelMessage) {
   return Math.max(1, Math.ceil(contentCharacters(message.content) / 4) + 4);
 }
 
-export function limitModelHistory(input: {
+export function fitModelHistoryToContext(input: {
   messages: ModelMessage[];
   contextWindowTokens?: number;
-  reservedOutputTokens: number;
+  requestedOutputTokens: number;
   systemPrompt: string;
-}) {
-  if (!Number.isFinite(input.contextWindowTokens)) return input.messages;
+}): { messages: ModelMessage[]; maxOutputTokens: number } {
+  const requestedOutputTokens = Math.max(
+    1,
+    Math.floor(input.requestedOutputTokens),
+  );
+  if (!Number.isFinite(input.contextWindowTokens)) {
+    return { messages: input.messages, maxOutputTokens: requestedOutputTokens };
+  }
   const contextWindowTokens = Math.max(
     2_000,
     Math.floor(input.contextWindowTokens ?? 2_000),
   );
   const fixedTokens = Math.ceil(input.systemPrompt.length / 4) + 64;
+  const allMessageTokens = input.messages.reduce(
+    (total, message) => total + estimateModelMessageTokens(message),
+    0,
+  );
+  const outputTokensWithFullHistory = Math.max(
+    1,
+    contextWindowTokens - fixedTokens - allMessageTokens,
+  );
+  const minimumOutputTokens = Math.min(
+    requestedOutputTokens,
+    MIN_GENERATION_OUTPUT_TOKENS,
+  );
+
+  if (outputTokensWithFullHistory >= minimumOutputTokens) {
+    return {
+      messages: input.messages,
+      maxOutputTokens: Math.min(
+        requestedOutputTokens,
+        outputTokensWithFullHistory,
+      ),
+    };
+  }
+
   const availableTokens = Math.max(
     256,
-    contextWindowTokens - Math.max(1, input.reservedOutputTokens) - fixedTokens,
+    contextWindowTokens - minimumOutputTokens - fixedTokens,
   );
   const leadingSummary =
     input.messages[0]?.role === "system" ? input.messages[0] : null;
@@ -77,5 +107,30 @@ export function limitModelHistory(input: {
     usedTokens += messageTokens;
   }
 
-  return leadingSummary ? [leadingSummary, ...selected] : selected;
+  const messages = leadingSummary ? [leadingSummary, ...selected] : selected;
+  const selectedTokens = messages.reduce(
+    (total, message) => total + estimateModelMessageTokens(message),
+    0,
+  );
+  return {
+    messages,
+    maxOutputTokens: Math.min(
+      requestedOutputTokens,
+      Math.max(1, contextWindowTokens - fixedTokens - selectedTokens),
+    ),
+  };
+}
+
+export function limitModelHistory(input: {
+  messages: ModelMessage[];
+  contextWindowTokens?: number;
+  reservedOutputTokens: number;
+  systemPrompt: string;
+}) {
+  return fitModelHistoryToContext({
+    messages: input.messages,
+    contextWindowTokens: input.contextWindowTokens,
+    requestedOutputTokens: input.reservedOutputTokens,
+    systemPrompt: input.systemPrompt,
+  }).messages;
 }

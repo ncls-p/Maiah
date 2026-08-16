@@ -35,6 +35,7 @@ import {
 } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { createConversationCursor, querySchema } from "./route.query-schema";
+import { RESPONSE_VERSION_BRANCH_KIND } from "@/modules/chat/conversation-branches";
 export async function GET(req: NextRequest) {
   return handleRoute(
     req,
@@ -137,6 +138,10 @@ export async function GET(req: NextRequest) {
         visibleConversationCondition,
         eq(conversations.status, "active"),
         isNull(conversations.archivedAt),
+        or(
+          isNull(conversations.branchKind),
+          sql`${conversations.branchKind} <> ${RESPONSE_VERSION_BRANCH_KIND}`,
+        )!,
       ];
       if (agentId) {
         scopeConditions.push(eq(conversations.agentId, agentId));

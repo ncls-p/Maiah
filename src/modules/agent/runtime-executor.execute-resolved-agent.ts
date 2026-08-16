@@ -11,9 +11,13 @@ import {
 } from "@/modules/agent/runtime-policy";
 import { resolveProviderForVersion } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
+import {
+  fitModelHistoryToContext,
+  type ConversationContextPolicy,
+} from "@/modules/chat/conversation-context-policy";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { generateText, stepCountIs } from "ai";
+import { generateText, isStepCount } from "ai";
 import { buildDelegationTools } from "./runtime-executor.build-delegation-tools";
 import {
   AgentExecutionError,
@@ -160,6 +164,22 @@ export async function executeResolvedAgent(
     ]
       .filter(Boolean)
       .join("\n\n");
+    const contextPolicy =
+      input.resolved.version.memoryPolicyJson as ConversationContextPolicy | null;
+    const fittedContext = input.messages?.length
+      ? fitModelHistoryToContext({
+          messages: input.messages,
+          contextWindowTokens:
+            contextPolicy?.contextWindowTokens && provider.contextWindow
+              ? Math.min(
+                  contextPolicy.contextWindowTokens,
+                  provider.contextWindow,
+                )
+              : (contextPolicy?.contextWindowTokens ?? provider.contextWindow),
+          requestedOutputTokens: maxOutputTokens,
+          systemPrompt: system,
+        })
+      : null;
     const deadline = createRuntimeDeadline(
       timeoutMsUntil(input.deadlineAt),
       input.budget.controller.signal,
@@ -173,9 +193,11 @@ export async function executeResolvedAgent(
     try {
       result = await generateText({
         model,
-        system,
-        ...(input.messages?.length
-          ? { messages: input.messages }
+        instructions: system,
+        // Chat summaries are trusted, server-generated system history.
+        allowSystemInMessages: true,
+        ...(fittedContext
+          ? { messages: fittedContext.messages }
           : { prompt: input.prompt }),
         temperature: input.resolved.version.temperature
           ? Number.parseFloat(input.resolved.version.temperature)
@@ -183,12 +205,12 @@ export async function executeResolvedAgent(
         topP: input.resolved.version.topP
           ? Number.parseFloat(input.resolved.version.topP)
           : undefined,
-        maxOutputTokens,
+        maxOutputTokens: fittedContext?.maxOutputTokens ?? maxOutputTokens,
         ...reasoningSettings,
         tools,
         toolChoice: configuredToolChoice,
         toolApproval: bound.toolApproval,
-        stopWhen: stepCountIs(Math.max(1, effectiveMaxSteps)),
+        stopWhen: isStepCount(Math.max(1, effectiveMaxSteps)),
         prepareStep: hasTools
           ? ({ stepNumber }) => {
               if (stepNumber < effectiveMaxSteps - 1) return undefined;
@@ -321,31 +343,46 @@ export async function executeResolvedAgent(
           outputTokens;
         if (recoveryRemainingTokens > 0 && !deadline.signal.aborted) {
           try {
-            const recoveryResult = await generateText({
-              model,
-              system: `${system}\n\n${emptyResponseRecoveryInstruction}`,
-              prompt: [
-                "Original task:",
-                input.prompt,
-                "Successful tool results:",
-                toolResultRecoveryContext(
-                  successfulToolResults,
-                  input.budget.policy.resultMaxChars,
-                ),
-              ].join("\n\n"),
-              temperature: input.resolved.version.temperature
-                ? Number.parseFloat(input.resolved.version.temperature)
-                : undefined,
-              topP: input.resolved.version.topP
-                ? Number.parseFloat(input.resolved.version.topP)
-                : undefined,
-              maxOutputTokens: Math.max(
+            const recoveryInstructions = `${system}\n\n${emptyResponseRecoveryInstruction}`;
+            const recoveryPrompt = [
+              "Original task:",
+              input.prompt,
+              "Successful tool results:",
+              toolResultRecoveryContext(
+                successfulToolResults,
+                input.budget.policy.resultMaxChars,
+              ),
+            ].join("\n\n");
+            const recoveryContext = fitModelHistoryToContext({
+              messages: [{ role: "user", content: recoveryPrompt }],
+              contextWindowTokens:
+                contextPolicy?.contextWindowTokens && provider.contextWindow
+                  ? Math.min(
+                      contextPolicy.contextWindowTokens,
+                      provider.contextWindow,
+                    )
+                  : (contextPolicy?.contextWindowTokens ??
+                    provider.contextWindow),
+              requestedOutputTokens: Math.max(
                 1,
                 Math.min(
                   runtimeLimits.maxOutputTokens,
                   recoveryRemainingTokens,
                 ),
               ),
+              systemPrompt: recoveryInstructions,
+            });
+            const recoveryResult = await generateText({
+              model,
+              instructions: recoveryInstructions,
+              messages: recoveryContext.messages,
+              temperature: input.resolved.version.temperature
+                ? Number.parseFloat(input.resolved.version.temperature)
+                : undefined,
+              topP: input.resolved.version.topP
+                ? Number.parseFloat(input.resolved.version.topP)
+                : undefined,
+              maxOutputTokens: recoveryContext.maxOutputTokens,
               ...reasoningSettings,
               abortSignal: deadline.signal,
               telemetry: {

@@ -70,7 +70,6 @@ export function ChatMessageListView({
     onJumpLatest,
     onRegenerateAssistant,
     onRejectTool,
-    onResendMessage,
     onSuggestionClick,
     pendingApprovals,
     precedingUserByMessageId,
@@ -88,6 +87,12 @@ export function ChatMessageListView({
     workspaceArtifactDisplay,
     workspaceId,
   } = model;
+  const actionsBusy =
+    sending ||
+    messages.some(
+      (message) =>
+        message.status === "pending" || message.status === "streaming",
+    );
   return (
     <MessageScrollerProvider
       key={conversationId ?? "empty"}
@@ -141,17 +146,29 @@ export function ChatMessageListView({
               const hasWorkPart = message.parts.some((part) =>
                 ["reasoning", "tool-call", "tool-result"].includes(part.type),
               );
-              const canEdit = Boolean(onEditMessage) && (isUser || isAssistant);
-              const canDelete = Boolean(onDeleteMessage);
+              const messageIsMutable =
+                message.status !== "pending" && message.status !== "streaming";
+              const canEdit =
+                Boolean(onEditMessage) &&
+                messageIsMutable &&
+                (isUser || isAssistant);
+              const canDelete =
+                Boolean(onDeleteMessage) && messageIsMutable && !actionsBusy;
+              const precedingUserMessage =
+                precedingUserByMessageId.get(message.id) ?? null;
+              const isTerminalAssistant =
+                isAssistant &&
+                (message.status === "completed" ||
+                  message.status === "failed" ||
+                  message.status === "cancelled");
               const canRegenerate =
                 Boolean(onRegenerateAssistant) &&
-                isAssistant &&
-                message.status !== "streaming";
+                isTerminalAssistant &&
+                Boolean(precedingUserMessage) &&
+                textFromMessage(precedingUserMessage!).trim().length > 0;
               const canContinue =
                 Boolean(onContinueAssistant) &&
                 canContinueAssistantMessage(message, lastAssistantMessageId);
-              const precedingUserMsg =
-                precedingUserByMessageId.get(message.id) ?? null;
               const isEditing = editingMessageId === message.id;
               const isLast = message.id === lastMessageId;
               const isStreamingAssistant =
@@ -237,15 +254,17 @@ export function ChatMessageListView({
                               isEditing
                                 ? () => {
                                     const nextContent = editingContent.trim();
-                                    setEditingMessageId(null);
-                                    setEditingContent("");
                                     setSavingMessageId(message.id);
                                     void (async () => {
                                       try {
-                                        await onEditMessage?.(
+                                        const saved = await onEditMessage?.(
                                           message,
                                           nextContent,
                                         );
+                                        if (saved !== false) {
+                                          setEditingMessageId(null);
+                                          setEditingContent("");
+                                        }
                                       } finally {
                                         setSavingMessageId(null);
                                       }
@@ -293,15 +312,13 @@ export function ChatMessageListView({
                       {!isEditing ? (
                         <MessageActionBar
                           message={message}
-                          sending={sending}
+                          sending={actionsBusy}
                           canEdit={canEdit}
                           canDelete={canDelete}
                           canRegenerate={canRegenerate}
                           canContinue={canContinue}
                           canFork={
-                            Boolean(onForkMessage) &&
-                            isAssistant &&
-                            message.status !== "streaming"
+                            Boolean(onForkMessage) && isTerminalAssistant
                           }
                           forking={forkingMessageId === message.id}
                           onCopy={async () => {
@@ -311,7 +328,7 @@ export function ChatMessageListView({
                             setEditingMessageId(message.id);
                             setEditingContent(content);
                           }}
-                          onDelete={() => void onDeleteMessage?.(message)}
+                          onDelete={() => onDeleteMessage?.(message)}
                           onRegenerate={() => {
                             void onRegenerateAssistant?.(message);
                           }}

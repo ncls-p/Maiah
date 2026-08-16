@@ -320,6 +320,9 @@ export async function POST(
       {
         summaryEnabled: memoryPolicy?.enabled ?? false,
         maxMessages: memoryPolicy?.maxMessages,
+        activeAssistantMessageId: continueFromMessageId
+          ? assistantMessage.id
+          : undefined,
       },
     );
     const generationHistory = continueFromMessageId

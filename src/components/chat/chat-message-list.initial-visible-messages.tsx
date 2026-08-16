@@ -36,9 +36,10 @@ export interface ChatMessageListProps {
   onEditMessage?: (
     message: ChatMessage,
     content: string,
-  ) => Promise<void> | void;
-  onDeleteMessage?: (message: ChatMessage) => Promise<void> | void;
-  onResendMessage?: (message: ChatMessage) => Promise<void> | void;
+  ) => Promise<boolean | void> | boolean | void;
+  onDeleteMessage?: (
+    message: ChatMessage,
+  ) => Promise<boolean | void> | boolean | void;
   onRegenerateAssistant?: (message: ChatMessage) => Promise<void> | void;
   onContinueAssistant?: (message: ChatMessage) => Promise<void> | void;
   onForkMessage?: (message: ChatMessage) => Promise<void> | void;

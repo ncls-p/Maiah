@@ -11,6 +11,9 @@ export type ConversationBranchNavigation = {
   activeIndex: number;
 };
 
+export const EXPLICIT_FORK_BRANCH_KIND = "fork";
+export const RESPONSE_VERSION_BRANCH_KIND = "response_version";
+
 const activeConversation = (conversationId: string) =>
   and(
     eq(conversations.id, conversationId),
@@ -103,6 +106,7 @@ export async function forkConversationAtMessage(input: {
         status: "active",
         parentConversationId: input.source.id,
         branchFromMessageId: branchMessage.id,
+        branchKind: EXPLICIT_FORK_BRANCH_KIND,
         isEphemeral: input.source.isEphemeral,
         ephemeralTtlMinutes: input.source.ephemeralTtlMinutes,
         expiresAt: input.source.expiresAt,
@@ -176,6 +180,7 @@ export async function forkConversationForRegeneration(input: {
         status: "active",
         parentConversationId: baseConversation.id,
         branchFromMessageId: branchMessage.id,
+        branchKind: RESPONSE_VERSION_BRANCH_KIND,
         isEphemeral: baseConversation.isEphemeral,
         ephemeralTtlMinutes: baseConversation.ephemeralTtlMinutes,
         expiresAt: baseConversation.expiresAt,

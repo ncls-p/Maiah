@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray, or } from "drizzle-orm";
 
 import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
@@ -31,7 +31,11 @@ export async function loadConversationHistory(
   summaryOrLegacyLimit?:
     | boolean
     | number
-    | { summaryEnabled?: boolean; maxMessages?: number },
+    | {
+        summaryEnabled?: boolean;
+        maxMessages?: number;
+        activeAssistantMessageId?: string;
+      },
 ): Promise<ModelMessage[]> {
   const historyLimit =
     typeof summaryOrLegacyLimit === "number" && summaryOrLegacyLimit > 0
@@ -44,6 +48,19 @@ export async function loadConversationHistory(
     summaryOrLegacyLimit === true ||
     (typeof summaryOrLegacyLimit === "object" &&
       summaryOrLegacyLimit.summaryEnabled === true);
+  const activeAssistantMessageId =
+    typeof summaryOrLegacyLimit === "object"
+      ? summaryOrLegacyLimit.activeAssistantMessageId
+      : undefined;
+  const modelHistoryCondition = and(
+    eq(messages.conversationId, conversationId),
+    or(
+      notInArray(messages.status, ["pending", "streaming"]),
+      activeAssistantMessageId
+        ? eq(messages.id, activeAssistantMessageId)
+        : undefined,
+    ),
+  );
   const [summaryRow] = summaryEnabled
     ? await db
         .select({
@@ -63,8 +80,8 @@ export async function loadConversationHistory(
             createdAt: messages.createdAt,
           })
           .from(messages)
-          .where(eq(messages.conversationId, conversationId))
-          .orderBy(desc(messages.createdAt))
+          .where(modelHistoryCondition)
+          .orderBy(desc(messages.createdAt), desc(messages.id))
           .limit(historyLimit)
       ).reverse()
     : await db
@@ -74,8 +91,8 @@ export async function loadConversationHistory(
           createdAt: messages.createdAt,
         })
         .from(messages)
-        .where(eq(messages.conversationId, conversationId))
-        .orderBy(messages.createdAt);
+        .where(modelHistoryCondition)
+        .orderBy(asc(messages.createdAt), asc(messages.id));
   if (summaryRow?.throughMessageId) {
     const boundary = recentMessageRows.findIndex(
       (message) => message.id === summaryRow.throughMessageId,
@@ -94,12 +111,12 @@ export async function loadConversationHistory(
         .innerJoin(messageParts, eq(messageParts.messageId, messages.id))
         .where(
           and(
-            eq(messages.conversationId, conversationId),
+            modelHistoryCondition,
             eq(messages.role, "user"),
             eq(messageParts.type, "file"),
           ),
         )
-        .orderBy(messages.createdAt)
+        .orderBy(asc(messages.createdAt), asc(messages.id))
     : [];
   const messageRows = mergeHistoryWithAttachmentMessages(
     recentMessageRows,

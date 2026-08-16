@@ -91,6 +91,7 @@ export const conversations = pgTable(
     sidebarOrder: integer("sidebar_order"),
     parentConversationId: uuid("parent_conversation_id"),
     branchFromMessageId: uuid("branch_from_message_id"),
+    branchKind: varchar("branch_kind", { length: 32 }),
     summaryEncrypted: text("summary_encrypted"),
     summaryThroughMessageId: uuid("summary_through_message_id"),
     summaryTokenCount: integer("summary_token_count"),

@@ -1,17 +1,23 @@
 import { encryptValue } from "@/lib/crypto";
+import { handleRoute } from "@/lib/route-handler";
+import { getActiveVersion } from "@/modules/agent/use-cases";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+  MAX_INPUT_CHARACTERS,
+  resolveMaxInputCharacters,
+  type ConversationContextPolicy,
+} from "@/modules/chat/conversation-context-policy";
+import { truncateConversationMessages } from "@/modules/chat/conversation-message-mutations";
 import { db } from "@/server/infrastructure/db";
 import {
   conversations,
   messageParts,
   messages,
 } from "@/server/infrastructure/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+import { getAuthorizedConversation } from "../../conversation-route-access";
 
 const paramsSchema = z.object({
   conversationId: z.uuid(),
@@ -19,35 +25,8 @@ const paramsSchema = z.object({
 });
 
 const updateMessageSchema = z.object({
-  content: z.string().trim().min(1).max(32_000),
+  content: z.string().trim().min(1).max(MAX_INPUT_CHARACTERS),
 });
-
-async function getAuthorizedConversation(input: {
-  conversationId: string;
-  userId: string;
-}) {
-  const [conversation] = await db
-    .select()
-    .from(conversations)
-    .where(
-      and(
-        eq(conversations.id, input.conversationId),
-        eq(conversations.status, "active"),
-        isNull(conversations.archivedAt),
-      ),
-    )
-    .limit(1);
-  if (!conversation) return null;
-  const permission = await requireResourcePermissionAsync(
-    input.userId,
-    conversation.workspaceId,
-    "conversations.viewOwn",
-    "conversation",
-    input.conversationId,
-  );
-  if (permission) return null;
-  return conversation;
-}
 
 async function replaceMessageTextContent(input: {
   messageId: string;
@@ -85,15 +64,21 @@ async function replaceMessageTextContent(input: {
           sortOrder: index + 1,
         })),
       ]);
+      await tx
+        .update(messages)
+        .set({ status: "completed", completedAt: new Date() })
+        .where(eq(messages.id, input.messageId));
+      await tx
+        .update(conversations)
+        .set({
+          summaryEncrypted: null,
+          summaryThroughMessageId: null,
+          summaryTokenCount: null,
+          summaryUpdatedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(conversations.id, input.conversationId));
     });
-    await db
-      .update(messages)
-      .set({ status: "completed", completedAt: new Date() })
-      .where(eq(messages.id, input.messageId));
-    await db
-      .update(conversations)
-      .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, input.conversationId));
   } catch (error) {
     throw new Error("Unable to update message content", { cause: error });
   }
@@ -114,16 +99,14 @@ export async function PATCH(
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       const { conversationId, messageId } = parsedParams.data;
-      const conversation = await getAuthorizedConversation({
-        conversationId,
-        userId: session.user.id,
-      });
-      if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
-      }
+      const access = await getAuthorizedConversation(
+        session.user.id,
+        Promise.resolve({ conversationId }),
+      );
+      if (!access.ok) return access.response;
+      if (access.access.role !== "owner")
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const { conversation } = access;
       const [message] = await db
         .select()
         .from(messages)
@@ -139,6 +122,23 @@ export async function PATCH(
           { error: "Message not found" },
           { status: 404 },
         );
+      }
+      if (message.role === "user") {
+        const version = await getActiveVersion(conversation.agentId);
+        const maximum = resolveMaxInputCharacters(
+          version?.memoryPolicyJson as ConversationContextPolicy | null,
+        );
+        if (parsedBody.data.content.length > maximum) {
+          return NextResponse.json(
+            {
+              error: `Message is too long. This assistant accepts at most ${maximum} characters per message.`,
+              code: "message_too_long",
+              actual: parsedBody.data.content.length,
+              maximum,
+            },
+            { status: 400 },
+          );
+        }
       }
       await replaceMessageTextContent({
         messageId,
@@ -165,16 +165,14 @@ export async function DELETE(
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       const { conversationId, messageId } = parsed.data;
-      const conversation = await getAuthorizedConversation({
-        conversationId,
-        userId: session.user.id,
-      });
-      if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
-      }
+      const access = await getAuthorizedConversation(
+        session.user.id,
+        Promise.resolve({ conversationId }),
+      );
+      if (!access.ok) return access.response;
+      if (access.access.role !== "owner")
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const { conversation } = access;
       const [message] = await db
         .select({ id: messages.id })
         .from(messages)
@@ -191,12 +189,15 @@ export async function DELETE(
           { status: 404 },
         );
       }
-      await db.delete(messages).where(eq(messages.id, messageId));
-      await db
-        .update(conversations)
-        .set({ updatedAt: new Date() })
-        .where(eq(conversations.id, conversation.id));
-      return NextResponse.json({ ok: true });
+      const deletedMessageIds = await db.transaction((tx) =>
+        truncateConversationMessages({
+          tx,
+          conversationId: conversation.id,
+          anchorMessageId: messageId,
+          includeAnchor: true,
+        }),
+      );
+      return NextResponse.json({ ok: true, deletedMessageIds });
     },
     { logLabel: "Failed to delete message" },
   );

@@ -17,6 +17,17 @@ import { toast } from "sonner";
 
 import { type ChatMessage } from "@/components/chat/chat-types";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import {
   BUTTON_TYPE,
@@ -51,7 +62,7 @@ export function MessageActionBar({
   forking: boolean;
   onCopy: () => Promise<void> | void;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<boolean | void> | boolean | void;
   onRegenerate: () => void;
   onContinue: () => void;
   onFork: () => void;
@@ -59,6 +70,8 @@ export function MessageActionBar({
 }) {
   const t = useTranslations("chat.messageList");
   const [copied, setCopied] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const branch = message.branch;
   const previousBranchId = branch?.conversationIds[branch.activeIndex - 1];
   const nextBranchId = branch?.conversationIds[branch.activeIndex + 1];
@@ -109,17 +122,53 @@ export function MessageActionBar({
         </Button>
       ) : null}
       {canDelete ? (
-        <Button
-          type={BUTTON_TYPE}
-          size="icon-sm"
-          variant={GHOST_VARIANT}
-          aria-label={t("deleteMessage")}
-          className="size-6 text-destructive/70 hover:text-destructive"
-          disabled={sending}
-          onClick={onDelete}
+        <AlertDialog
+          open={deleteOpen}
+          onOpenChange={(open) => {
+            if (!deleting) setDeleteOpen(open);
+          }}
         >
-          <Trash2Icon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-        </Button>
+          <Button
+            type={BUTTON_TYPE}
+            size="icon-sm"
+            variant={GHOST_VARIANT}
+            aria-label={t("deleteMessage")}
+            className="size-6 text-destructive/70 hover:text-destructive"
+            disabled={sending || deleting}
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2Icon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+          </Button>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("deleteMessageTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("deleteMessageDescription")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>
+                {t("deleteMessageCancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={deleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  setDeleting(true);
+                  void Promise.resolve(onDelete())
+                    .then((deleted) => {
+                      if (deleted !== false) setDeleteOpen(false);
+                    })
+                    .finally(() => setDeleting(false));
+                }}
+              >
+                {deleting ? <Spinner data-icon="inline-start" /> : null}
+                {t("deleteMessageConfirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
       {canRegenerate ? (
         <Button

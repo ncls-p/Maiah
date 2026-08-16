@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const mocks = vi.hoisted(() => ({
   select: vi.fn(),
@@ -90,6 +91,58 @@ describe("orchestrator conversation history", () => {
         [oldAttachmentTurn, oldAttachmentTurn],
       ).map((message) => message.id),
     ).toEqual(["old-file-turn", "recent-turn"]);
+  });
+
+  it("excludes the in-progress response before applying the message limit", async () => {
+    const boundedHistoryQuery = selectLimitedRows([
+      {
+        id: "previous-assistant",
+        role: "assistant",
+        createdAt: new Date("2026-08-16T08:13:00Z"),
+      },
+      {
+        id: "current-user",
+        role: "user",
+        createdAt: new Date("2026-08-16T08:21:00Z"),
+      },
+    ]);
+    mocks.select
+      .mockReturnValueOnce(boundedHistoryQuery)
+      .mockReturnValueOnce(selectJoinedRows([]))
+      .mockReturnValueOnce(
+        selectRows([
+          {
+            messageId: "previous-assistant",
+            type: "text",
+            contentEncrypted: "Tell me your model and workload.",
+            metadataJson: null,
+            sortOrder: 0,
+          },
+          {
+            messageId: "current-user",
+            type: "text",
+            contentEncrypted: "Summarize our conversation.",
+            metadataJson: null,
+            sortOrder: 0,
+          },
+        ]),
+      );
+
+    const history = await loadConversationHistory(
+      "conversation",
+      { workspaceId: "workspace", userId: "user" },
+      { maxMessages: 2 },
+    );
+
+    expect(history).toEqual([
+      { role: "assistant", content: "Tell me your model and workload." },
+      { role: "user", content: "Summarize our conversation." },
+    ]);
+    const condition = boundedHistoryQuery.where.mock.calls[0]?.[0];
+    const compiled = new PgDialect().sqlToQuery(condition);
+    expect(compiled.params).toEqual(
+      expect.arrayContaining(["pending", "streaming"]),
+    );
   });
 
   it("reads an older attached file on a later bounded conversation turn", async () => {

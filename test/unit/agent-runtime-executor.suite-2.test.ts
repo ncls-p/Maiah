@@ -196,16 +196,22 @@ describe("agent runtime executor", () => {
     const recoveryCall = mocks.generateText.mock.calls[1][0];
     expect(recoveryCall).toEqual(
       expect.objectContaining({
-        prompt: expect.stringContaining("Australia release notes"),
+        messages: [
+          expect.objectContaining({
+            role: "user",
+            content: expect.stringContaining("Australia release notes"),
+          }),
+        ],
         telemetry: expect.objectContaining({
           functionId: "ai-hub.agent-run.empty-response-recovery",
         }),
       }),
     );
-    expect(recoveryCall).not.toHaveProperty("messages");
+    expect(recoveryCall).not.toHaveProperty("prompt");
     expect(recoveryCall).not.toHaveProperty("tools");
-    expect(recoveryCall.prompt).toContain("[REDACTED]");
-    expect(recoveryCall.prompt).not.toContain(
+    const recoveryPrompt = recoveryCall.messages[0].content;
+    expect(recoveryPrompt).toContain("[REDACTED]");
+    expect(recoveryPrompt).not.toContain(
       "must-not-cross-the-recovery-boundary",
     );
     expect(mocks.completeRun).toHaveBeenCalledWith(

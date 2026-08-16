@@ -45,9 +45,31 @@ type Context = {
 export function useMessageActions(c: Context) {
   const { resolveApproval } = c;
   const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
+  async function restoreMessagesAfterFailure(fallback: ChatMessage[]) {
+    if (!c.activeConversationId) {
+      c.setMessages(fallback);
+      c.setCodeWorkspaceArtifact(latestCodeWorkspaceArtifact(fallback));
+      return fallback;
+    }
+    try {
+      const data = await fetchJson<{ messages?: ChatMessage[] }>(
+        `/api/workspace/conversations/${c.activeConversationId}`,
+      );
+      const restored = data.messages ?? fallback;
+      c.setMessages(restored);
+      c.setCodeWorkspaceArtifact(latestCodeWorkspaceArtifact(restored));
+      return restored;
+    } catch {
+      c.setMessages(fallback);
+      c.setCodeWorkspaceArtifact(latestCodeWorkspaceArtifact(fallback));
+      return fallback;
+    }
+  }
   async function editMessage(message: ChatMessage, content: string) {
-    if (!c.activeConversationId) return;
+    if (!c.activeConversationId || c.sending) return false;
     const trimmed = content.trim();
+    if (!trimmed) return false;
+    const previousMessages = c.messages;
     const nextMessages = c.messages.map((item) =>
       item.id === message.id
         ? {
@@ -61,39 +83,59 @@ export function useMessageActions(c: Context) {
         : item,
     );
     c.setMessages(nextMessages);
-    await fetchJson(
-      `/api/workspace/conversations/${c.activeConversationId}/messages/${message.id}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: trimmed }),
-      },
-    );
-    if (message.role === "user" && trimmed && !c.sending)
-      await c.handleSubmit(trimmed, {
+    if (message.role === "user") {
+      const saved = await c.handleSubmit(trimmed, {
         resendFromMessageId: message.id,
         reuseUserMessage: true,
         reasoningEffort: c.reasoningEffort ?? undefined,
       });
+      if (saved) return true;
+      const restored = await restoreMessagesAfterFailure(previousMessages);
+      return restored.some(
+        (item) =>
+          item.id === message.id && textFromMessage(item).trim() === trimmed,
+      );
+    }
+    try {
+      await fetchJson(
+        `/api/workspace/conversations/${c.activeConversationId}/messages/${message.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: trimmed }),
+        },
+      );
+      return true;
+    } catch (error) {
+      c.setMessages(previousMessages);
+      toast.error(
+        error instanceof Error ? error.message : c.t("messageList.editFailed"),
+      );
+      return false;
+    }
   }
   async function deleteMessage(message: ChatMessage) {
-    if (!c.activeConversationId) return;
-    await fetchJson(
-      `/api/workspace/conversations/${c.activeConversationId}/messages/${message.id}`,
-      { method: "DELETE" },
-    );
-    c.setMessages(c.messages.filter((item) => item.id !== message.id));
-    await c.refreshConversations();
-  }
-  async function resendMessage(message: ChatMessage) {
-    if (!c.activeConversationId || c.sending) return;
-    const content = textFromMessage(message).trim();
-    if (content)
-      await c.handleSubmit(content, {
-        resendFromMessageId: message.id,
-        reuseUserMessage: true,
-        reasoningEffort: c.reasoningEffort ?? undefined,
-      });
+    if (!c.activeConversationId || c.sending) return false;
+    try {
+      const result = await fetchJson<{ deletedMessageIds?: string[] }>(
+        `/api/workspace/conversations/${c.activeConversationId}/messages/${message.id}`,
+        { method: "DELETE" },
+      );
+      const deletedIds = new Set(result.deletedMessageIds ?? [message.id]);
+      const remaining = c.messages.filter((item) => !deletedIds.has(item.id));
+      c.setMessages(remaining);
+      c.setCodeWorkspaceArtifact(latestCodeWorkspaceArtifact(remaining));
+      void c.refreshConversations().catch(() => undefined);
+      toast.success(c.t("messageList.deleteSucceeded"));
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : c.t("messageList.deleteFailed"),
+      );
+      return false;
+    }
   }
   async function regenerateAssistantResponse(message: ChatMessage) {
     if (!c.activeConversationId || c.sending) return;
@@ -133,8 +175,8 @@ export function useMessageActions(c: Context) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messageId: message.id }),
       });
-      await c.refreshConversations();
       c.selectConversation(result.conversation.id, result.conversation.agentId);
+      void c.refreshConversations().catch(() => undefined);
       toast.success(c.t("messageList.forkCreated"));
     } catch (error) {
       toast.error(
@@ -189,7 +231,6 @@ export function useMessageActions(c: Context) {
   return {
     editMessage,
     deleteMessage,
-    resendMessage,
     regenerateAssistantResponse,
     continueAssistantResponse,
     forkConversation,

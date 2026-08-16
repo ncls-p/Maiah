@@ -211,7 +211,7 @@ export function RichEditor({
         <Button
           type="button"
           size="sm"
-          disabled={disabled}
+          disabled={disabled || !value.trim()}
           onClick={onSave}
           className="h-9 rounded-xl px-3.5 bg-primary text-primary-foreground hover:bg-primary/90"
         >

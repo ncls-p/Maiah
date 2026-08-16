@@ -3,6 +3,7 @@ import type { ModelMessage } from "ai";
 
 import {
   DEFAULT_MAX_INPUT_CHARACTERS,
+  fitModelHistoryToContext,
   limitModelHistory,
   resolveMaxInputCharacters,
 } from "@/modules/chat/conversation-context-policy";
@@ -56,5 +57,26 @@ describe("conversation context policy", () => {
     expect(result[0]).toBe(summary);
     expect(result.at(-1)).toBe(recent.at(-1));
     expect(result).not.toContain(recent[0]);
+  });
+
+  it("keeps a short conversation when the configured output exceeds the context window", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "Is Prime Agent the best harness?" },
+      { role: "assistant", content: "It depends on the workload." },
+      { role: "user", content: "Compare it with Pi and OMP." },
+      { role: "assistant", content: "Here is the comparison." },
+      { role: "user", content: "Summarize our conversation." },
+    ];
+
+    const result = fitModelHistoryToContext({
+      messages,
+      contextWindowTokens: 122_880,
+      requestedOutputTokens: 131_072,
+      systemPrompt: "You are a coding assistant.",
+    });
+
+    expect(result.messages).toEqual(messages);
+    expect(result.maxOutputTokens).toBeLessThan(122_880);
+    expect(result.maxOutputTokens).toBeGreaterThan(100_000);
   });
 });

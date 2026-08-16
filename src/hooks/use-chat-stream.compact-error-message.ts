@@ -33,7 +33,11 @@ export interface UseChatStreamOptions {
   conversationId: string | null;
   workspaceId: string | null;
   canChat: boolean;
-  onConversationCreated: (conversationId: string, firstMessage: string) => void;
+  onConversationCreated: (
+    conversationId: string,
+    firstMessage: string,
+    options?: { responseVersion?: boolean },
+  ) => void;
   onConversationTitle?: (conversationId: string, title: string) => void;
   onConversationMetadata?: (metadata: AiSdkUIChatStartMetadata) => void;
   onConversationsRefresh: () => Promise<void>;

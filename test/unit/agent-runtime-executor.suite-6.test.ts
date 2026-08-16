@@ -264,11 +264,11 @@ describe("agent runtime executor", () => {
         };
       }
       if (call === 2) {
-        expect(options.system).toContain(
+        expect(options.instructions).toContain(
           "Return only the final answer needed by the parent orchestrator.",
         );
-        expect(options.system).toContain(attachment.id);
-        expect(options.system).toContain(attachment.fileName);
+        expect(options.instructions).toContain(attachment.id);
+        expect(options.instructions).toContain(attachment.fileName);
         const prepareStep = options.prepareStep as (input: {
           stepNumber: number;
         }) => unknown;
@@ -370,9 +370,11 @@ describe("agent runtime executor", () => {
         };
       }
       expect(options).not.toHaveProperty("tools");
-      expect(options).not.toHaveProperty("messages");
-      expect(options.prompt).toContain('"kind":"code_sandbox_result"');
-      expect(options.system).toContain(
+      expect(options).not.toHaveProperty("prompt");
+      expect(options.messages[0].content).toContain(
+        '"kind":"code_sandbox_result"',
+      );
+      expect(options.instructions).toContain(
         "Your previous turn ended without a final text response",
       );
       return {

@@ -12,6 +12,8 @@ import {
   MIN_CHAT_WIDTH,
 } from "@/components/chat/code-workspace-layout";
 import { ConversationRetentionBanner } from "@/components/chat/temporary-conversation-banner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { CODING_INTERFACE_MODE } from "./chat-interface-mode";
 import { ChatContextBar } from "./chat-page-helpers";
 import { CodeWorkspaceModeBar, EmptyConversationState } from "./chat-page-view";
@@ -41,6 +43,7 @@ export function ChatPageView({ model }: { model: Model }) {
     forkConversation,
     forkingMessageId,
     conversationImpact,
+    conversationLoadError,
     conversationIsOwner,
     conversationReadOnly,
     convertingTemporaryConversation,
@@ -71,8 +74,8 @@ export function ChatPageView({ model }: { model: Model }) {
     quota,
     rejectToolInvocation,
     reloadActualLatestMessages,
+    retryConversationLoad,
     reloadAgentContext,
-    resendMessage,
     regenerateAssistantResponse,
     navigateConversationBranch,
     selectAgent,
@@ -96,6 +99,17 @@ export function ChatPageView({ model }: { model: Model }) {
     userDefaultAgentId,
     workspaceId,
   } = model;
+  const ownerEditMessage = conversationIsOwner ? editMessage : undefined;
+  const ownerDeleteMessage = conversationIsOwner ? deleteMessage : undefined;
+  const ownerRegenerateResponse = conversationIsOwner
+    ? regenerateAssistantResponse
+    : undefined;
+  const ownerContinueResponse = conversationIsOwner
+    ? continueAssistantResponse
+    : undefined;
+  const availableForkConversation = conversationReadOnly
+    ? undefined
+    : forkConversation;
   return (
     <ChatLayout
       agents={agents}
@@ -147,7 +161,23 @@ export function ChatPageView({ model }: { model: Model }) {
           onModeChange={chooseInterfaceMode}
         />
       ) : null}
-      {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
+      {conversationLoadError ? (
+        <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4">
+          <Alert variant="destructive">
+            <AlertTitle>{t("errors.loadConversationFailed")}</AlertTitle>
+            <AlertDescription className="mt-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={retryConversationLoad}
+              >
+                {t("errors.retryConversationLoad")}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      ) : interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
         <section
           className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
           style={
@@ -177,12 +207,11 @@ export function ChatPageView({ model }: { model: Model }) {
                   workspaceArtifactDisplay="summary"
                   conversationId={activeConversationId}
                   bottomRef={bottomRef}
-                  onEditMessage={editMessage}
-                  onDeleteMessage={deleteMessage}
-                  onResendMessage={resendMessage}
-                  onRegenerateAssistant={regenerateAssistantResponse}
-                  onContinueAssistant={continueAssistantResponse}
-                  onForkMessage={forkConversation}
+                  onEditMessage={ownerEditMessage}
+                  onDeleteMessage={ownerDeleteMessage}
+                  onRegenerateAssistant={ownerRegenerateResponse}
+                  onContinueAssistant={ownerContinueResponse}
+                  onForkMessage={availableForkConversation}
                   onNavigateBranch={navigateConversationBranch}
                   forkingMessageId={forkingMessageId}
                   onJumpLatest={reloadActualLatestMessages}
@@ -196,7 +225,7 @@ export function ChatPageView({ model }: { model: Model }) {
             <ChatComposer
               input={input}
               maxInputCharacters={maxInputCharacters}
-              canChat={canChat}
+              canChat={canChat && !conversationLoadError}
               needsSetup={needsSetup}
               sending={sending}
               queuedMessages={queuedMessages}
@@ -248,12 +277,11 @@ export function ChatPageView({ model }: { model: Model }) {
               workspaceId={workspaceId ?? undefined}
               conversationId={activeConversationId}
               bottomRef={bottomRef}
-              onEditMessage={editMessage}
-              onDeleteMessage={deleteMessage}
-              onResendMessage={resendMessage}
-              onRegenerateAssistant={regenerateAssistantResponse}
-              onContinueAssistant={continueAssistantResponse}
-              onForkMessage={forkConversation}
+              onEditMessage={ownerEditMessage}
+              onDeleteMessage={ownerDeleteMessage}
+              onRegenerateAssistant={ownerRegenerateResponse}
+              onContinueAssistant={ownerContinueResponse}
+              onForkMessage={availableForkConversation}
               onNavigateBranch={navigateConversationBranch}
               forkingMessageId={forkingMessageId}
               onJumpLatest={reloadActualLatestMessages}
@@ -270,7 +298,7 @@ export function ChatPageView({ model }: { model: Model }) {
         <ChatComposer
           input={input}
           maxInputCharacters={maxInputCharacters}
-          canChat={canChat}
+          canChat={canChat && !conversationLoadError}
           needsSetup={needsSetup}
           sending={sending}
           queuedMessages={queuedMessages}

@@ -20,9 +20,8 @@ import {
   conversations,
   messageParts,
   messages,
-  toolInvocations,
 } from "@/server/infrastructure/db/schema";
-import { and, eq, gt, inArray, ne } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import {
   findUserMessageForResend,
@@ -38,6 +37,7 @@ import {
   resolveMaxInputCharacters,
   type ConversationContextPolicy,
 } from "@/modules/chat/conversation-context-policy";
+import { truncateConversationMessages } from "@/modules/chat/conversation-message-mutations";
 
 type RejectRequest = (
   status: number,
@@ -368,27 +368,12 @@ export async function prepareChatConversation(input: {
           ),
         )
         .orderBy(messageParts.sortOrder);
-      const messagesToReplace = await tx
-        .select({ id: messages.id })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.conversationId, conversation.id),
-            ne(messages.id, existingUserMessage.id),
-            gt(messages.createdAt, existingUserMessage.createdAt),
-          ),
-        );
-      const messageIdsToReplace = messagesToReplace.map(
-        (message) => message.id,
-      );
-      if (messageIdsToReplace.length > 0) {
-        await tx
-          .delete(toolInvocations)
-          .where(inArray(toolInvocations.messageId, messageIdsToReplace));
-        await tx
-          .delete(messages)
-          .where(inArray(messages.id, messageIdsToReplace));
-      }
+      await truncateConversationMessages({
+        tx,
+        conversationId: conversation.id,
+        anchorMessageId: existingUserMessage.id,
+        includeAnchor: false,
+      });
       await tx
         .delete(messageParts)
         .where(eq(messageParts.messageId, existingUserMessage.id));

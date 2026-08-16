@@ -111,6 +111,7 @@ describe("conversation branches", () => {
       expect.objectContaining({
         parentConversationId: "conversation-1",
         branchFromMessageId: "assistant-1",
+        branchKind: "fork",
       }),
     );
     expect(dbMock.tx.returning).toHaveBeenCalledTimes(3);
@@ -176,6 +177,7 @@ describe("conversation branches", () => {
       expect.objectContaining({
         parentConversationId: "conversation-1",
         branchFromMessageId: "assistant-1",
+        branchKind: "response_version",
       }),
     );
     expect(dbMock.tx.returning).toHaveBeenCalledTimes(2);

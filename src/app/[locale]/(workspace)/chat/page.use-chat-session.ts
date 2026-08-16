@@ -99,6 +99,11 @@ export function useChatSession(c: SessionContext) {
   } = c;
   const [activeVersion, setActiveVersion] = useState<AgentVersion | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadedConversationId, setLoadedConversationId] = useState<
+    string | null
+  >(null);
+  const [conversationLoadError, setConversationLoadError] = useState(false);
+  const [messageLoadAttempt, setMessageLoadAttempt] = useState(0);
   const [quota, setQuota] = useState<{ used: number; limit: number } | null>(
     null,
   );
@@ -118,8 +123,10 @@ export function useChatSession(c: SessionContext) {
     conversationId: activeConversationId,
     workspaceId: workspaceId,
     canChat,
-    onConversationCreated: (conversationId, firstMessage) => {
+    onConversationCreated: (conversationId, firstMessage, options) => {
       skipNextMessageLoadRef.current = true;
+      setLoadedConversationId(conversationId);
+      setConversationLoadError(false);
       const currentParams = new URLSearchParams(window.location.search);
       const createdEphemeral =
         ephemeralRef.current || currentParams.get("temporary") === "true";
@@ -144,7 +151,7 @@ export function useChatSession(c: SessionContext) {
         };
       }
       setActiveConversationId(conversationId);
-      if (selectedAgentId) {
+      if (selectedAgentId && !options?.responseVersion) {
         setConversations((current) =>
           upsertConversation(current, {
             id: conversationId,
@@ -350,6 +357,8 @@ export function useChatSession(c: SessionContext) {
     if (!activeConversationId) {
       skipNextMessageLoadRef.current = false;
       queueMicrotask(() => {
+        setLoadedConversationId(null);
+        setConversationLoadError(false);
         setConversationCanContinue(true);
         setConversationIsOwner(true);
         setEphemeralExpiresAt(null);
@@ -366,7 +375,10 @@ export function useChatSession(c: SessionContext) {
     }
     const controller = new AbortController();
     let cancelled = false;
-    queueMicrotask(() => setLoadingMessages(true));
+    queueMicrotask(() => {
+      setConversationLoadError(false);
+      setLoadingMessages(true);
+    });
     void fetchJson<{
       conversation?: ChatConversation;
       messages?: ChatMessage[];
@@ -402,13 +414,18 @@ export function useChatSession(c: SessionContext) {
         }
         const loaded = data.messages ?? [];
         setMessages(loaded);
+        setLoadedConversationId(activeConversationId);
         const artifact = latestCodeWorkspaceArtifact(loaded);
         setCodeWorkspaceArtifact(artifact);
         if (!artifact) setInterfaceMode(CHAT_INTERFACE_MODE);
       })
       .catch((error: unknown) => {
-        if (error instanceof Error && error.name !== "AbortError")
-          toast.error(error.message);
+        if (error instanceof Error && error.name === "AbortError") return;
+        if (!cancelled) {
+          setMessages([]);
+          setCodeWorkspaceArtifact(null);
+          setConversationLoadError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingMessages(false);
@@ -419,6 +436,7 @@ export function useChatSession(c: SessionContext) {
     };
   }, [
     activeConversationId,
+    messageLoadAttempt,
     resetInterfaceMode,
     setCodeWorkspaceArtifact,
     setConversations,
@@ -430,12 +448,24 @@ export function useChatSession(c: SessionContext) {
     setMessages,
     selectedAgentId,
   ]);
+  const retryConversationLoad = useCallback(() => {
+    setConversationLoadError(false);
+    setMessageLoadAttempt((attempt) => attempt + 1);
+  }, []);
   return {
     ...stream,
     handleSubmit,
     activeVersion,
     setActiveVersion,
-    loadingMessages,
+    loadingMessages:
+      loadingMessages ||
+      Boolean(
+        activeConversationId &&
+        loadedConversationId !== activeConversationId &&
+        !conversationLoadError,
+      ),
+    conversationLoadError,
+    retryConversationLoad,
     quota,
     canChat,
     conversationIsOwner,

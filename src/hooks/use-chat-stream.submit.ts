@@ -70,10 +70,10 @@ export function useChatSubmitHandler(input: {
     resolvedApprovalIdsRef,
   } = input;
   async function handleSubmit(content: string, options: SubmitOptions = {}) {
-    if (!content) return;
-    if (!agentId) return;
-    if (!canChat) return;
-    if (sending) return;
+    if (!content) return false;
+    if (!agentId) return false;
+    if (!canChat) return false;
+    if (sending) return false;
 
     const userMessageFileParts = [
       ...(options.codeWorkspaceArtifact
@@ -101,7 +101,8 @@ export function useChatSubmitHandler(input: {
             message.role === "assistant",
         )
       : null;
-    if (options.continueFromMessageId && !continuedAssistantMessage) return;
+    if (options.continueFromMessageId && !continuedAssistantMessage)
+      return false;
     const assistantMessage = continuedAssistantMessage
       ? prepareAssistantMessageContinuation(continuedAssistantMessage)
       : createLocalMessage("assistant", "");
@@ -333,7 +334,9 @@ export function useChatSubmitHandler(input: {
             metadata.conversationId !== conversationId
           ) {
             migrateDraftCapabilityOverrides(agentId, metadata.conversationId);
-            onConversationCreated(metadata.conversationId, content);
+            onConversationCreated(metadata.conversationId, content, {
+              responseVersion: Boolean(options.regenerateAssistantMessageId),
+            });
           }
         },
         onEvent: handleStreamEvent,
@@ -345,14 +348,15 @@ export function useChatSubmitHandler(input: {
       if (activeConversationId)
         clearStoredChatStreamDraft(activeConversationId);
 
-      await onConversationsRefresh();
+      await onConversationsRefresh().catch(() => undefined);
+      return true;
     } catch (err) {
       const requestWasDetached =
         detachedRequestControllersRef.current.has(controller);
       if (err instanceof Error && err.name === "AbortError") {
         if (requestWasDetached) {
           persistDraft({ immediate: true });
-          return;
+          return true;
         }
         updateAssistantDraft((message) => ({
           ...message,
@@ -362,7 +366,7 @@ export function useChatSubmitHandler(input: {
         clearPendingApprovals();
         if (activeConversationId)
           clearStoredChatStreamDraft(activeConversationId);
-        return;
+        return false;
       }
       const errorMessage =
         err instanceof Error ? err.message : "Chat request failed";
@@ -376,6 +380,7 @@ export function useChatSubmitHandler(input: {
       clearPendingApprovals();
       if (activeConversationId)
         clearStoredChatStreamDraft(activeConversationId);
+      return false;
     } finally {
       const requestWasDetached =
         detachedRequestControllersRef.current.has(controller);

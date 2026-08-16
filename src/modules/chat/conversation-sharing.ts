@@ -166,6 +166,7 @@ export async function forkSharedConversation(
         title: source.title,
         status: "active",
         parentConversationId: source.id,
+        branchKind: "shared_continuation",
       })
       .returning();
     const sourceMessages = await tx
