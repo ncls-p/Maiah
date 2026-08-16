@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
 import type { ChatAttachment } from "@/modules/chat/attachments";
 import { isChatFileAttachment } from "@/modules/chat/attachments";
+import { buildConversationAttachmentContext } from "@/modules/chat/conversation-attachment-context";
 import {
   buildSkillsRegistryPrompt,
   listAgentSkills,
@@ -41,6 +42,7 @@ export async function prepareStandardChatConfig(input: {
     agentId,
     userMessage,
     history,
+    availableAttachments,
     useAiSdkUIStream,
   } = context;
   const { maxToolCalls, maxOutputTokens, maxSteps } = resolveAgentRuntimeLimits(
@@ -87,7 +89,7 @@ export async function prepareStandardChatConfig(input: {
         enabledSkillIds: new Set(enabledSkills.map((skill) => skill.id)),
         enabledKnowledgeIds: capabilityOverrides?.enabledKnowledgeIds,
         enableDocumentExplorer:
-          input.messageAttachments.some(
+          availableAttachments.some(
             (attachment) =>
               isChatFileAttachment(attachment) &&
               attachment.extractedTextChars > 0,
@@ -206,12 +208,15 @@ export async function prepareStandardChatConfig(input: {
     guardrails?.enabled && guardrails.blockedTopics?.length
       ? `Avoid and refuse requests about these blocked topics: ${guardrails.blockedTopics.join(", ")}.`
       : null;
+  const attachmentContext =
+    buildConversationAttachmentContext(availableAttachments);
   const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value ?? "en";
   const systemPrompt = [
     version.systemPrompt?.trim() || fallbackSystemPrompt(localeCookie),
     skillsPrompt,
     responseFormatGuidance,
     guardrailGuidance,
+    attachmentContext,
     toolGuidance,
   ]
     .filter(Boolean)

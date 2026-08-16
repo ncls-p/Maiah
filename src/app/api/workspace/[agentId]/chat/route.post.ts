@@ -31,7 +31,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadConversationHistory } from "./route-history";
 import { chatRequestSchema } from "./route-support";
 import { runOrchestratorChat } from "./route.orchestrator";
-import { loadAuthorizedOrchestratorAttachments } from "./route.orchestrator-attachments";
+import { loadAuthorizedConversationAttachments } from "./route.orchestrator-attachments";
 import { prepareChatConversation } from "./route.prepare-conversation";
 import { runStandardChat } from "./route.standard";
 
@@ -325,15 +325,12 @@ export async function POST(
     const generationHistory = continueFromMessageId
       ? [...history, { role: "user" as const, content }]
       : history;
-    const availableAttachments =
-      agent.kind === "orchestrator"
-        ? await loadAuthorizedOrchestratorAttachments({
-            conversationId: conversation.id,
-            workspaceId: agent.workspaceId,
-            userId: actorUserId,
-            current: messageAttachments,
-          })
-        : messageAttachments;
+    const availableAttachments = await loadAuthorizedConversationAttachments({
+      conversationId: conversation.id,
+      workspaceId: agent.workspaceId,
+      userId: actorUserId,
+      current: messageAttachments,
+    });
 
     const enqueueEvent = (event: Record<string, unknown>) =>
       publishChatStreamEvent(assistantMessage.id, event);

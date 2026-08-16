@@ -11,7 +11,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 const maximumAvailableConversationAttachments = 64;
 
-export async function loadAuthorizedOrchestratorAttachments(input: {
+export async function loadAuthorizedConversationAttachments(input: {
   conversationId: string;
   workspaceId: string;
   userId: string;
