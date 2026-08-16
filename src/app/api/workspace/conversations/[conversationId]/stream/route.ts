@@ -16,7 +16,11 @@ export async function GET(
   return handleRoute(
     req,
     async ({ session }) => {
-      const access = await getAuthorizedConversation(session.user.id, params);
+      const access = await getAuthorizedConversation(
+        session.user.id,
+        params,
+        "conversations.viewOwn",
+      );
       if (!access.ok) return access.response;
       const { conversationId } = access;
 

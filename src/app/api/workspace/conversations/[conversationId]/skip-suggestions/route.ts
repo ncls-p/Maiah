@@ -11,7 +11,11 @@ export async function POST(
   return handleRoute(
     req,
     async ({ session }) => {
-      const access = await getAuthorizedConversation(session.user.id, params);
+      const access = await getAuthorizedConversation(
+        session.user.id,
+        params,
+        "conversations.viewOwn",
+      );
       if (!access.ok) return access.response;
       if (
         access.access.role === "recipient" &&

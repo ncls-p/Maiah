@@ -102,6 +102,7 @@ export async function PATCH(
       const access = await getAuthorizedConversation(
         session.user.id,
         Promise.resolve({ conversationId }),
+        "conversations.viewOwn",
       );
       if (!access.ok) return access.response;
       if (access.access.role !== "owner")
@@ -168,6 +169,7 @@ export async function DELETE(
       const access = await getAuthorizedConversation(
         session.user.id,
         Promise.resolve({ conversationId }),
+        "conversations.viewOwn",
       );
       if (!access.ok) return access.response;
       if (access.access.role !== "owner")

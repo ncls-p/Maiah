@@ -57,7 +57,11 @@ export async function GET(
   return handleRoute(
     req,
     async ({ session }) => {
-      const access = await getAuthorizedConversation(session.user.id, params);
+      const access = await getAuthorizedConversation(
+        session.user.id,
+        params,
+        "conversations.viewOwn",
+      );
       if (!access.ok) return access.response;
       const { conversation, conversationId } = access;
 
@@ -126,6 +130,7 @@ export async function PATCH(
       const access = await getAuthorizedConversation(
         session.user.id,
         Promise.resolve({ conversationId }),
+        "conversations.viewOwn",
       );
       if (!access.ok) return access.response;
       const { conversation } = access;
@@ -215,7 +220,11 @@ export async function DELETE(
   return handleRoute(
     req,
     async ({ session }) => {
-      const access = await getAuthorizedConversation(session.user.id, params);
+      const access = await getAuthorizedConversation(
+        session.user.id,
+        params,
+        "conversations.viewOwn",
+      );
       if (!access.ok) return access.response;
       const { conversationId } = access;
       if (access.access.role !== "owner") {

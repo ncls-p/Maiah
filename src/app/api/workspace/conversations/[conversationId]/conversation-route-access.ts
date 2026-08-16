@@ -1,4 +1,5 @@
 import { isWorkspaceMemberForRequest } from "@/modules/auth/workspace-access";
+import { requireResourcePermissionAsync } from "@/lib/route-handler";
 import { getConversationAccess } from "@/modules/chat/conversation-sharing";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -8,6 +9,7 @@ const paramsSchema = z.object({ conversationId: z.uuid() });
 export async function getAuthorizedConversation(
   userId: string,
   params: Promise<{ conversationId: string }>,
+  permission: "conversations.viewOwn",
 ) {
   const parsed = paramsSchema.safeParse(await params);
   if (!parsed.success)
@@ -40,6 +42,14 @@ export async function getAuthorizedConversation(
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     } as const;
   }
+  const forbidden = await requireResourcePermissionAsync(
+    userId,
+    access.conversation.workspaceId,
+    permission,
+    "conversation",
+    conversationId,
+  );
+  if (forbidden) return { ok: false, response: forbidden } as const;
   return {
     ok: true,
     conversation: access.conversation,
