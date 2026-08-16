@@ -13,25 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-export const COMPOSER_FILE_ACCEPT = [
-  "image/*",
-  "image/heic",
-  "image/heif",
-  "application/pdf",
-  "application/zip",
-  ".pdf",
-  ".txt",
-  ".md",
-  ".csv",
-  ".json",
-  ".zip",
-  ".doc",
-  ".docx",
-  ".ppt",
-  ".pptx",
-  ".xls",
-  ".xlsx",
-].join(",");
+// The server safely stores unknown formats and extracts text only when a
+// reader is available, so the file picker should not hide generic files.
+export const COMPOSER_FILE_ACCEPT = "*/*";
 
 function ComposerIconButton({
   label,

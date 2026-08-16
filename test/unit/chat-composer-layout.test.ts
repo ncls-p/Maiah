@@ -74,10 +74,24 @@ describe("chat composer layout", () => {
 
     expect(mediaSource).toContain('data-slot="chat-composer-file-input"');
     expect(mediaSource).toContain("accept={COMPOSER_FILE_ACCEPT}");
+    expect(mediaSource).toContain('COMPOSER_FILE_ACCEPT = "*/*"');
     expect(mediaSource).toContain('accept="image/*"');
     expect(mediaSource).toContain('capture="environment"');
     expect(mediaSource).toContain('t("takePhoto")');
     expect(mediaSource).toContain('t("dictation")');
+  });
+
+  it("uploads long pasted text instead of sending it inline", () => {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/chat/chat-composer.chat-composer.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain("shouldUploadPastedText(text)");
+    expect(source).toContain("createPastedTextUploadFile(text)");
   });
 
   it("keeps the capability catalog bounded and independently scrollable", () => {

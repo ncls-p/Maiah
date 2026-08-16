@@ -83,6 +83,10 @@ interface AgentGenerationSettings {
 interface AgentMemoryPolicy {
   enabled?: boolean;
   summaryThresholdTokens?: number;
+  summaryMaxTokens?: number;
+  contextWindowTokens?: number;
+  maxMessages?: number;
+  maxInputCharacters?: number;
 }
 
 interface AgentGuardrails {

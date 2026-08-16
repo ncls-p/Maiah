@@ -27,7 +27,7 @@ export function ModelAdvancedMainSection7({
               ...prev,
               memoryPolicy: {
                 ...prev.memoryPolicy,
-                summaryThresholdTokens: Number(e.target.value) || 1_000,
+                summaryThresholdTokens: e.target.value,
               },
             }))
           }

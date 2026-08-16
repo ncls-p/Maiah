@@ -20,6 +20,7 @@ import { ModelAdvancedMainSection11 } from "./model-advanced-fields.model-advanc
 import { ModelAdvancedMainSection12 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-12";
 import { ModelAdvancedMainSection13 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-13";
 import { ModelAdvancedMainSection14 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-14";
+import { ModelAdvancedMainSection15 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-15";
 import { ModelAdvancedMainSection2 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-2";
 import { ModelAdvancedMainSection3 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-3";
 import { ModelAdvancedMainSection4 } from "./model-advanced-fields.model-advanced-fields.view.section-1.section-4";
@@ -204,6 +205,7 @@ export function ModelAdvancedFieldsSection1({
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <ModelAdvancedMainSection8 model={model} />
           <ModelAdvancedMainSection7 model={model} />
+          <ModelAdvancedMainSection15 model={model} />
           <ModelAdvancedMainSection3 model={model} />
           <ModelAdvancedMainSection2 model={model} />
         </FieldGroup>

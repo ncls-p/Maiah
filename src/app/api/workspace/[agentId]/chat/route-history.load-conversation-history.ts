@@ -28,13 +28,22 @@ import {
 export async function loadConversationHistory(
   conversationId: string,
   context: { workspaceId: string; userId: string },
-  summaryOrLegacyLimit?: boolean | number,
+  summaryOrLegacyLimit?:
+    | boolean
+    | number
+    | { summaryEnabled?: boolean; maxMessages?: number },
 ): Promise<ModelMessage[]> {
   const historyLimit =
     typeof summaryOrLegacyLimit === "number" && summaryOrLegacyLimit > 0
       ? Math.floor(summaryOrLegacyLimit)
-      : null;
-  const summaryEnabled = summaryOrLegacyLimit === true;
+      : typeof summaryOrLegacyLimit === "object" &&
+          Number.isFinite(summaryOrLegacyLimit.maxMessages)
+        ? Math.max(2, Math.floor(summaryOrLegacyLimit.maxMessages ?? 2))
+        : null;
+  const summaryEnabled =
+    summaryOrLegacyLimit === true ||
+    (typeof summaryOrLegacyLimit === "object" &&
+      summaryOrLegacyLimit.summaryEnabled === true);
   const [summaryRow] = summaryEnabled
     ? await db
         .select({

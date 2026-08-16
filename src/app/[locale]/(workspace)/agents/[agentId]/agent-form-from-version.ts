@@ -25,6 +25,9 @@ export type AgentVersionPayload = {
   memoryPolicyJson: {
     enabled?: boolean;
     summaryThresholdTokens?: number;
+    summaryMaxTokens?: number;
+    contextWindowTokens?: number;
+    maxInputCharacters?: number;
     maxMessages?: number;
   } | null;
   guardrailsJson: { enabled?: boolean; blockedTopics?: string[] } | null;
@@ -62,8 +65,21 @@ function buildPolicySettings(activeVersion: AgentVersionPayload | null) {
   return {
     memoryPolicy: {
       enabled: activeVersion?.memoryPolicyJson?.enabled ?? false,
-      summaryThresholdTokens:
+      summaryThresholdTokens: String(
         activeVersion?.memoryPolicyJson?.summaryThresholdTokens ?? 24_000,
+      ),
+      summaryMaxTokens: String(
+        activeVersion?.memoryPolicyJson?.summaryMaxTokens ?? 1_200,
+      ),
+      contextWindowTokens: optionalNumericField(
+        activeVersion?.memoryPolicyJson?.contextWindowTokens,
+      ),
+      maxMessages: optionalNumericField(
+        activeVersion?.memoryPolicyJson?.maxMessages,
+      ),
+      maxInputCharacters: String(
+        activeVersion?.memoryPolicyJson?.maxInputCharacters ?? 32_000,
+      ),
     },
     guardrails: {
       enabled: activeVersion?.guardrailsJson?.enabled ?? false,

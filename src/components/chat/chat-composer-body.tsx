@@ -1,7 +1,7 @@
 "use client";
 
 import { PaperclipIcon, SendIcon, SquareIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useLayoutEffect, useRef } from "react";
 
 import { Link } from "@/i18n/navigation";
@@ -29,6 +29,7 @@ interface ChatComposerBodyProps {
   canChat: boolean;
   needsSetup: boolean;
   sending: boolean;
+  maxInputCharacters?: number;
   attachments: NonNullable<ChatComposerProps["attachments"]>;
   todoList: ChatComposerProps["todoList"];
   centered: boolean;
@@ -92,6 +93,7 @@ function resizeComposerTextarea(element: HTMLTextAreaElement) {
 
 export function ChatComposerBody(props: ChatComposerBodyProps) {
   const t = useTranslations("chat.composer");
+  const locale = useLocale();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { listening, toggleDictation } = useComposerDictation({
     enabled: props.canChat && !props.needsSetup,
@@ -149,6 +151,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             name="message"
             autoComplete="off"
             value={props.input}
+            maxLength={props.maxInputCharacters}
             onChange={(event) => props.onInputChange(event.target.value)}
             onPaste={props.onPaste}
             onKeyDown={(event) => {
@@ -168,6 +171,21 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             rows={1}
             className="scrollbar-none max-h-28 min-h-12 w-full resize-none overscroll-contain border-0 bg-transparent px-1 py-1.5 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:max-h-40 sm:text-sm placeholder:text-muted-foreground"
           />
+          {props.maxInputCharacters ? (
+            <p
+              className={cn(
+                "pb-1 text-right font-mono text-[0.65rem] tabular-nums text-muted-foreground/70",
+                props.input.length >= props.maxInputCharacters * 0.9 &&
+                  "text-warning",
+              )}
+              aria-live="polite"
+            >
+              {t("characterCount", {
+                current: props.input.length.toLocaleString(locale),
+                maximum: props.maxInputCharacters.toLocaleString(locale),
+              })}
+            </p>
+          ) : null}
         </div>
         <div className="grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 border-t border-border/55 px-2 py-1 sm:gap-x-2 sm:px-3">
           <div className="col-start-1 row-start-1">

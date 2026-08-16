@@ -312,12 +312,15 @@ export async function POST(
     });
     const memoryPolicy = version.memoryPolicyJson as {
       enabled?: boolean;
-      summaryThresholdTokens?: number;
+      maxMessages?: number;
     } | null;
     const history = await loadConversationHistory(
       conversation.id,
       { workspaceId: agent.workspaceId, userId: actorUserId },
-      memoryPolicy?.enabled ?? false,
+      {
+        summaryEnabled: memoryPolicy?.enabled ?? false,
+        maxMessages: memoryPolicy?.maxMessages,
+      },
     );
     const generationHistory = continueFromMessageId
       ? [...history, { role: "user" as const, content }]

@@ -58,6 +58,7 @@ export function ChatPageView({ model }: { model: Model }) {
     input,
     interfaceMode,
     latestTodoList,
+    maxInputCharacters,
     loadingMessages,
     messages,
     organizationDefaultAgentId,
@@ -194,6 +195,7 @@ export function ChatPageView({ model }: { model: Model }) {
             </section>
             <ChatComposer
               input={input}
+              maxInputCharacters={maxInputCharacters}
               canChat={canChat}
               needsSetup={needsSetup}
               sending={sending}
@@ -267,6 +269,7 @@ export function ChatPageView({ model }: { model: Model }) {
       codeWorkspaceArtifact ? null : (
         <ChatComposer
           input={input}
+          maxInputCharacters={maxInputCharacters}
           canChat={canChat}
           needsSetup={needsSetup}
           sending={sending}

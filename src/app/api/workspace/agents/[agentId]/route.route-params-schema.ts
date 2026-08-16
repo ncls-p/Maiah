@@ -110,7 +110,21 @@ export const updateAgentSchema = z.object({
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      summaryThresholdTokens: z.number().int().positive().optional(),
+      summaryThresholdTokens: z
+        .number()
+        .int()
+        .min(1_000)
+        .max(2_000_000)
+        .optional(),
+      summaryMaxTokens: z.number().int().min(128).max(16_000).optional(),
+      contextWindowTokens: z
+        .number()
+        .int()
+        .min(2_000)
+        .max(2_000_000)
+        .optional(),
+      maxMessages: z.number().int().min(2).max(10_000).optional(),
+      maxInputCharacters: z.number().int().min(1).max(200_000).optional(),
     })
     .optional(),
   guardrails: z

@@ -232,6 +232,8 @@ export function useChatPageController() {
     selectedAgent,
     activeVersion,
   });
+  const maxInputCharacters =
+    activeVersion?.memoryPolicyJson?.maxInputCharacters ?? 32_000;
   const { reasoningPresets, reasoningEffort, setReasoningEffort } =
     useReasoningEffort(workspaceId, selectedAgentId, activeVersion);
 
@@ -451,6 +453,7 @@ export function useChatPageController() {
     input,
     interfaceMode,
     latestTodoList,
+    maxInputCharacters,
     loadingMessages,
     makeConversationPersistent,
     messages,

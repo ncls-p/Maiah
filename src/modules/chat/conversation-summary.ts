@@ -1,11 +1,13 @@
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
 
 import { createRuntimeDeadline } from "@/modules/agent/runtime-policy";
+import {
+  DEFAULT_SUMMARY_MAX_TOKENS,
+  DEFAULT_SUMMARY_THRESHOLD_TOKENS,
+  type ConversationContextPolicy,
+} from "@/modules/chat/conversation-context-policy";
 
-export interface ConversationSummaryPolicy {
-  enabled?: boolean;
-  summaryThresholdTokens?: number;
-}
+export type ConversationSummaryPolicy = ConversationContextPolicy;
 
 export function shouldSummarizeConversation(
   policy: ConversationSummaryPolicy | null,
@@ -14,7 +16,9 @@ export function shouldSummarizeConversation(
   if (!policy?.enabled || !Number.isFinite(inputTokens)) return false;
   const threshold = Math.max(
     1_000,
-    Math.floor(policy.summaryThresholdTokens ?? 24_000),
+    Math.floor(
+      policy.summaryThresholdTokens ?? DEFAULT_SUMMARY_THRESHOLD_TOKENS,
+    ),
   );
   return (inputTokens ?? 0) >= threshold;
 }
@@ -23,6 +27,7 @@ export async function generateConversationSummary(input: {
   model: LanguageModel;
   history: ModelMessage[];
   assistantText: string;
+  maxOutputTokens?: number;
 }) {
   const deadline = createRuntimeDeadline(30_000);
   const result = await generateText({
@@ -37,7 +42,10 @@ export async function generateConversationSummary(input: {
       { role: "assistant", content: input.assistantText },
     ],
     temperature: 0,
-    maxOutputTokens: 1_200,
+    maxOutputTokens: Math.max(
+      128,
+      Math.floor(input.maxOutputTokens ?? DEFAULT_SUMMARY_MAX_TOKENS),
+    ),
     abortSignal: deadline.signal,
   });
   return result.text.trim();

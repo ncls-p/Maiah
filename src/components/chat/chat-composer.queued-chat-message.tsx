@@ -32,6 +32,7 @@ export interface ChatComposerProps {
   canChat: boolean;
   needsSetup?: boolean;
   sending: boolean;
+  maxInputCharacters?: number;
   queuedMessages?: QueuedChatMessage[];
   onInputChange: (value: string) => void;
   onSubmit: () => void;

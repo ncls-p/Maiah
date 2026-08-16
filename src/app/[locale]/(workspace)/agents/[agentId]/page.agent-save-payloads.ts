@@ -56,7 +56,17 @@ export function buildEssentialPayload(
       reasoningPresets: form.generationSettings.reasoningPresets,
     },
     responseFormat: form.responseFormat,
-    memoryPolicy: form.memoryPolicy,
+    memoryPolicy: {
+      enabled: form.memoryPolicy.enabled,
+      summaryThresholdTokens:
+        Number(form.memoryPolicy.summaryThresholdTokens) || 24_000,
+      summaryMaxTokens: Number(form.memoryPolicy.summaryMaxTokens) || 1_200,
+      contextWindowTokens:
+        Number(form.memoryPolicy.contextWindowTokens) || undefined,
+      maxMessages: Number(form.memoryPolicy.maxMessages) || undefined,
+      maxInputCharacters:
+        Number(form.memoryPolicy.maxInputCharacters) || 32_000,
+    },
     guardrails: form.guardrails,
     approvalPolicy: {
       ...form.approvalPolicy,

@@ -7,6 +7,10 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { ChatComposerBody } from "@/components/chat/chat-composer-body";
+import {
+  createPastedTextUploadFile,
+  shouldUploadPastedText,
+} from "@/components/chat/chat-composer-paste";
 import { useChatComposerControls } from "@/components/chat/chat-layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,6 +128,7 @@ export function ChatComposer({
   canChat,
   needsSetup = false,
   sending,
+  maxInputCharacters,
   queuedMessages = [],
   onSubmit,
   onInputChange,
@@ -245,9 +250,22 @@ export function ChatComposer({
   }
   function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
     const files = filesFromDataTransfer(event.clipboardData);
-    if (files.length === 0) return;
+    if (files.length > 0) {
+      event.preventDefault();
+      void handleSelectedFiles(files);
+      return;
+    }
+    const text = event.clipboardData.getData("text/plain");
+    if (
+      !shouldUploadPastedText(text) ||
+      uploadingAttachment ||
+      needsSetup ||
+      sending ||
+      !onUploadChatAttachment
+    )
+      return;
     event.preventDefault();
-    void handleSelectedFiles(files);
+    void handleSelectedFiles([createPastedTextUploadFile(text)]);
   }
 
   return (
@@ -319,6 +337,7 @@ export function ChatComposer({
       ) : null}
       <ChatComposerBody
         input={input}
+        maxInputCharacters={maxInputCharacters}
         canChat={canChat}
         needsSetup={needsSetup}
         sending={sending}

@@ -54,6 +54,9 @@ export interface AgentVersion {
   generationSettingsJson?: {
     reasoningPresets?: string[];
   } | null;
+  memoryPolicyJson?: {
+    maxInputCharacters?: number;
+  } | null;
 }
 
 export interface ChatMessagePart {

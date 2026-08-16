@@ -98,6 +98,7 @@ export interface ResolvedProviderConfig {
   runtimeConfig: ProviderRuntimeConfig;
   modelId: string;
   modelRecordId?: string;
+  contextWindow?: number;
   providerKind: ProviderKind;
   providerId: string;
 }
@@ -139,6 +140,7 @@ export async function resolveProviderForVersion(
 
   let runtimeModelId = "";
   let modelRecordId: string | undefined;
+  let contextWindow: number | undefined;
   if (version.modelId) {
     const [model] = await db
       .select()
@@ -155,6 +157,7 @@ export async function resolveProviderForVersion(
     if (model) {
       runtimeModelId = model.modelId;
       modelRecordId = model.id;
+      contextWindow = model.contextWindow ?? undefined;
     }
   }
 
@@ -175,6 +178,7 @@ export async function resolveProviderForVersion(
     },
     modelId: runtimeModelId,
     modelRecordId,
+    contextWindow,
     providerKind: provider.kind as ProviderKind,
     providerId: provider.id,
   };

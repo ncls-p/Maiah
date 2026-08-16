@@ -7,11 +7,12 @@ import {
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { parsePartialJson } from "ai";
 import { z } from "zod";
+import { MAX_INPUT_CHARACTERS } from "@/modules/chat/conversation-context-policy";
 
 registerAiSdkDevTools();
 
 export const chatRequestSchema = z.object({
-  content: z.string().trim().min(1).max(32_000),
+  content: z.string().trim().min(1).max(MAX_INPUT_CHARACTERS),
   conversationId: z.uuid().nullable().optional(),
   ephemeral: z.boolean().optional(),
   ephemeralTtlMinutes: z

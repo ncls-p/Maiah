@@ -143,7 +143,11 @@ interface AgentGenerationSettings {
 
 interface AgentMemoryPolicy {
   enabled: boolean;
-  summaryThresholdTokens: number;
+  summaryThresholdTokens: string;
+  summaryMaxTokens: string;
+  contextWindowTokens: string;
+  maxMessages: string;
+  maxInputCharacters: string;
 }
 
 export type AgentToolPolicyOption = {
@@ -234,7 +238,14 @@ export function createEmptyForm(): AgentForm {
       reasoningPresets: [],
     },
     responseFormat: "text",
-    memoryPolicy: { enabled: false, summaryThresholdTokens: 24_000 },
+    memoryPolicy: {
+      enabled: false,
+      summaryThresholdTokens: "24000",
+      summaryMaxTokens: "1200",
+      contextWindowTokens: "",
+      maxMessages: "",
+      maxInputCharacters: "32000",
+    },
     guardrails: { enabled: false, blockedTopics: [] },
     approvalPolicy: { requireApprovalForAllTools: false },
     sharingMode: "personal",

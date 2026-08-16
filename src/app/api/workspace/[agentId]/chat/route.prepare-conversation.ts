@@ -34,6 +34,10 @@ import {
   normalizeReasoningPresets,
   type ReasoningPreset,
 } from "@/modules/agent/reasoning-presets";
+import {
+  resolveMaxInputCharacters,
+  type ConversationContextPolicy,
+} from "@/modules/chat/conversation-context-policy";
 
 type RejectRequest = (
   status: number,
@@ -159,6 +163,23 @@ export async function prepareChatConversation(input: {
       400,
       "no_active_agent_version",
       { error: "No active agent version configured" },
+      { agentId, workspaceId: agent.workspaceId, userId: actorUserId },
+    );
+  }
+
+  const contextPolicy =
+    version.memoryPolicyJson as ConversationContextPolicy | null;
+  const maxInputCharacters = resolveMaxInputCharacters(contextPolicy);
+  if (content.length > maxInputCharacters) {
+    return rejectChatRequest(
+      400,
+      "message_too_long",
+      {
+        error: `Message is too long (${content.length} characters). This assistant accepts at most ${maxInputCharacters} characters per message.`,
+        code: "message_too_long",
+        actual: content.length,
+        maximum: maxInputCharacters,
+      },
       { agentId, workspaceId: agent.workspaceId, userId: actorUserId },
     );
   }

@@ -24,6 +24,10 @@ import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { reasoningCallSettings } from "@/modules/agent/reasoning-presets";
 import {
+  limitModelHistory,
+  type ConversationContextPolicy,
+} from "@/modules/chat/conversation-context-policy";
+import {
   knowledgeCitationsFromToolOutput,
   KNOWLEDGE_SEARCH_TOOL_NAME,
   projectStreamedToolInput,
@@ -86,6 +90,20 @@ export async function runStandardChat(input: {
     hasCodeWorkspaceAttachment: Boolean(codeWorkspaceAttachment),
     requestStartedAt,
     enqueueEvent,
+  });
+  const contextPolicy =
+    version.memoryPolicyJson as ConversationContextPolicy | null;
+  const modelHistory = limitModelHistory({
+    messages: generationHistory,
+    contextWindowTokens:
+      contextPolicy?.contextWindowTokens && providerConfig.contextWindow
+        ? Math.min(
+            contextPolicy.contextWindowTokens,
+            providerConfig.contextWindow,
+          )
+        : (contextPolicy?.contextWindowTokens ?? providerConfig.contextWindow),
+    reservedOutputTokens: maxOutputTokens,
+    systemPrompt,
   });
   const startedAt = Date.now();
   const generationClock = createGenerationClock(startedAt);
@@ -187,7 +205,7 @@ export async function runStandardChat(input: {
   );
   const result = await runtimeAgent.stream({
     abortSignal: runtimeDeadline.signal,
-    messages: generationHistory,
+    messages: modelHistory,
   });
   const streamedToolInputs = new Map<string, string>();
   const streamedToolNames = new Map<string, string>();
