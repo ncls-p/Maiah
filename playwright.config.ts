@@ -1,5 +1,12 @@
-import { defineConfig,devices } from "@playwright/test";
+import nextEnv from "@next/env";
+import { defineConfig, devices } from "@playwright/test";
 
+// Load .env before the test runner imports test files. The e2e fixtures
+// import server modules directly (@/server/infrastructure/cache, pg), which
+// validate process.env at module load; without the env, discovery throws
+// before any webServer starts. Child webServers (app, worker) inherit it.
+const { loadEnvConfig } = nextEnv;
+loadEnvConfig(process.cwd());
 export default defineConfig({
   testDir: "test/e2e",
   // The suite intentionally exercises shared workspace state (setup, keys, agents).
@@ -18,20 +25,20 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : [
-        {
-          command: "npm run dev",
-          url: "http://localhost:3000",
-          name: "app",
-          reuseExistingServer: false,
-          timeout: 120_000,
-        },
-        {
-          command: "npm run worker",
-          url: "http://localhost:3001/health",
-          name: "worker",
-          reuseExistingServer: false,
-          timeout: 120_000,
-        },
-      ],
+      {
+        command: "npm run dev",
+        url: "http://localhost:3000",
+        name: "app",
+        reuseExistingServer: false,
+        timeout: 120_000,
+      },
+      {
+        command: "npm run worker",
+        url: "http://localhost:3001/health",
+        name: "worker",
+        reuseExistingServer: false,
+        timeout: 120_000,
+      },
+    ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });
