@@ -11,7 +11,7 @@ type ComposerPointerEvent = {
 function asPointerTarget(target: EventTarget | null) {
   if (
     !target ||
-    typeof (target as ComposerPointerTarget).closest !== "function"
+    typeof (target as unknown as ComposerPointerTarget).closest !== "function"
   ) {
     return null;
   }
