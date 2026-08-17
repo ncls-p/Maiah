@@ -25,11 +25,11 @@ export function createChatHref({
 export function canAdoptRouteConversation(input: {
   routeConversationId: string | null;
   activeConversationId: string | null;
-  sending: boolean;
+  internallyReplacedConversationId?: string | null;
 }) {
   return Boolean(
     input.routeConversationId &&
-    input.routeConversationId !== input.activeConversationId &&
-    !input.sending,
+    input.routeConversationId !== input.internallyReplacedConversationId &&
+    input.routeConversationId !== input.activeConversationId,
   );
 }

@@ -104,6 +104,7 @@ export async function getConversationMessages(conversationId: string) {
   return Promise.all(
     messageRows.map(async (msg) => ({
       id: msg.id,
+      streamGenerationId: msg.streamGenerationId ?? undefined,
       role: msg.role,
       status: msg.status,
       parts: await Promise.all(

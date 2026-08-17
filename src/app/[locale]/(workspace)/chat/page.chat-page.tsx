@@ -69,6 +69,7 @@ export function useChatPageController() {
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
   const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
   const newConversationAgentIdRef = useRef<string | null>(null);
+  const internallyReplacedConversationIdRef = useRef<string | null>(null);
   const {
     agents,
     selectedAgentId,
@@ -163,6 +164,7 @@ export function useChatPageController() {
       isTemporary: boolean,
       ttlMinutes: number,
     ) => {
+      internallyReplacedConversationIdRef.current = conversationId;
       const params = new URLSearchParams({ conversationId });
       if (agentId) params.set("agentId", agentId);
       if (isTemporary) {
@@ -221,7 +223,26 @@ export function useChatPageController() {
     setInterfaceMode,
     setLoadingContext,
   });
-  useConversationHistoryLiveStatus(activeConversationId, sending);
+  const latestTerminalAssistantMessageId = useMemo(
+    () =>
+      [...messages]
+        .reverse()
+        .find(
+          (message) =>
+            message.role === "assistant" &&
+            (message.status === "completed" ||
+              message.status === "failed" ||
+              message.status === "cancelled"),
+        )?.id ?? null,
+    [messages],
+  );
+  useConversationHistoryLiveStatus({
+    workspaceId,
+    conversationId: activeConversationId,
+    throughMessageId: latestTerminalAssistantMessageId,
+    ready: !loadingMessages && !conversationLoadError,
+    sending,
+  });
 
   const selectionLoading = isAssistantSelectionLoading({
     workspaceLoading,
@@ -269,6 +290,14 @@ export function useChatPageController() {
     // on the following render. Do not let a stale route snapshot undo the
     // assistant choice made by the user in between those two updates.
     if (window.location.search.slice(1) !== routeSearch) return;
+    const internallyReplacedConversationId =
+      routeConversationId &&
+      internallyReplacedConversationIdRef.current === routeConversationId
+        ? routeConversationId
+        : null;
+    if (internallyReplacedConversationId) {
+      internallyReplacedConversationIdRef.current = null;
+    }
     if (routeAgentId && !availableRouteAgentId) {
       const params = new URLSearchParams(routeSearch);
       params.delete("agentId");
@@ -284,13 +313,13 @@ export function useChatPageController() {
       canAdoptRouteConversation({
         routeConversationId,
         activeConversationId,
-        sending,
+        internallyReplacedConversationId,
       })
     ) {
       selectConversation(routeConversationId!, availableRouteAgentId);
       return;
     }
-    if (!routeConversationId && activeConversationId && !sending) {
+    if (!routeConversationId && activeConversationId) {
       startNewConversation();
       return;
     }
@@ -386,6 +415,7 @@ export function useChatPageController() {
     extendTemporaryConversation,
     makeConversationPersistent,
   } = useTemporaryConversationPersistence({
+    workspaceId,
     activeConversationId,
     setEphemeral,
     setEphemeralTtlMinutes,

@@ -1,4 +1,5 @@
 import { db } from "@/server/infrastructure/db";
+import { isUniqueConstraintError } from "@/lib/database-errors";
 import {
   conversationShares,
   conversations,
@@ -7,7 +8,7 @@ import {
   users,
 } from "@/server/infrastructure/db/schema";
 import { authorization } from "@/server/domain/services/authorization";
-import { and, asc, eq, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 
 export type ConversationAccess = {
   conversation: typeof conversations.$inferSelect;
@@ -141,73 +142,101 @@ export async function forkSharedConversation(
   source: typeof conversations.$inferSelect,
   recipientUserId: string,
 ) {
-  const [existingFork] = await db
-    .select()
-    .from(conversations)
-    .where(
-      and(
-        eq(conversations.parentConversationId, source.id),
-        eq(conversations.userId, recipientUserId),
-        eq(conversations.status, "active"),
-        isNull(conversations.archivedAt),
-      ),
-    )
-    .limit(1);
+  const findExistingFork = () =>
+    db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.parentConversationId, source.id),
+          eq(conversations.userId, recipientUserId),
+          eq(conversations.branchKind, "shared_continuation"),
+          eq(conversations.status, "active"),
+          isNull(conversations.archivedAt),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+  const existingFork = await findExistingFork();
   if (existingFork) return existingFork;
 
-  return db.transaction(async (tx) => {
-    const [fork] = await tx
-      .insert(conversations)
-      .values({
-        workspaceId: source.workspaceId,
-        agentId: source.agentId,
-        agentVersionId: source.agentVersionId,
-        userId: recipientUserId,
-        title: source.title,
-        status: "active",
-        parentConversationId: source.id,
-        branchKind: "shared_continuation",
-      })
-      .returning();
-    const sourceMessages = await tx
-      .select()
-      .from(messages)
-      .where(eq(messages.conversationId, source.id))
-      .orderBy(asc(messages.createdAt), asc(messages.id));
-    for (const sourceMessage of sourceMessages) {
-      const [copiedMessage] = await tx
-        .insert(messages)
-        .values({
-          conversationId: fork.id,
-          role: sourceMessage.role,
-          status: sourceMessage.status,
-          tokenInput: sourceMessage.tokenInput,
-          tokenOutput: sourceMessage.tokenOutput,
-          costUsd: sourceMessage.costUsd,
-          modelId: sourceMessage.modelId,
-          providerId: sourceMessage.providerId,
-          createdAt: sourceMessage.createdAt,
-          completedAt: sourceMessage.completedAt,
-        })
-        .returning();
-      const parts = await tx
-        .select()
-        .from(messageParts)
-        .where(eq(messageParts.messageId, sourceMessage.id))
-        .orderBy(asc(messageParts.sortOrder));
-      if (parts.length) {
-        await tx.insert(messageParts).values(
-          parts.map((part) => ({
-            messageId: copiedMessage.id,
-            type: part.type,
-            contentEncrypted: part.contentEncrypted,
-            metadataJson: part.metadataJson,
-            sortOrder: part.sortOrder,
-            createdAt: part.createdAt,
-          })),
+  try {
+    return await db.transaction(async (tx) => {
+      const [activeSourceMessage] = await tx
+        .select({ id: messages.id })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.conversationId, source.id),
+            eq(messages.role, "assistant"),
+            inArray(messages.status, ["pending", "streaming"]),
+          ),
+        )
+        .limit(1);
+      if (activeSourceMessage) {
+        throw new Error(
+          "Wait for the shared response to finish before continuing",
         );
       }
-    }
-    return fork;
-  });
+
+      const [fork] = await tx
+        .insert(conversations)
+        .values({
+          workspaceId: source.workspaceId,
+          agentId: source.agentId,
+          agentVersionId: source.agentVersionId,
+          userId: recipientUserId,
+          title: source.title,
+          status: "active",
+          parentConversationId: source.id,
+          branchKind: "shared_continuation",
+        })
+        .returning();
+      const sourceMessages = await tx
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, source.id))
+        .orderBy(asc(messages.createdAt), asc(messages.id));
+      for (const sourceMessage of sourceMessages) {
+        const [copiedMessage] = await tx
+          .insert(messages)
+          .values({
+            conversationId: fork.id,
+            role: sourceMessage.role,
+            status: sourceMessage.status,
+            tokenInput: sourceMessage.tokenInput,
+            tokenOutput: sourceMessage.tokenOutput,
+            costUsd: sourceMessage.costUsd,
+            modelId: sourceMessage.modelId,
+            providerId: sourceMessage.providerId,
+            createdAt: sourceMessage.createdAt,
+            completedAt: sourceMessage.completedAt,
+          })
+          .returning();
+        const parts = await tx
+          .select()
+          .from(messageParts)
+          .where(eq(messageParts.messageId, sourceMessage.id))
+          .orderBy(asc(messageParts.sortOrder));
+        if (parts.length) {
+          await tx.insert(messageParts).values(
+            parts.map((part) => ({
+              messageId: copiedMessage.id,
+              type: part.type,
+              contentEncrypted: part.contentEncrypted,
+              metadataJson: part.metadataJson,
+              sortOrder: part.sortOrder,
+              createdAt: part.createdAt,
+            })),
+          );
+        }
+      }
+      return fork;
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) throw error;
+    const concurrentFork = await findExistingFork();
+    if (concurrentFork) return concurrentFork;
+    throw error;
+  }
 }

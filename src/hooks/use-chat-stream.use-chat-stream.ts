@@ -22,9 +22,26 @@ import {
   storeChatStreamDraft,
   type StoredChatStreamDraft,
 } from "@/hooks/use-chat-stream-events";
+import {
+  notifyConversationStreaming,
+  notifyWorkspaceHistoryChanged,
+} from "@/lib/workspace-history-events";
 import { UseChatStreamOptions } from "./use-chat-stream.compact-error-message";
+import {
+  cancelScopedStreamingMessage,
+  chatStreamOperationOwnsVisibleState,
+  reloadConversationMessagesForScope,
+} from "./use-chat-stream.operation-scope";
 import { useChatStreamResume } from "./use-chat-stream.resume";
 import { useChatSubmitHandler } from "./use-chat-stream.submit";
+
+type PendingStopOperation = {
+  conversationId: string;
+  messageId: string | null;
+  generationId: string | null;
+  requestController: AbortController | null;
+  reloadController: AbortController;
+};
 
 export function useChatStream({
   agentId,
@@ -45,34 +62,50 @@ export function useChatStream({
   const [citations, setCitations] = useState<ChatCitation[]>([]);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
+  const visibleConversationIdRef = useRef(conversationId);
+  const stopOperationRef = useRef<PendingStopOperation | null>(null);
   const detachedRequestControllersRef = useRef<WeakSet<AbortController>>(
     new WeakSet(),
   );
   const stopRequestedRef = useRef(false);
   const resolvedApprovalIdsRef = useRef(new Set<string>());
-  const streamingMessageId = useMemo(() => {
+  const streamingMessage = useMemo(() => {
     return (
       [...messages]
         .reverse()
         .find(
           (message) =>
             message.role === "assistant" && message.status === "streaming",
-        )?.id ?? null
+        ) ?? null
     );
   }, [messages]);
+  const streamingMessageId = streamingMessage?.id ?? null;
+  const streamingGenerationId = streamingMessage?.streamGenerationId ?? null;
+
+  useEffect(() => {
+    visibleConversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  const cancelPendingStopOperation = useCallback(() => {
+    stopOperationRef.current?.reloadController.abort();
+    stopOperationRef.current = null;
+  }, []);
 
   const detachActiveStream = useCallback(() => {
+    cancelPendingStopOperation();
     const controller = activeRequestControllerRef.current;
-    if (!controller || controller.signal.aborted) return;
-    detachedRequestControllersRef.current.add(controller);
-    controller.abort();
+    if (controller) {
+      detachedRequestControllersRef.current.add(controller);
+      if (!controller.signal.aborted) controller.abort();
+    }
     activeRequestControllerRef.current = null;
     activeConversationIdRef.current = null;
+    visibleConversationIdRef.current = null;
     stopRequestedRef.current = false;
     setSending(false);
     setResuming(false);
     setPendingApprovals([]);
-  }, []);
+  }, [cancelPendingStopOperation]);
 
   const setMessagesDirect = useCallback(
     (next: ChatMessage[]) => {
@@ -184,15 +217,21 @@ export function useChatStream({
     };
   }, [workspaceId, conversationId]);
 
-  const reloadConversationMessages = useCallback(async () => {
-    if (!conversationId) return;
-    const res = await fetch(`/api/workspace/conversations/${conversationId}`);
-    if (!res.ok) return;
-    const data = (await res.json()) as { messages?: ChatMessage[] };
-    setMessages(data.messages ?? []);
-  }, [conversationId]);
+  const reloadConversationMessages = useCallback(
+    async (signal: AbortSignal) => {
+      if (!conversationId) return null;
+      return reloadConversationMessagesForScope({
+        conversationId,
+        signal,
+        currentConversationId: () => visibleConversationIdRef.current,
+        commit: setMessages,
+      });
+    },
+    [conversationId],
+  );
 
   useChatStreamResume({
+    workspaceId,
     conversationId,
     streamingMessageId,
     sending,
@@ -208,6 +247,7 @@ export function useChatStream({
   });
 
   const handleSubmit = useChatSubmitHandler({
+    workspaceId,
     agentId,
     conversationId,
     canChat,
@@ -226,43 +266,122 @@ export function useChatStream({
     detachedRequestControllersRef,
     stopRequestedRef,
     resolvedApprovalIdsRef,
+    onBeforeSubmit: cancelPendingStopOperation,
   });
 
   const stopGeneration = useCallback(async () => {
     if (stopRequestedRef.current) return;
-    stopRequestedRef.current = true;
-    activeRequestControllerRef.current?.abort();
-
     const targetConversationId =
       activeConversationIdRef.current ?? conversationId;
-    if (targetConversationId) {
-      try {
-        await fetch(
-          `/api/workspace/conversations/${targetConversationId}/stop`,
-          {
-            method: "POST",
-          },
-        );
-      } catch {
-        toast.error(
-          "Stopped locally, but the server did not acknowledge the stop request.",
+    if (!targetConversationId) return;
+
+    stopRequestedRef.current = true;
+    const operation: PendingStopOperation = {
+      conversationId: targetConversationId,
+      messageId: streamingMessageId,
+      generationId: streamingGenerationId,
+      requestController: activeRequestControllerRef.current,
+      reloadController: new AbortController(),
+    };
+    cancelPendingStopOperation();
+    stopOperationRef.current = operation;
+    operation.requestController?.abort();
+    notifyConversationStreaming(workspaceId, targetConversationId, false, {
+      markUnread: false,
+    });
+
+    let serverAcknowledged = false;
+    try {
+      const response = await fetch(
+        `/api/workspace/conversations/${targetConversationId}/stop`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messageId: operation.generationId
+              ? (operation.messageId ?? undefined)
+              : undefined,
+            generationId: operation.generationId ?? undefined,
+          }),
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        stopped?: boolean;
+      } | null;
+      if (!response.ok || payload?.stopped !== true) {
+        throw new Error(
+          "Stop request was not acknowledged for this generation",
         );
       }
+      serverAcknowledged = true;
+    } catch {
+      toast.error(
+        "Stopped locally, but the server did not acknowledge the stop request.",
+      );
+    }
+
+    if (serverAcknowledged) {
+      if (
+        stopOperationRef.current === operation &&
+        visibleConversationIdRef.current === targetConversationId
+      ) {
+        try {
+          await reloadConversationMessages(operation.reloadController.signal);
+        } catch {
+          // The server already acknowledged the stop. Navigation aborts this
+          // reload; the history poll recovers other transient failures.
+        }
+      }
+      try {
+        await onConversationsRefresh();
+      } catch {
+        // The workspace history has its own server-backed refresh loop.
+      }
+      notifyWorkspaceHistoryChanged(workspaceId);
+    }
+
+    const storedDraft = getStoredChatStreamDraft(targetConversationId);
+    if (
+      !storedDraft ||
+      !operation.messageId ||
+      storedDraft.assistantMessage.id === operation.messageId
+    ) {
       clearStoredChatStreamDraft(targetConversationId);
     }
 
-    setMessages((current) =>
-      current.map((message) =>
-        message.role === "assistant" && message.status === "streaming"
-          ? { ...message, status: "completed" }
-          : message,
-      ),
-    );
-    setPendingApprovals([]);
-    setSending(false);
-    setResuming(false);
+    const ownsVisibleState =
+      stopOperationRef.current === operation &&
+      chatStreamOperationOwnsVisibleState({
+        currentConversationId: visibleConversationIdRef.current,
+        targetConversationId,
+        currentRequestController: activeRequestControllerRef.current,
+        targetRequestController: operation.requestController,
+      });
+    if (ownsVisibleState) {
+      setMessages((current) =>
+        cancelScopedStreamingMessage(current, {
+          messageId: operation.messageId,
+          generationId: operation.generationId,
+        }),
+      );
+      setPendingApprovals([]);
+      setSending(false);
+      setResuming(false);
+    }
+    if (stopOperationRef.current === operation) {
+      stopOperationRef.current = null;
+      stopRequestedRef.current = false;
+    }
     toast.success("Generation stopped");
-  }, [conversationId]);
+  }, [
+    cancelPendingStopOperation,
+    conversationId,
+    onConversationsRefresh,
+    reloadConversationMessages,
+    streamingGenerationId,
+    streamingMessageId,
+    workspaceId,
+  ]);
 
   const resolveApproval = useCallback(
     async (action: "approve" | "reject", invocationId: string) => {

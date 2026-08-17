@@ -26,7 +26,7 @@ import { authorization } from "@/server/domain/services/authorization";
 import { agents, messages } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { loadConversationHistory } from "./route-history";
 import { chatRequestSchema } from "./route-support";
@@ -60,6 +60,8 @@ export async function POST(
   };
   let userMessageId: string | undefined;
   let assistantMessageId: string | undefined;
+  let assistantStreamGenerationId: string | undefined;
+  let createdUserMessage = false;
 
   try {
     const auth = await resolveAuthContext();
@@ -301,6 +303,9 @@ export async function POST(
     } = preparedConversation;
     userMessageId = preparedConversation.userMessageId;
     assistantMessageId = preparedConversation.assistantMessageId;
+    assistantStreamGenerationId =
+      preparedConversation.assistantMessage.streamGenerationId ?? undefined;
+    createdUserMessage = preparedConversation.createdUserMessage;
 
     const adapter = getAdapter(providerConfig.providerKind);
     const model = wrapLanguageModel({
@@ -336,7 +341,11 @@ export async function POST(
     });
 
     const enqueueEvent = (event: Record<string, unknown>) =>
-      publishChatStreamEvent(assistantMessage.id, event);
+      publishChatStreamEvent(
+        assistantMessage.id,
+        event,
+        assistantMessage.streamGenerationId ?? undefined,
+      );
 
     const executionContext = {
       requestId,
@@ -376,10 +385,22 @@ export async function POST(
     if (assistantMessageId) {
       await db
         .update(messages)
-        .set({ status: "failed", completedAt: new Date() })
-        .where(eq(messages.id, assistantMessageId));
+        .set({
+          status: "failed",
+          completedAt: new Date(),
+          streamLeaseExpiresAt: null,
+        })
+        .where(
+          and(
+            eq(messages.id, assistantMessageId),
+            inArray(messages.status, ["pending", "streaming"]),
+            assistantStreamGenerationId
+              ? eq(messages.streamGenerationId, assistantStreamGenerationId)
+              : undefined,
+          ),
+        );
     }
-    if (userMessageId) {
+    if (userMessageId && createdUserMessage) {
       await db
         .update(messages)
         .set({ status: "failed", completedAt: new Date() })

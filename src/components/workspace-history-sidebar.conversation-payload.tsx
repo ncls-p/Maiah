@@ -29,13 +29,15 @@ export function withConversationLiveState(
   conversations: ChatConversation[],
   live: { streamingIds: Set<string>; unreadIds: Set<string> },
 ) {
-  if (live.streamingIds.size === 0 && live.unreadIds.size === 0) {
-    return conversations;
-  }
   return conversations.map((conversation) => {
     const isStreaming = live.streamingIds.has(conversation.id);
     const isUnread = !isStreaming && live.unreadIds.has(conversation.id);
-    if (!isStreaming && !isUnread) return conversation;
+    if (
+      conversation.isStreaming === isStreaming &&
+      conversation.isUnread === isUnread
+    ) {
+      return conversation;
+    }
     return { ...conversation, isStreaming, isUnread };
   });
 }

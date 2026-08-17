@@ -2,6 +2,7 @@ import { handleRoute } from "@/lib/route-handler";
 import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
 import { getConversationBranchNavigation } from "@/modules/chat/conversation-branches";
+import { withConversationGraphLock } from "@/modules/chat/conversation-graph-lock";
 import {
   ephemeralExpiresAt,
   isEphemeralTtlMinutes,
@@ -231,14 +232,16 @@ export async function DELETE(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      await db
-        .update(conversations)
-        .set({
-          status: "archived",
-          archivedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(conversations.id, conversationId));
+      await withConversationGraphLock(conversationId, () =>
+        db
+          .update(conversations)
+          .set({
+            status: "archived",
+            archivedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(conversations.id, conversationId)),
+      );
 
       return NextResponse.json({ ok: true });
     },

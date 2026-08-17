@@ -33,24 +33,23 @@ describe("createChatHref", () => {
 });
 
 describe("canAdoptRouteConversation", () => {
-  it("does not revert to the previous version while a regeneration is streaming", () => {
+  it("adopts an explicit route change while another conversation is streaming", () => {
     expect(
       canAdoptRouteConversation({
-        routeConversationId: "version-1",
-        activeConversationId: "version-2",
-        sending: true,
-      }),
-    ).toBe(false);
-  });
-
-  it("adopts a route conversation once the stream is idle", () => {
-    expect(
-      canAdoptRouteConversation({
-        routeConversationId: "version-1",
-        activeConversationId: "version-2",
-        sending: false,
+        routeConversationId: "conversation-b",
+        activeConversationId: "conversation-a",
       }),
     ).toBe(true);
+  });
+
+  it("does not detach a stream for the internal URL replacement that started it", () => {
+    expect(
+      canAdoptRouteConversation({
+        routeConversationId: "response-version",
+        activeConversationId: "visible-thread",
+        internallyReplacedConversationId: "response-version",
+      }),
+    ).toBe(false);
   });
 
   it("ignores the current conversation and an empty route", () => {
@@ -58,14 +57,12 @@ describe("canAdoptRouteConversation", () => {
       canAdoptRouteConversation({
         routeConversationId: "version-2",
         activeConversationId: "version-2",
-        sending: false,
       }),
     ).toBe(false);
     expect(
       canAdoptRouteConversation({
         routeConversationId: null,
         activeConversationId: "version-2",
-        sending: false,
       }),
     ).toBe(false);
   });

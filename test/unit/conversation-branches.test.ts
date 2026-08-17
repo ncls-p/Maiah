@@ -189,6 +189,7 @@ describe("conversation branches", () => {
       id: "version-2",
       parentConversationId: "conversation-1",
       branchFromMessageId: "assistant-1",
+      branchKind: "response_version",
     };
     dbMock.chain.orderBy
       .mockResolvedValueOnce([
@@ -223,6 +224,57 @@ describe("conversation branches", () => {
     await forkConversationForRegeneration({
       source: existingVersion,
       assistantMessageId: "assistant-version-2",
+      userId: "user-1",
+    });
+
+    expect(dbMock.tx.values).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        parentConversationId: "conversation-1",
+        branchFromMessageId: "assistant-1",
+      }),
+    );
+  });
+
+  it("flattens nested regenerated versions back to the visible root", async () => {
+    const version2 = {
+      ...conversation,
+      id: "version-2",
+      parentConversationId: "conversation-1",
+      branchFromMessageId: "assistant-1",
+      branchKind: "response_version",
+    };
+    const version3 = {
+      ...conversation,
+      id: "version-3",
+      parentConversationId: "version-2",
+      branchFromMessageId: "assistant-version-2",
+      branchKind: "response_version",
+    };
+    dbMock.chain.orderBy
+      .mockResolvedValueOnce([
+        { id: "copied-user-2", role: "user", status: "completed", createdAt: now },
+        { id: "assistant-version-3", role: "assistant", status: "completed", createdAt: now },
+      ])
+      .mockResolvedValueOnce([
+        { id: "copied-user-1", role: "user", status: "completed", createdAt: now },
+        { id: "assistant-version-2", role: "assistant", status: "completed", createdAt: now },
+      ])
+      .mockResolvedValueOnce([
+        { id: "user-1", role: "user", status: "completed", createdAt: now },
+        { id: "assistant-1", role: "assistant", status: "completed", createdAt: now },
+      ]);
+    dbMock.chain.limit
+      .mockResolvedValueOnce([version2])
+      .mockResolvedValueOnce([conversation]);
+    dbMock.tx.returning
+      .mockResolvedValueOnce([{ ...conversation, id: "version-4" }])
+      .mockResolvedValueOnce([{ id: "copied-user-root" }]);
+    dbMock.tx.orderBy.mockResolvedValue([]);
+
+    await forkConversationForRegeneration({
+      source: version3,
+      assistantMessageId: "assistant-version-3",
       userId: "user-1",
     });
 

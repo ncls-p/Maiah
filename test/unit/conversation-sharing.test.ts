@@ -301,4 +301,43 @@ describe("conversation sharing", () => {
     ).resolves.toBe(fork);
     expect(dbModule._tx.insert).toHaveBeenCalledTimes(2);
   });
+
+  it("rejects continuation while the shared response is still active", async () => {
+    dbModule._tx.limit.mockResolvedValueOnce([{ id: "assistant-streaming" }]);
+
+    await expect(
+      forkSharedConversation(conversation, "recipient-1"),
+    ).rejects.toThrow(
+      "Wait for the shared response to finish before continuing",
+    );
+    expect(dbModule._tx.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns the concurrently created fork after a unique conflict", async () => {
+    const concurrentFork = {
+      ...conversation,
+      id: "fork-concurrent",
+      userId: "recipient-1",
+    };
+    dbModule._chain.limit
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([concurrentFork]);
+    dbModule.db.transaction.mockRejectedValueOnce(
+      Object.assign(new Error("duplicate"), { code: "23505" }),
+    );
+
+    await expect(
+      forkSharedConversation(conversation, "recipient-1"),
+    ).resolves.toBe(concurrentFork);
+  });
+
+  it("preserves a unique conflict when no concurrent fork is visible", async () => {
+    const conflict = Object.assign(new Error("duplicate"), { code: "23505" });
+    dbModule._chain.limit.mockResolvedValue([]);
+    dbModule.db.transaction.mockRejectedValueOnce(conflict);
+
+    await expect(
+      forkSharedConversation(conversation, "recipient-1"),
+    ).rejects.toBe(conflict);
+  });
 });

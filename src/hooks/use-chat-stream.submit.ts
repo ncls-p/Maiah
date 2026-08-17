@@ -28,8 +28,10 @@ import {
   type SubmitOptions,
   type UseChatStreamOptions,
 } from "./use-chat-stream.compact-error-message";
+import { notifyConversationStreaming } from "@/lib/workspace-history-events";
 
 export function useChatSubmitHandler(input: {
+  workspaceId: string | null;
   agentId: string | null;
   conversationId: string | null;
   canChat: boolean;
@@ -48,8 +50,10 @@ export function useChatSubmitHandler(input: {
   detachedRequestControllersRef: MutableRefObject<WeakSet<AbortController>>;
   stopRequestedRef: MutableRefObject<boolean>;
   resolvedApprovalIdsRef: MutableRefObject<Set<string>>;
+  onBeforeSubmit?: () => void;
 }) {
   const {
+    workspaceId,
     agentId,
     conversationId,
     canChat,
@@ -68,6 +72,7 @@ export function useChatSubmitHandler(input: {
     detachedRequestControllersRef,
     stopRequestedRef,
     resolvedApprovalIdsRef,
+    onBeforeSubmit,
   } = input;
   async function handleSubmit(content: string, options: SubmitOptions = {}) {
     if (!content) return false;
@@ -103,6 +108,7 @@ export function useChatSubmitHandler(input: {
       : null;
     if (options.continueFromMessageId && !continuedAssistantMessage)
       return false;
+    onBeforeSubmit?.();
     const assistantMessage = continuedAssistantMessage
       ? prepareAssistantMessageContinuation(continuedAssistantMessage)
       : createLocalMessage("assistant", "");
@@ -307,10 +313,19 @@ export function useChatSubmitHandler(input: {
           if (metadata.conversationId) {
             activeConversationId = metadata.conversationId;
             activeConversationIdRef.current = metadata.conversationId;
+            notifyConversationStreaming(
+              workspaceId,
+              metadata.conversationId,
+              true,
+            );
           }
           if (metadata.messageId) {
             assistantMessageId = metadata.messageId;
-            assistantDraft = { ...assistantDraft, id: metadata.messageId };
+            assistantDraft = {
+              ...assistantDraft,
+              id: metadata.messageId,
+              streamGenerationId: metadata.streamGenerationId,
+            };
             setMessages((current) =>
               current.map((message) =>
                 message.id === assistantMessage.id ? assistantDraft : message,
@@ -347,6 +362,9 @@ export function useChatSubmitHandler(input: {
       clearPendingApprovals();
       if (activeConversationId)
         clearStoredChatStreamDraft(activeConversationId);
+      notifyConversationStreaming(workspaceId, activeConversationId, false, {
+        markUnread: false,
+      });
 
       await onConversationsRefresh().catch(() => undefined);
       return true;
@@ -360,12 +378,15 @@ export function useChatSubmitHandler(input: {
         }
         updateAssistantDraft((message) => ({
           ...message,
-          status: "completed",
+          status: stopRequestedRef.current ? "cancelled" : "completed",
         }));
         flushAssistantRender();
         clearPendingApprovals();
         if (activeConversationId)
           clearStoredChatStreamDraft(activeConversationId);
+        notifyConversationStreaming(workspaceId, activeConversationId, false, {
+          markUnread: false,
+        });
         return false;
       }
       const errorMessage =
@@ -380,6 +401,9 @@ export function useChatSubmitHandler(input: {
       clearPendingApprovals();
       if (activeConversationId)
         clearStoredChatStreamDraft(activeConversationId);
+      notifyConversationStreaming(workspaceId, activeConversationId, false, {
+        markUnread: false,
+      });
       return false;
     } finally {
       const requestWasDetached =

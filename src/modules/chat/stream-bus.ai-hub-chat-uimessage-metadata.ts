@@ -7,6 +7,7 @@ export type AiHubChatUIMessageMetadata = {
   protocol: "ai-hub-ui";
   conversationId?: string;
   messageId?: string;
+  streamGenerationId?: string;
   userMessageId?: string;
   isEphemeral?: boolean;
   expiresAt?: string;
@@ -20,6 +21,7 @@ type Subscriber = {
 };
 
 type StreamRun = {
+  generationId: string;
   events: StreamEvent[];
   done: boolean;
   subscribers: Set<Subscriber>;
@@ -73,17 +75,43 @@ function safeStreamEvent(event: StreamEvent): StreamEvent {
   return event;
 }
 
-function getRun(messageId: string) {
+const LEGACY_GENERATION_ID = "legacy";
+
+function retireReplacedRun(run: StreamRun) {
+  run.done = true;
+  run.abortController?.abort(
+    new Error("Chat stream generation was replaced by a newer generation"),
+  );
+  run.abortController = undefined;
+  for (const subscriber of run.subscribers) subscriber.close();
+  run.subscribers.clear();
+}
+
+function getOrCreateRun(
+  messageId: string,
+  generationId = LEGACY_GENERATION_ID,
+) {
   let run = runs.get(messageId);
-  if (!run) {
-    run = { events: [], done: false, subscribers: new Set() };
+  if (!run || run.generationId !== generationId) {
+    run = {
+      generationId,
+      events: [],
+      done: false,
+      subscribers: new Set(),
+    };
     runs.set(messageId, run);
   }
   return run;
 }
 
-export function publishChatStreamEvent(messageId: string, event: StreamEvent) {
-  const run = getRun(messageId);
+export function publishChatStreamEvent(
+  messageId: string,
+  event: StreamEvent,
+  generationId = LEGACY_GENERATION_ID,
+) {
+  const existing = runs.get(messageId);
+  if (existing && existing.generationId !== generationId) return;
+  const run = getOrCreateRun(messageId, generationId);
   const safeEvent = safeStreamEvent(event);
   run.events.push(safeEvent);
   for (const subscriber of run.subscribers) {
@@ -94,46 +122,87 @@ export function publishChatStreamEvent(messageId: string, event: StreamEvent) {
 export function registerChatStreamAbortController(
   messageId: string,
   abortController: AbortController,
+  generationId = LEGACY_GENERATION_ID,
 ) {
   let run = runs.get(messageId);
-  if (!run || run.done) {
-    run = { events: [], done: false, subscribers: new Set() };
+  if (!run || run.done || run.generationId !== generationId) {
+    if (run && run.generationId !== generationId) retireReplacedRun(run);
+    run = {
+      generationId,
+      events: [],
+      done: false,
+      subscribers: new Set(),
+    };
     runs.set(messageId, run);
   }
   run.abortController = abortController;
 }
 
-export function abortChatStream(messageId: string) {
+export function abortChatStream(
+  messageId: string,
+  generationId = LEGACY_GENERATION_ID,
+) {
   const run = runs.get(messageId);
-  if (!run || run.done) return false;
+  if (!run || run.done || run.generationId !== generationId) return false;
   run.abortController?.abort();
-  publishChatStreamEvent(messageId, { type: "done", stopped: true });
-  completeChatStream(messageId);
+  publishChatStreamEvent(
+    messageId,
+    { type: "done", stopped: true },
+    generationId,
+  );
+  completeChatStream(messageId, generationId);
   return true;
 }
 
-export function completeChatStream(messageId: string) {
-  const run = getRun(messageId);
+export function completeChatStream(
+  messageId: string,
+  generationId = LEGACY_GENERATION_ID,
+) {
+  let run = runs.get(messageId);
+  if (!run) {
+    run = {
+      generationId,
+      events: [],
+      done: true,
+      subscribers: new Set(),
+    };
+    runs.set(messageId, run);
+  }
+  if (run.generationId !== generationId) return;
   run.done = true;
   run.abortController = undefined;
   for (const subscriber of run.subscribers) {
     subscriber.close();
   }
   run.subscribers.clear();
-  setTimeout(() => runs.delete(messageId), 5 * 60 * 1000);
+  setTimeout(
+    () => {
+      if (runs.get(messageId) === run) runs.delete(messageId);
+    },
+    5 * 60 * 1000,
+  );
 }
 
-export function hasActiveChatStream(messageId: string) {
+export function hasActiveChatStream(
+  messageId: string,
+  generationId = LEGACY_GENERATION_ID,
+) {
   const run = runs.get(messageId);
-  return Boolean(run && !run.done);
+  return Boolean(run && run.generationId === generationId && !run.done);
 }
 
 export function subscribeToChatStream(
   messageId: string,
   subscriber: Subscriber,
-  options: { replay?: boolean } = {},
+  options: { replay?: boolean; generationId?: string } = {},
 ) {
-  const run = getRun(messageId);
+  const generationId = options.generationId ?? LEGACY_GENERATION_ID;
+  const existing = runs.get(messageId);
+  if (existing && existing.generationId !== generationId) {
+    subscriber.close();
+    return () => undefined;
+  }
+  const run = getOrCreateRun(messageId, generationId);
   if (options.replay ?? true) {
     for (const event of run.events) {
       subscriber.enqueue(event);
@@ -152,7 +221,7 @@ export function subscribeToChatStream(
 export function createChatStreamResponse(
   messageId: string,
   headers: Record<string, string> = {},
-  options: { replay?: boolean } = {},
+  options: { replay?: boolean; generationId?: string } = {},
 ) {
   const encoder = new TextEncoder();
 
@@ -212,6 +281,7 @@ export function metadataFromHeaders(headers: Record<string, string>) {
     protocol: "ai-hub-ui" as const,
     conversationId: headers["X-Conversation-Id"],
     messageId: headers["X-Message-Id"],
+    streamGenerationId: headers["X-Stream-Generation-Id"],
     userMessageId: headers["X-User-Message-Id"],
     isEphemeral: headers["X-Conversation-Ephemeral"] === "true",
     expiresAt: headers["X-Conversation-Expires-At"],

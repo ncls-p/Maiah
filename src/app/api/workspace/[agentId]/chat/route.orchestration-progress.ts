@@ -4,7 +4,8 @@ import type { AgentToolProgressEvent } from "@/modules/agent/runtime-executor";
 import type { AgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
-import { messageParts } from "@/server/infrastructure/db/schema";
+import { messageParts, messages } from "@/server/infrastructure/db/schema";
+import { and, eq } from "drizzle-orm";
 
 import { knowledgeCitationsFromToolOutput } from "./route-support";
 
@@ -73,6 +74,7 @@ export function createOrchestrationProgress(input: {
   requestId: string;
   agentId: string;
   assistantMessageId: string;
+  streamGenerationId: string;
   enqueueEvent: (event: Record<string, unknown>) => void;
   initialSortOrder: number;
 }) {
@@ -90,29 +92,54 @@ export function createOrchestrationProgress(input: {
   ) => {
     const projected = projectOrchestrationProgress(progress);
     try {
-      if (progress.modelHistoryKind !== "delegation-result") {
-        await db.insert(messageParts).values({
-          messageId: input.assistantMessageId,
-          type: projected.isStart ? "tool-call" : "tool-result",
-          contentEncrypted: await encryptValue(
-            JSON.stringify(projected.rawMetadata),
-          ),
-          metadataJson: projected.safeMetadata,
-          sortOrder,
-        });
-      }
       const citations =
         progress.type === "tool-end" && "output" in progress
           ? knowledgeCitationsFromToolOutput(progress.output)
           : [];
-      if (citations.length > 0 && citationSortOrder !== undefined) {
-        await db.insert(messageParts).values({
-          messageId: input.assistantMessageId,
-          type: "citations",
-          contentEncrypted: await encryptValue(JSON.stringify(citations)),
-          metadataJson: null,
-          sortOrder: citationSortOrder,
-        });
+      const progressEncrypted =
+        progress.modelHistoryKind === "delegation-result"
+          ? null
+          : await encryptValue(JSON.stringify(projected.rawMetadata));
+      const citationsEncrypted =
+        citations.length > 0 && citationSortOrder !== undefined
+          ? await encryptValue(JSON.stringify(citations))
+          : null;
+      const persisted = await db.transaction(async (tx) => {
+        const [active] = await tx
+          .select({ id: messages.id })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.id, input.assistantMessageId),
+              eq(messages.status, "streaming"),
+              eq(messages.streamGenerationId, input.streamGenerationId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        if (!active) return false;
+        if (progressEncrypted) {
+          await tx.insert(messageParts).values({
+            messageId: input.assistantMessageId,
+            type: projected.isStart ? "tool-call" : "tool-result",
+            contentEncrypted: progressEncrypted,
+            metadataJson: projected.safeMetadata,
+            sortOrder,
+          });
+        }
+        if (citationsEncrypted && citationSortOrder !== undefined) {
+          await tx.insert(messageParts).values({
+            messageId: input.assistantMessageId,
+            type: "citations",
+            contentEncrypted: citationsEncrypted,
+            metadataJson: null,
+            sortOrder: citationSortOrder,
+          });
+        }
+        return true;
+      });
+      if (!persisted) return;
+      if (citationsEncrypted) {
         input.enqueueEvent({ type: "citations", citations });
       }
       input.enqueueEvent(

@@ -1,119 +1,137 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { ChatConversation } from "@/components/chat/chat-types";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { subscribeWorkspaceHistoryLive } from "@/lib/workspace-history-events";
 import {
-  readStreamingConversationIds,
-  readUnreadConversationIds,
-  updateUnreadConversationIds,
-  writeStreamingConversationIds,
-  writeUnreadConversationIds,
-} from "@/lib/workspace-history-unread";
+  resolveWorkspaceHistoryLiveIds,
+  type WorkspaceHistoryLiveOverride,
+  type WorkspaceHistoryOptimisticLiveState,
+} from "./workspace-history-sidebar.state";
+
+const ACTIVE_STREAM_REFRESH_MS = 2_500;
+const IDLE_REFRESH_MS = 15_000;
 
 function activeConversationIdFromLocation() {
   if (typeof window === "undefined") return null;
   return new URLSearchParams(window.location.search).get("conversationId");
 }
 
-export function useWorkspaceHistoryLiveSync(onRefresh: () => void) {
+export function useWorkspaceHistoryLiveSync(
+  conversations: ChatConversation[],
+  serverRevision: number,
+  onRefresh: () => Promise<void> | void,
+) {
   const { workspaceId } = useWorkspace();
   const onRefreshRef = useRef(onRefresh);
-  const workspaceIdRef = useRef(workspaceId);
-  const streamingIdsRef = useRef<Set<string>>(new Set());
-  const unreadIdsRef = useRef<Set<string>>(new Set());
-  const [streamingIds, setStreamingIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [unreadIds, setUnreadIds] = useState<Set<string>>(() => new Set());
-  const [loadedWorkspaceId, setLoadedWorkspaceId] = useState<string | null>(
-    null,
-  );
-  if (workspaceId && workspaceId !== loadedWorkspaceId) {
-    setLoadedWorkspaceId(workspaceId);
-    setStreamingIds(readStreamingConversationIds(workspaceId));
-    setUnreadIds(readUnreadConversationIds(workspaceId));
-  }
+  const [optimistic, setOptimistic] =
+    useState<WorkspaceHistoryOptimisticLiveState>(() => ({
+      workspaceId: null,
+      streaming: new Map(),
+      unread: new Map(),
+    }));
 
   useEffect(() => {
     onRefreshRef.current = onRefresh;
   }, [onRefresh]);
-  useEffect(() => {
-    workspaceIdRef.current = workspaceId;
-  }, [workspaceId]);
-  useEffect(() => {
-    streamingIdsRef.current = streamingIds;
-  }, [streamingIds]);
-  useEffect(() => {
-    unreadIdsRef.current = unreadIds;
-  }, [unreadIds]);
+
+  const { streamingIds, unreadIds } = useMemo(() => {
+    return resolveWorkspaceHistoryLiveIds(
+      conversations,
+      optimistic,
+      workspaceId,
+      serverRevision,
+    );
+  }, [conversations, optimistic, serverRevision, workspaceId]);
 
   useEffect(() => {
-    function applyUnread(conversationId: string, unread: boolean) {
-      const currentWorkspaceId = workspaceIdRef.current;
-      const next = updateUnreadConversationIds(
-        unreadIdsRef.current,
-        conversationId,
-        unread,
-      );
-      if (next === unreadIdsRef.current) return;
-      unreadIdsRef.current = next;
-      if (currentWorkspaceId) {
-        writeUnreadConversationIds(currentWorkspaceId, next);
-      }
-      setUnreadIds(next);
+    if (!workspaceId) return;
+
+    function applyOverride(
+      kind: "streaming" | "unread",
+      conversationId: string,
+      value: boolean,
+    ) {
+      setOptimistic((current) => {
+        const base =
+          current.workspaceId === workspaceId
+            ? current
+            : {
+                workspaceId,
+                streaming: new Map<string, WorkspaceHistoryLiveOverride>(),
+                unread: new Map<string, WorkspaceHistoryLiveOverride>(),
+              };
+        const currentOverride = base[kind].get(conversationId);
+        if (
+          currentOverride?.value === value &&
+          currentOverride.serverRevision === serverRevision
+        ) {
+          return base;
+        }
+        const nextOverrides = new Map(base[kind]);
+        nextOverrides.set(conversationId, { value, serverRevision });
+        return { ...base, [kind]: nextOverrides };
+      });
     }
 
-    function applyStreaming(conversationId: string, streaming: boolean) {
-      const currentWorkspaceId = workspaceIdRef.current;
-      const next = updateUnreadConversationIds(
-        streamingIdsRef.current,
-        conversationId,
-        streaming,
-      );
-      if (next === streamingIdsRef.current) return;
-      streamingIdsRef.current = next;
-      if (currentWorkspaceId) {
-        writeStreamingConversationIds(currentWorkspaceId, next);
-      }
-      setStreamingIds(next);
-    }
-
-    function hydrateFromStorage() {
-      const currentWorkspaceId = workspaceIdRef.current;
-      if (!currentWorkspaceId) return;
-      const activeId = activeConversationIdFromLocation();
-      const nextUnread = readUnreadConversationIds(currentWorkspaceId);
-      if (activeId) nextUnread.delete(activeId);
-      const nextStreaming = readStreamingConversationIds(currentWorkspaceId);
-      streamingIdsRef.current = nextStreaming;
-      unreadIdsRef.current = nextUnread;
-      setStreamingIds(nextStreaming);
-      setUnreadIds(nextUnread);
-    }
-
-    return subscribeWorkspaceHistoryLive({
-      onRefresh: () => {
-        hydrateFromStorage();
-        onRefreshRef.current();
-      },
+    return subscribeWorkspaceHistoryLive(workspaceId, {
+      onRefresh: () => onRefreshRef.current(),
       onStreaming: (conversationId, streaming, markUnread) => {
-        applyStreaming(conversationId, streaming);
+        applyOverride("streaming", conversationId, streaming);
         if (streaming) {
-          applyUnread(conversationId, false);
+          applyOverride("unread", conversationId, false);
           return;
         }
         if (
           markUnread &&
           conversationId !== activeConversationIdFromLocation()
         ) {
-          applyUnread(conversationId, true);
+          applyOverride("unread", conversationId, true);
+        } else if (markUnread) {
+          applyOverride("unread", conversationId, false);
         }
       },
-      onUnread: applyUnread,
+      onUnread: (conversationId, unread) =>
+        applyOverride("unread", conversationId, unread),
     });
-  }, []);
+  }, [serverRevision, workspaceId]);
 
-  return { streamingIds, unreadIds };
+  useEffect(() => {
+    if (!workspaceId) return;
+    const refreshMs =
+      streamingIds.size > 0 ? ACTIVE_STREAM_REFRESH_MS : IDLE_REFRESH_MS;
+    let cancelled = false;
+    let timeoutId: number | null = null;
+    const schedule = () => {
+      if (cancelled) return;
+      timeoutId = window.setTimeout(async () => {
+        try {
+          if (!document.hidden && navigator.onLine) {
+            await onRefreshRef.current();
+          }
+        } finally {
+          schedule();
+        }
+      }, refreshMs);
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, [streamingIds.size, workspaceId]);
+
+  return {
+    streamingIds,
+    unreadIds,
+    forConversations: (items: ChatConversation[]) =>
+      resolveWorkspaceHistoryLiveIds(
+        items,
+        optimistic,
+        workspaceId,
+        serverRevision,
+      ),
+  };
 }

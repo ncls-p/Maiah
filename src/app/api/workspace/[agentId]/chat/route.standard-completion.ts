@@ -27,7 +27,7 @@ import {
   usageEvents,
 } from "@/server/infrastructure/db/schema";
 import type { LanguageModel, LanguageModelUsage } from "ai";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { accumulateTokenCount } from "./route.accumulate-token-count";
 import type { ChatExecutionContext } from "./route.execution-context";
@@ -125,7 +125,7 @@ export async function completeStandardChat(input: {
       });
     }
   }
-  input.postCompletionAutomationRef.current = async () => {
+  const postCompletionAutomation = async () => {
     const shouldSkipSuggestions = consumeSkipNextChatSuggestions(
       conversation.id,
     );
@@ -147,10 +147,28 @@ export async function completeStandardChat(input: {
       generatedTitle.trim() &&
       generatedTitle.trim() !== conversation.title.trim()
     )
-      await db
-        .update(conversations)
-        .set({ title: generatedTitle, updatedAt: new Date() })
-        .where(eq(conversations.id, conversation.id));
+      await db.transaction(async (tx) => {
+        const [ownedGeneration] = await tx
+          .select({ id: messages.id })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.id, assistantMessage.id),
+              eq(messages.status, "completed"),
+              eq(
+                messages.streamGenerationId,
+                assistantMessage.streamGenerationId!,
+              ),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        if (!ownedGeneration) return;
+        await tx
+          .update(conversations)
+          .set({ title: generatedTitle, updatedAt: new Date() })
+          .where(eq(conversations.id, conversation.id));
+      });
   };
   const previousUsageMetrics = continuationClaim
     ? (await getChatUsageMetricsByMessageId(conversation.id)).get(
@@ -169,8 +187,8 @@ export async function completeStandardChat(input: {
     ),
   );
   const completedAt = new Date();
-  await db.transaction(async (tx) => {
-    await tx
+  const completed = await db.transaction(async (tx) => {
+    const [transitioned] = await tx
       .update(messages)
       .set({
         status: "completed",
@@ -183,8 +201,17 @@ export async function completeStandardChat(input: {
           totalUsage.outputTokens,
         ),
         completedAt,
+        streamLeaseExpiresAt: null,
       })
-      .where(eq(messages.id, assistantMessage.id));
+      .where(
+        and(
+          eq(messages.id, assistantMessage.id),
+          eq(messages.status, "streaming"),
+          eq(messages.streamGenerationId, assistantMessage.streamGenerationId!),
+        ),
+      )
+      .returning({ id: messages.id });
+    if (!transitioned) return false;
     await tx
       .update(conversations)
       .set({
@@ -252,7 +279,10 @@ export async function completeStandardChat(input: {
         metadataJson: { inputTokens: totalUsage.inputTokens ?? null },
         sortOrder: partWriter.nextSortOrder + 1,
       });
+    return true;
   });
+  if (!completed) return false;
+  input.postCompletionAutomationRef.current = postCompletionAutomation;
   logger.info("Chat stream completed", {
     requestId,
     agentId,
@@ -277,4 +307,5 @@ export async function completeStandardChat(input: {
     type: "done",
     metrics,
   });
+  return true;
 }

@@ -14,11 +14,13 @@ afterEach(() => {
 describe("AI SDK UI chat transport", () => {
   it("delivers the server-owned temporary expiration metadata", async () => {
     const messageId = crypto.randomUUID();
+    const streamGenerationId = crypto.randomUUID();
     publishChatStreamEvent(messageId, { type: "done" });
     completeChatStream(messageId);
     const onStart = vi.fn();
     const response = createChatUIMessageStreamResponse(messageId, {
       "X-Conversation-Id": "conversation-1",
+      "X-Stream-Generation-Id": streamGenerationId,
       "X-Conversation-Ephemeral": "true",
       "X-Conversation-Expires-At": "2026-08-10T12:05:00.000Z",
     });
@@ -38,6 +40,7 @@ describe("AI SDK UI chat transport", () => {
     expect(onStart).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: "conversation-1",
+        streamGenerationId,
         isEphemeral: true,
         expiresAt: "2026-08-10T12:05:00.000Z",
       }),

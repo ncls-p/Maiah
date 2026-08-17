@@ -1,5 +1,7 @@
 import { env } from "@/lib/env";
 import { logger, logHandledError } from "@/lib/logger";
+import { reapExpiredAgentRuns } from "@/modules/agent/run-use-cases";
+import { reapExpiredChatStreams } from "@/modules/chat/chat-stream-lease";
 import { purgeExpiredEphemeralConversations } from "@/modules/chat/ephemeral-cleanup";
 import {
   DOCUMENT_INGESTION_QUEUE_NAME,
@@ -142,6 +144,34 @@ async function purgeExpiredChats() {
   }
 }
 
+async function reapExpiredChatGenerations() {
+  try {
+    const expired = await reapExpiredChatStreams();
+    if (expired.length > 0) {
+      logger.info("Expired chat stream leases reaped", {
+        count: expired.length,
+      });
+    }
+  } catch (error) {
+    logHandledError("Expired chat stream lease reaper failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function reapExpiredAgentGenerations() {
+  try {
+    const expired = await reapExpiredAgentRuns();
+    if (expired.timedOut > 0 || expired.leaseExpired > 0) {
+      logger.info("Expired agent run leases reaped", expired);
+    }
+  } catch (error) {
+    logHandledError("Expired agent run lease reaper failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function main() {
   logger.info("Worker starting...", { env: env.NODE_ENV });
 
@@ -219,6 +249,8 @@ async function main() {
   await recoverQueuedWorkflowRuns();
   await recoverDocumentIngestionJobs();
   await purgeExpiredChats();
+  await reapExpiredChatGenerations();
+  await reapExpiredAgentGenerations();
 
   const server = http.createServer((req, res) => {
     if (req.url === "/health") {
@@ -246,6 +278,10 @@ async function main() {
   const ephemeralConversationPurgeInterval = setInterval(() => {
     void purgeExpiredChats();
   }, 60_000);
+  const chatStreamReaperInterval = setInterval(() => {
+    void reapExpiredChatGenerations();
+    void reapExpiredAgentGenerations();
+  }, 10_000);
 
   process.on("SIGTERM", () => {
     logger.info("Worker received SIGTERM, shutting down gracefully...");
@@ -253,6 +289,7 @@ async function main() {
     clearInterval(workflowRecoveryInterval);
     clearInterval(documentRecoveryInterval);
     clearInterval(ephemeralConversationPurgeInterval);
+    clearInterval(chatStreamReaperInterval);
     server.close(() => {
       void Promise.all([
         workflowWorker.close(),
@@ -267,6 +304,7 @@ async function main() {
     clearInterval(workflowRecoveryInterval);
     clearInterval(documentRecoveryInterval);
     clearInterval(ephemeralConversationPurgeInterval);
+    clearInterval(chatStreamReaperInterval);
     server.close(() => {
       void Promise.all([
         workflowWorker.close(),

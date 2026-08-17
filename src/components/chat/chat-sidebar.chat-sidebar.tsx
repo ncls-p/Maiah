@@ -269,7 +269,11 @@ export function useChatSidebarController({
     conversation: ChatConversation,
     options?: { searchResult?: boolean },
   ) {
-    const isActive = activeConversationId === conversation.id;
+    const targetConversationId =
+      conversation.latestAssistantConversationId ?? conversation.id;
+    const isActive =
+      activeConversationId === conversation.id ||
+      activeConversationId === targetConversationId;
     const isEditing = editingConversationId === conversation.id;
     const agentName = agentNameById.get(conversation.agentId) ?? t("assistant");
 
@@ -282,7 +286,7 @@ export function useChatSidebarController({
         editingTitle={isEditing ? editingTitle : ""}
         agentName={agentName}
         onSelect={() =>
-          onSelectConversation(conversation.id, conversation.agentId)
+          onSelectConversation(targetConversationId, conversation.agentId)
         }
         onRename={(title) => {
           onRenameConversation?.(conversation.id, title);
@@ -376,15 +380,24 @@ export function useChatSidebarController({
                   type={BUTTON_TYPE}
                   size="icon"
                   variant={
-                    activeConversationId === conversation.id
+                    activeConversationId === conversation.id ||
+                    activeConversationId ===
+                      conversation.latestAssistantConversationId
                       ? "secondary"
                       : "ghost"
                   }
                   aria-label={conversation.title}
-                  onClick={() => onSelectConversation(conversation.id)}
+                  onClick={() =>
+                    onSelectConversation(
+                      conversation.latestAssistantConversationId ??
+                        conversation.id,
+                    )
+                  }
                   className={cn(
                     "size-10 rounded-xl transition-[background-color,color]",
-                    activeConversationId === conversation.id &&
+                    (activeConversationId === conversation.id ||
+                      activeConversationId ===
+                        conversation.latestAssistantConversationId) &&
                       "bg-sidebar-accent text-sidebar-accent-foreground",
                   )}
                 >

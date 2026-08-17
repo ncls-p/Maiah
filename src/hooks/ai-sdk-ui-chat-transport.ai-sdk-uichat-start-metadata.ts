@@ -10,6 +10,7 @@ import { normalizeChatMessageMetrics } from "@/modules/chat/message-metrics";
 export type AiSdkUIChatStartMetadata = {
   conversationId?: string;
   messageId?: string;
+  streamGenerationId?: string;
   userMessageId?: string;
   isEphemeral?: boolean;
   expiresAt?: string;
@@ -37,6 +38,10 @@ export function readMetadata(value: unknown): AiSdkUIChatStartMetadata {
         : undefined,
     messageId:
       typeof record.messageId === "string" ? record.messageId : undefined,
+    streamGenerationId:
+      typeof record.streamGenerationId === "string"
+        ? record.streamGenerationId
+        : undefined,
     userMessageId:
       typeof record.userMessageId === "string"
         ? record.userMessageId

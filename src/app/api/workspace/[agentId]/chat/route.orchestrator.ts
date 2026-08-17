@@ -6,6 +6,13 @@ import {
   executeAgent,
 } from "@/modules/agent/runtime-executor";
 import { createGenerationClock } from "@/modules/chat/generation-clock";
+import {
+  chatStreamIdempotencyKey,
+  failChatStreamDueToTimeout,
+  isChatStreamHardTimeoutAbort,
+  startChatStreamLeaseHeartbeat,
+} from "@/modules/chat/chat-stream-lease";
+import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { normalizeChatMessageMetrics } from "@/modules/chat/message-metrics";
 import {
   completeChatStream,
@@ -22,7 +29,7 @@ import {
   messageParts,
   messages,
 } from "@/server/infrastructure/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { accumulateTokenCount } from "./route.accumulate-token-count";
 import {
@@ -52,9 +59,37 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
     useAiSdkUIStream,
   } = context;
   const streamAbortController = new AbortController();
-  registerChatStreamAbortController(assistantMessage.id, streamAbortController);
+  const streamGenerationId = assistantMessage.streamGenerationId;
+  if (!streamGenerationId) {
+    throw new Error("Chat stream generation is missing its lease identity");
+  }
+  registerChatStreamAbortController(
+    assistantMessage.id,
+    streamAbortController,
+    streamGenerationId,
+  );
   const enqueueEvent = (event: Record<string, unknown>) =>
-    publishChatStreamEvent(assistantMessage.id, event);
+    publishChatStreamEvent(assistantMessage.id, event, streamGenerationId);
+  const hardTimeoutError =
+    "Assistant generation timed out before it could finish. Try again with a narrower request.";
+  const stopLeaseHeartbeat = startChatStreamLeaseHeartbeat(
+    assistantMessage.id,
+    streamGenerationId,
+    streamAbortController,
+    {
+      hardTimeoutMs: agentRuntimePolicy.chatTimeoutMs,
+      onHardTimeout: async () => {
+        const transitioned = await failChatStreamDueToTimeout({
+          messageId: assistantMessage.id,
+          generationId: streamGenerationId,
+          errorMessage: hardTimeoutError,
+        });
+        if (!transitioned) return;
+        enqueueEvent({ type: "error", error: hardTimeoutError });
+        completeChatStream(assistantMessage.id, streamGenerationId);
+      },
+    },
+  );
   let completedRun: Awaited<ReturnType<typeof executeAgent>> | null = null;
   const initialSortOrder = continuationClaim?.nextSortOrder ?? 0;
   const generationClock = createGenerationClock(startedAt);
@@ -62,6 +97,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
     requestId,
     agentId,
     assistantMessageId: assistantMessage.id,
+    streamGenerationId,
     enqueueEvent,
     initialSortOrder,
   });
@@ -78,7 +114,10 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
         trigger: "chat",
         conversationId: conversation.id,
         messageId: assistantMessage.id,
-        idempotencyKey: `chat:${assistantMessage.id}`,
+        idempotencyKey: chatStreamIdempotencyKey(
+          assistantMessage.id,
+          streamGenerationId,
+        ),
         abortSignal: streamAbortController.signal,
         onProgress: (event) => {
           generationClock.observe(
@@ -125,7 +164,31 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
           },
         ),
       );
-      await db.transaction(async (tx) => {
+      const completed = await db.transaction(async (tx) => {
+        const [transitioned] = await tx
+          .update(messages)
+          .set({
+            status: "completed",
+            tokenInput: accumulateTokenCount(
+              continuationClaim?.message.tokenInput ?? null,
+              usageImpact.inputTokens,
+            ),
+            tokenOutput: accumulateTokenCount(
+              continuationClaim?.message.tokenOutput ?? null,
+              usageImpact.outputTokens,
+            ),
+            completedAt,
+            streamLeaseExpiresAt: null,
+          })
+          .where(
+            and(
+              eq(messages.id, assistantMessage.id),
+              eq(messages.status, "streaming"),
+              eq(messages.streamGenerationId, streamGenerationId),
+            ),
+          )
+          .returning({ id: messages.id });
+        if (!transitioned) return false;
         if (durableDelegationParts.length > 0)
           await tx.insert(messageParts).values(durableDelegationParts);
         if (
@@ -161,21 +224,6 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
           });
         }
         await tx
-          .update(messages)
-          .set({
-            status: "completed",
-            tokenInput: accumulateTokenCount(
-              continuationClaim?.message.tokenInput ?? null,
-              usageImpact.inputTokens,
-            ),
-            tokenOutput: accumulateTokenCount(
-              continuationClaim?.message.tokenOutput ?? null,
-              usageImpact.outputTokens,
-            ),
-            completedAt,
-          })
-          .where(eq(messages.id, assistantMessage.id));
-        await tx
           .update(conversations)
           .set({
             agentId,
@@ -184,7 +232,9 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
             updatedAt: completedAt,
           })
           .where(eq(conversations.id, conversation.id));
+        return true;
       });
+      if (!completed) return;
       if (result.text) enqueueEvent({ type: "text", delta: result.text });
       if (usageImpactSetting.enabled)
         enqueueEvent({ type: "impact", impact: usageImpact });
@@ -211,24 +261,48 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
       });
     } catch (error) {
       const aborted = streamAbortController.signal.aborted;
+      const hardTimedOut = isChatStreamHardTimeoutAbort(
+        streamAbortController.signal,
+      );
       await progress.flush();
-      await db
-        .update(messages)
-        .set({
-          status: aborted ? "completed" : "failed",
-          completedAt: new Date(),
-        })
-        .where(eq(messages.id, assistantMessage.id));
-      if (aborted) enqueueEvent({ type: "done", stopped: true });
+      const terminalAt = new Date();
+      const transitioned = await db.transaction(async (tx) => {
+        const [terminal] = await tx
+          .update(messages)
+          .set({
+            status: aborted && !hardTimedOut ? "cancelled" : "failed",
+            completedAt: terminalAt,
+            streamLeaseExpiresAt: null,
+          })
+          .where(
+            and(
+              eq(messages.id, assistantMessage.id),
+              eq(messages.status, "streaming"),
+              eq(messages.streamGenerationId, streamGenerationId),
+            ),
+          )
+          .returning({ id: messages.id });
+        if (!terminal) return false;
+        await tx
+          .update(conversations)
+          .set({ updatedAt: terminalAt })
+          .where(eq(conversations.id, conversation.id));
+        return true;
+      });
+      if (!transitioned) return;
+      if (aborted && !hardTimedOut)
+        enqueueEvent({ type: "done", stopped: true });
       else
         enqueueEvent({
           type: "error",
           error: completedRun
             ? "The agent run completed, but its response could not be saved. Open the run history to recover the result."
-            : safeToolErrorMessage(
-                error,
-                "Orchestration failed. Review the run trace and try again.",
-              ),
+            : hardTimedOut
+              ? hardTimeoutError
+              : safeToolErrorMessage(
+                  error,
+                  "Orchestration failed. Review the run trace and try again.",
+                ),
         });
       logHandledError(
         "Orchestrator chat run failed",
@@ -252,11 +326,19 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
         error as Error,
       );
     } finally {
-      completeChatStream(assistantMessage.id);
+      try {
+        await stopLeaseHeartbeat();
+      } finally {
+        completeChatStream(assistantMessage.id, streamGenerationId);
+      }
     }
   })();
   const headers = chatStreamHeaders({ ...context, userMessage });
   return useAiSdkUIStream
-    ? createChatUIMessageStreamResponse(assistantMessage.id, headers)
-    : createChatStreamResponse(assistantMessage.id, headers);
+    ? createChatUIMessageStreamResponse(assistantMessage.id, headers, {
+        generationId: streamGenerationId,
+      })
+    : createChatStreamResponse(assistantMessage.id, headers, {
+        generationId: streamGenerationId,
+      });
 }

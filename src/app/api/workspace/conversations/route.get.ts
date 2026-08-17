@@ -11,11 +11,18 @@ import {
   conversationSearchSnippet,
   conversationTextMatches,
 } from "@/modules/chat/conversation-search";
+import { reapExpiredChatStreams } from "@/modules/chat/chat-stream-lease";
+import {
+  attachConversationLiveState,
+  canonicalizeConversationActivities,
+} from "@/modules/chat/conversation-list-live-state";
+import { listActiveResponseVersionDescendants } from "@/modules/chat/response-version-lineage";
 import { db } from "@/server/infrastructure/db";
 import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
 import {
   agents,
   conversationFolders,
+  conversationReadStates,
   conversationShares,
   conversations,
   messageParts,
@@ -26,6 +33,7 @@ import {
   asc,
   desc,
   eq,
+  gt,
   inArray,
   isNotNull,
   isNull,
@@ -34,7 +42,11 @@ import {
   sql,
 } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { createConversationCursor, querySchema } from "./route.query-schema";
+import {
+  createConversationCursor,
+  parseConversationCursor,
+  querySchema,
+} from "./route.query-schema";
 import { RESPONSE_VERSION_BRANCH_KIND } from "@/modules/chat/conversation-branches";
 export async function GET(req: NextRequest) {
   return handleRoute(
@@ -60,9 +72,8 @@ export async function GET(req: NextRequest) {
       }
       const { agentId, includeMeta, limit, q } = parsed.data;
       let workspaceId = parsed.data.workspaceId ?? null;
-      const [beforeDateValue, beforeId] = parsed.data.before?.split("|") ?? [];
-      const before = beforeDateValue ? new Date(beforeDateValue) : null;
-      if (beforeDateValue && (!before || Number.isNaN(before.getTime()))) {
+      const cursor = parseConversationCursor(parsed.data.before);
+      if (parsed.data.before && !cursor) {
         return NextResponse.json(
           { error: "before must be a valid conversation cursor" },
           { status: 400 },
@@ -147,16 +158,39 @@ export async function GET(req: NextRequest) {
         scopeConditions.push(eq(conversations.agentId, agentId));
       }
       const conditions = [...scopeConditions];
-      if (before) {
-        const cursorCondition = beforeId
-          ? or(
-              lt(conversations.updatedAt, before),
-              and(
-                eq(conversations.updatedAt, before),
-                lt(conversations.id, beforeId),
-              ),
-            )
-          : lt(conversations.updatedAt, before);
+      if (cursor) {
+        const updatedAfterCursor = or(
+          lt(conversations.updatedAt, cursor.updatedAt),
+          and(
+            eq(conversations.updatedAt, cursor.updatedAt),
+            lt(conversations.id, cursor.id),
+          ),
+        );
+        let cursorCondition = updatedAfterCursor;
+        if (!q && cursor.version === 2) {
+          const laterWithinPinnedGroup =
+            cursor.sidebarOrder === null
+              ? or(
+                  isNotNull(conversations.sidebarOrder),
+                  and(isNull(conversations.sidebarOrder), updatedAfterCursor),
+                )
+              : and(
+                  isNotNull(conversations.sidebarOrder),
+                  or(
+                    gt(conversations.sidebarOrder, cursor.sidebarOrder),
+                    and(
+                      eq(conversations.sidebarOrder, cursor.sidebarOrder),
+                      updatedAfterCursor,
+                    ),
+                  ),
+                );
+          cursorCondition = cursor.pinned
+            ? or(
+                isNull(conversations.pinnedAt),
+                and(isNotNull(conversations.pinnedAt), laterWithinPinnedGroup),
+              )
+            : and(isNull(conversations.pinnedAt), laterWithinPinnedGroup);
+        }
         if (cursorCondition) conditions.push(cursorCondition);
       }
       const conversationSelection = {
@@ -264,6 +298,83 @@ export async function GET(req: NextRequest) {
         hasMore = rows.length > limit;
         list = hasMore ? rows.slice(0, limit) : rows;
       }
+      const conversationIds = list.map(({ id }) => id);
+      const responseVersions =
+        await listActiveResponseVersionDescendants(conversationIds);
+      const canonicalConversationIds = new Map(
+        responseVersions.map(
+          ({ id, rootConversationId }) => [id, rootConversationId] as const,
+        ),
+      );
+      const activityConversationIds = [
+        ...conversationIds,
+        ...responseVersions.map(({ id }) => id),
+      ];
+      const [rawAssistantActivities, readStates] =
+        activityConversationIds.length === 0
+          ? [[], []]
+          : await Promise.all([
+              db
+                .selectDistinctOn([messages.conversationId], {
+                  conversationId: messages.conversationId,
+                  messageId: messages.id,
+                  status: messages.status,
+                  createdAt: messages.createdAt,
+                  completedAt: messages.completedAt,
+                })
+                .from(messages)
+                .where(
+                  and(
+                    inArray(messages.conversationId, activityConversationIds),
+                    eq(messages.role, "assistant"),
+                  ),
+                )
+                .orderBy(
+                  messages.conversationId,
+                  desc(messages.createdAt),
+                  desc(messages.id),
+                ),
+              db
+                .select({
+                  conversationId: conversationReadStates.conversationId,
+                  lastReadAt: conversationReadStates.lastReadAt,
+                })
+                .from(conversationReadStates)
+                .where(
+                  and(
+                    eq(conversationReadStates.userId, session.user.id),
+                    inArray(
+                      conversationReadStates.conversationId,
+                      conversationIds,
+                    ),
+                  ),
+                ),
+            ]);
+      const latestAssistantActivities = canonicalizeConversationActivities(
+        rawAssistantActivities,
+        canonicalConversationIds,
+      );
+      const activeActivityIds = latestAssistantActivities
+        .filter(({ status }) => status === "pending" || status === "streaming")
+        .map(({ messageId }) => messageId);
+      const reconciledAt = new Date();
+      const expiredActivities = await reapExpiredChatStreams(
+        reconciledAt,
+        activeActivityIds,
+      );
+      if (expiredActivities.length > 0) {
+        const expiredIds = new Set(expiredActivities.map(({ id }) => id));
+        for (const activity of latestAssistantActivities) {
+          if (!expiredIds.has(activity.messageId)) continue;
+          activity.status = "failed";
+          activity.completedAt = reconciledAt;
+        }
+      }
+      const liveList = attachConversationLiveState(
+        list,
+        latestAssistantActivities,
+        readStates,
+      );
       if (includeMeta === "true") {
         const [folders, latestConversation] = await Promise.all([
           db
@@ -298,7 +409,7 @@ export async function GET(req: NextRequest) {
             .limit(1),
         ]);
         return NextResponse.json({
-          conversations: list,
+          conversations: liveList,
           folders,
           latestConversationId: latestConversation[0]?.id ?? null,
           latestConversationAgentId: latestConversation[0]?.agentId ?? null,
@@ -306,7 +417,7 @@ export async function GET(req: NextRequest) {
           nextCursor: hasMore ? createConversationCursor(list.at(-1)) : null,
         });
       }
-      return NextResponse.json(list);
+      return NextResponse.json(liveList);
     },
     { logLabel: "Failed to list conversations" },
   );

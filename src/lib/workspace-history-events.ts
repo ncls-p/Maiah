@@ -7,65 +7,100 @@ const CHANNEL_NAME = "maiah-workspace-history";
 const STORAGE_KEY = "maiah:workspace-history-revision";
 
 type HistoryChannelMessage =
-  | { type: "refresh" }
+  | { type: "refresh"; workspaceId: string; senderId: string }
   | {
       type: "streaming";
+      workspaceId: string;
+      senderId: string;
       conversationId: string;
       streaming: boolean;
       markUnread: boolean;
     }
-  | { type: "unread"; conversationId: string; unread: boolean };
+  | {
+      type: "unread";
+      workspaceId: string;
+      senderId: string;
+      conversationId: string;
+      unread: boolean;
+    };
+
+type WorkspaceHistoryRefreshDetail = { workspaceId: string };
 
 type ConversationStreamingDetail = {
+  workspaceId: string;
   conversationId: string;
   streaming: boolean;
   markUnread: boolean;
 };
 
 type ConversationUnreadDetail = {
+  workspaceId: string;
   conversationId: string;
   unread: boolean;
 };
+
+let publisher: BroadcastChannel | null = null;
+let revision = 0;
+const senderId =
+  globalThis.crypto?.randomUUID?.() ??
+  `history-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function postHistoryMessage(message: HistoryChannelMessage) {
   if (
     typeof window === "undefined" ||
     typeof BroadcastChannel === "undefined"
   ) {
-    return;
+    return false;
   }
   try {
-    const channel = new BroadcastChannel(CHANNEL_NAME);
-    channel.postMessage(message);
-    channel.close();
+    publisher ??= new BroadcastChannel(CHANNEL_NAME);
+    publisher.postMessage(message);
+    return true;
   } catch {
+    publisher = null;
     // Private mode and unsupported browsers still get same-tab events.
+    return false;
   }
 }
 
-function bumpHistoryStorage() {
+function bumpHistoryStorage(workspaceId: string) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, String(Date.now()));
+    revision += 1;
+    window.localStorage.setItem(
+      `${STORAGE_KEY}:${workspaceId}`,
+      `${Date.now()}:${revision}`,
+    );
   } catch {
     // Ignore quota / access errors; same-tab listeners still run.
   }
 }
 
-export function notifyWorkspaceHistoryChanged() {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event(WORKSPACE_HISTORY_REFRESH_EVENT));
-  postHistoryMessage({ type: "refresh" });
-  bumpHistoryStorage();
+export function notifyWorkspaceHistoryChanged(workspaceId: string | null) {
+  if (typeof window === "undefined" || !workspaceId) return;
+  window.dispatchEvent(
+    new CustomEvent<WorkspaceHistoryRefreshDetail>(
+      WORKSPACE_HISTORY_REFRESH_EVENT,
+      { detail: { workspaceId } },
+    ),
+  );
+  const broadcasted = postHistoryMessage({
+    type: "refresh",
+    workspaceId,
+    senderId,
+  });
+  if (!broadcasted) bumpHistoryStorage(workspaceId);
 }
 
 export function notifyConversationStreaming(
+  workspaceId: string | null | undefined,
   conversationId: string | null | undefined,
   streaming: boolean,
   options?: { markUnread?: boolean },
 ) {
-  if (typeof window === "undefined" || !conversationId) return;
+  if (typeof window === "undefined" || !workspaceId || !conversationId) return;
   const detail: ConversationStreamingDetail = {
+    workspaceId,
     conversationId,
     streaming,
     markUnread: streaming ? false : options?.markUnread !== false,
@@ -75,15 +110,17 @@ export function notifyConversationStreaming(
       detail,
     }),
   );
-  postHistoryMessage({ type: "streaming", ...detail });
-  notifyWorkspaceHistoryChanged();
+  postHistoryMessage({ type: "streaming", senderId, ...detail });
+  notifyWorkspaceHistoryChanged(workspaceId);
 }
 
 export function notifyConversationRead(
+  workspaceId: string | null | undefined,
   conversationId: string | null | undefined,
 ) {
-  if (typeof window === "undefined" || !conversationId) return;
+  if (typeof window === "undefined" || !workspaceId || !conversationId) return;
   const detail: ConversationUnreadDetail = {
+    workspaceId,
     conversationId,
     unread: false,
   };
@@ -92,24 +129,34 @@ export function notifyConversationRead(
       detail,
     }),
   );
-  postHistoryMessage({ type: "unread", ...detail });
+  postHistoryMessage({ type: "unread", senderId, ...detail });
+  notifyWorkspaceHistoryChanged(workspaceId);
 }
 
-export function subscribeWorkspaceHistoryLive(handlers: {
-  onRefresh: () => void;
-  onStreaming?: (
-    conversationId: string,
-    streaming: boolean,
-    markUnread: boolean,
-  ) => void;
-  onUnread?: (conversationId: string, unread: boolean) => void;
-}) {
+export function subscribeWorkspaceHistoryLive(
+  workspaceId: string,
+  handlers: {
+    onRefresh: () => void;
+    onStreaming?: (
+      conversationId: string,
+      streaming: boolean,
+      markUnread: boolean,
+    ) => void;
+    onUnread?: (conversationId: string, unread: boolean) => void;
+  },
+) {
   if (typeof window === "undefined") return () => undefined;
 
-  const onRefresh = () => handlers.onRefresh();
+  const onRefresh = (event?: Event) => {
+    const detail = (
+      event as CustomEvent<WorkspaceHistoryRefreshDetail> | undefined
+    )?.detail;
+    if (detail?.workspaceId && detail.workspaceId !== workspaceId) return;
+    handlers.onRefresh();
+  };
   const onStreamingEvent = (event: Event) => {
     const detail = (event as CustomEvent<ConversationStreamingDetail>).detail;
-    if (!detail?.conversationId) return;
+    if (!detail?.conversationId || detail.workspaceId !== workspaceId) return;
     handlers.onStreaming?.(
       detail.conversationId,
       detail.streaming,
@@ -118,11 +165,11 @@ export function subscribeWorkspaceHistoryLive(handlers: {
   };
   const onUnreadEvent = (event: Event) => {
     const detail = (event as CustomEvent<ConversationUnreadDetail>).detail;
-    if (!detail?.conversationId) return;
+    if (!detail?.conversationId || detail.workspaceId !== workspaceId) return;
     handlers.onUnread?.(detail.conversationId, detail.unread);
   };
   const onStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY) onRefresh();
+    if (event.key === `${STORAGE_KEY}:${workspaceId}`) onRefresh();
   };
   const onVisible = () => {
     if (!document.hidden) onRefresh();
@@ -132,6 +179,9 @@ export function subscribeWorkspaceHistoryLive(handlers: {
   window.addEventListener(CONVERSATION_STREAMING_EVENT, onStreamingEvent);
   window.addEventListener(CONVERSATION_UNREAD_EVENT, onUnreadEvent);
   window.addEventListener("storage", onStorage);
+  window.addEventListener("focus", onRefresh);
+  window.addEventListener("online", onRefresh);
+  window.addEventListener("pageshow", onRefresh);
   document.addEventListener("visibilitychange", onVisible);
 
   let channel: BroadcastChannel | null = null;
@@ -140,6 +190,8 @@ export function subscribeWorkspaceHistoryLive(handlers: {
       channel = new BroadcastChannel(CHANNEL_NAME);
       channel.onmessage = (event: MessageEvent<HistoryChannelMessage>) => {
         const message = event.data;
+        if (message?.senderId === senderId) return;
+        if (message?.workspaceId !== workspaceId) return;
         if (message?.type === "refresh") {
           onRefresh();
           return;
@@ -166,6 +218,9 @@ export function subscribeWorkspaceHistoryLive(handlers: {
     window.removeEventListener(CONVERSATION_STREAMING_EVENT, onStreamingEvent);
     window.removeEventListener(CONVERSATION_UNREAD_EVENT, onUnreadEvent);
     window.removeEventListener("storage", onStorage);
+    window.removeEventListener("focus", onRefresh);
+    window.removeEventListener("online", onRefresh);
+    window.removeEventListener("pageshow", onRefresh);
     document.removeEventListener("visibilitychange", onVisible);
     channel?.close();
   };

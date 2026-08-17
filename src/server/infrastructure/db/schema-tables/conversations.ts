@@ -11,6 +11,7 @@ import {
   varchar,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { agents, agentVersions } from "./agents";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
@@ -132,6 +133,11 @@ export const conversations = pgTable(
       t.id,
     ),
     uniqueIndex("conversations_public_share_id_unique").on(t.publicShareId),
+    uniqueIndex("conversations_one_shared_fork_per_recipient")
+      .on(t.parentConversationId, t.userId)
+      .where(
+        sql`${t.branchKind} = 'shared_continuation' AND ${t.status} = 'active' AND ${t.archivedAt} IS NULL`,
+      ),
     index("conversations_ephemeral_expiry").on(t.isEphemeral, t.expiresAt),
   ],
 );
@@ -167,6 +173,38 @@ export const conversationShares = pgTable(
     ),
     index("conversation_shares_recipient").on(
       t.sharedWithUserId,
+      t.conversationId,
+    ),
+  ],
+);
+
+export const conversationReadStates = pgTable(
+  "conversation_read_states",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: CASCADE_ACTION }),
+    userId: uuid(USER_ID_COLUMN)
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE_ACTION }),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("conversation_read_states_conversation_user_unique").on(
+      t.conversationId,
+      t.userId,
+    ),
+    index("conversation_read_states_user_conversation").on(
+      t.userId,
       t.conversationId,
     ),
   ],
@@ -210,6 +248,14 @@ export const messages = pgTable(
     costUsd: text("cost_usd"),
     modelId: varchar("model_id", { length: 255 }),
     providerId: uuid("provider_id"),
+    streamGenerationId: uuid("stream_generation_id"),
+    streamStartedAt: timestamp("stream_started_at", { withTimezone: true }),
+    streamHeartbeatAt: timestamp("stream_heartbeat_at", {
+      withTimezone: true,
+    }),
+    streamLeaseExpiresAt: timestamp("stream_lease_expires_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -218,6 +264,12 @@ export const messages = pgTable(
   (t) => [
     index("messages_conversation").on(t.conversationId),
     index("messages_conversation_created").on(t.conversationId, t.createdAt),
+    index("messages_active_stream_lease").on(t.status, t.streamLeaseExpiresAt),
+    uniqueIndex("messages_one_active_assistant_per_conversation")
+      .on(t.conversationId)
+      .where(
+        sql`${t.role} = 'assistant' AND ${t.status} IN ('pending', 'streaming')`,
+      ),
   ],
 );
 

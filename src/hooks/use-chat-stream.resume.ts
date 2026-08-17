@@ -18,16 +18,143 @@ import {
   storeChatStreamDraft,
   upsertPendingApproval,
 } from "@/hooks/use-chat-stream-events";
+import { notifyConversationStreaming } from "@/lib/workspace-history-events";
 import {
   appendErrorPart,
   compactErrorMessage,
 } from "./use-chat-stream.compact-error-message";
 
+const DEFAULT_RESUME_RETRY_MS = 2_000;
+const MIN_RESUME_RETRY_MS = 500;
+const MAX_RESUME_RETRY_MS = 5_000;
+const MAX_RESUME_RELOAD_ATTEMPTS = 5;
+
+function abortError() {
+  return new DOMException("Aborted", "AbortError");
+}
+
+function throwIfAborted(signal: AbortSignal) {
+  if (signal.aborted) throw abortError();
+}
+
+export function waitForAbortableResumeDelay(
+  signal: AbortSignal,
+  delayMs: number,
+) {
+  if (signal.aborted) return Promise.reject(abortError());
+
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      signal.removeEventListener("abort", onAbort);
+      callback();
+    };
+    const onAbort = () => finish(() => reject(abortError()));
+    const timeoutId = setTimeout(() => finish(resolve), delayMs);
+
+    signal.addEventListener("abort", onAbort, { once: true });
+    // Cover an abort racing the listener registration.
+    if (signal.aborted) onAbort();
+  });
+}
+
+export function chatStreamMessageIsActive(
+  messages: ChatMessage[],
+  messageId: string,
+) {
+  return messages.some(
+    (message) =>
+      message.id === messageId &&
+      (message.status === "pending" || message.status === "streaming"),
+  );
+}
+
+type ResumeSource =
+  | { kind: "stream"; response: Response }
+  | { kind: "terminal"; messages: ChatMessage[] };
+
+export async function waitForChatResumeSource(input: {
+  signal: AbortSignal;
+  messageId: string;
+  requestStream: (signal: AbortSignal) => Promise<Response>;
+  reloadMessages: (signal: AbortSignal) => Promise<ChatMessage[] | null>;
+  wait?: (signal: AbortSignal, delayMs: number) => Promise<void>;
+}): Promise<ResumeSource> {
+  const wait = input.wait ?? waitForAbortableResumeDelay;
+
+  async function reloadUntilAvailable() {
+    for (let attempt = 1; attempt <= MAX_RESUME_RELOAD_ATTEMPTS; attempt += 1) {
+      throwIfAborted(input.signal);
+      let messages: ChatMessage[] | null = null;
+      try {
+        messages = await input.reloadMessages(input.signal);
+      } catch (error) {
+        if (
+          input.signal.aborted ||
+          (error instanceof Error && error.name === "AbortError")
+        ) {
+          throw abortError();
+        }
+      }
+      throwIfAborted(input.signal);
+      if (messages !== null) return messages;
+      if (attempt < MAX_RESUME_RELOAD_ATTEMPTS) {
+        await wait(input.signal, DEFAULT_RESUME_RETRY_MS);
+      }
+    }
+
+    throw new Error("Failed to reload conversation while resuming chat stream");
+  }
+
+  while (true) {
+    throwIfAborted(input.signal);
+    const response = await input.requestStream(input.signal);
+    throwIfAborted(input.signal);
+
+    if (response.status === 202) {
+      const pending = (await response.json().catch(() => null)) as {
+        retryAfterMs?: number;
+      } | null;
+      throwIfAborted(input.signal);
+      const retryAfterMs = Math.min(
+        MAX_RESUME_RETRY_MS,
+        Math.max(
+          MIN_RESUME_RETRY_MS,
+          pending?.retryAfterMs ?? DEFAULT_RESUME_RETRY_MS,
+        ),
+      );
+      await wait(input.signal, retryAfterMs);
+      const messages = await reloadUntilAvailable();
+      if (!chatStreamMessageIsActive(messages, input.messageId)) {
+        return { kind: "terminal", messages };
+      }
+      continue;
+    }
+
+    if (response.status === 404 || response.status === 409) {
+      const messages = await reloadUntilAvailable();
+      if (!chatStreamMessageIsActive(messages, input.messageId)) {
+        return { kind: "terminal", messages };
+      }
+      await wait(input.signal, DEFAULT_RESUME_RETRY_MS);
+      continue;
+    }
+
+    return { kind: "stream", response };
+  }
+}
+
 export function useChatStreamResume(input: {
+  workspaceId: string | null;
   conversationId: string | null;
   streamingMessageId: string | null;
   sending: boolean;
-  reloadConversationMessages: () => Promise<void>;
+  reloadConversationMessages: (
+    signal: AbortSignal,
+  ) => Promise<ChatMessage[] | null>;
   onConversationsRefresh: () => Promise<void>;
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setPendingApprovals: Dispatch<SetStateAction<PendingToolApproval[]>>;
@@ -38,6 +165,7 @@ export function useChatStreamResume(input: {
   resolvedApprovalIdsRef: MutableRefObject<Set<string>>;
 }) {
   const {
+    workspaceId,
     conversationId,
     streamingMessageId,
     sending,
@@ -59,12 +187,16 @@ export function useChatStreamResume(input: {
     const controller = new AbortController();
     activeRequestControllerRef.current = controller;
     activeConversationIdRef.current = activeConversationId;
-    let completed = false;
+    let terminalConfirmed = false;
+    let cleanedUp = false;
     let resumeDraft = getStoredChatStreamDraft(activeConversationId);
     let resumeDraftWriteTimeout: number | null = null;
     let assistantDraft: ChatMessage | null = null;
     let renderFrame: number | null = null;
-    queueMicrotask(() => setResuming(true));
+    queueMicrotask(() => {
+      if (!cleanedUp) setResuming(true);
+    });
+    notifyConversationStreaming(workspaceId, activeConversationId, true);
 
     function cancelScheduledResumeDraftWrite() {
       if (resumeDraftWriteTimeout === null) return;
@@ -132,9 +264,7 @@ export function useChatStreamResume(input: {
           if (!existing) return current;
           assistantDraft = updater(existing);
           return current.map((message) =>
-            message.id === activeStreamingMessageId
-              ? assistantDraft!
-              : message,
+            message.id === activeStreamingMessageId ? assistantDraft! : message,
           );
         });
       }
@@ -186,67 +316,96 @@ export function useChatStreamResume(input: {
       updatePendingApprovals(() => []);
     }
 
-    async function resumeStream() {
+    function refreshDirectory() {
+      void onConversationsRefresh().catch(() => undefined);
+    }
+
+    function cleanupOnce() {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      flushAssistantRender();
+      cancelScheduledRender();
+      cancelScheduledResumeDraftWrite();
+      if (activeRequestControllerRef.current === controller) {
+        activeRequestControllerRef.current = null;
+        activeConversationIdRef.current = null;
+        setResuming(false);
+      }
+    }
+
+    async function consumeStream(response: Response) {
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error || "Failed to resume chat stream");
+      }
+      if (!response.body) throw new Error("Failed to resume chat stream");
+
+      let completed = false;
+      updateAssistant((message) => ({ ...message, parts: [] }));
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      function handleStreamEvent(eventText: string) {
+        const parsed = parseStreamEventText(eventText);
+        if (!parsed) return;
+        applyStreamEvent(parsed, {
+          updateAssistant,
+          addPendingApproval,
+          clearPendingApprovals,
+          setCitations,
+          onDone: () => {
+            completed = true;
+            terminalConfirmed = true;
+            clearStoredChatStreamDraft(activeConversationId);
+          },
+        });
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const streamEvent of events) handleStreamEvent(streamEvent);
+      }
+
+      buffer += decoder.decode();
+      if (buffer.trim()) handleStreamEvent(buffer);
+      return completed;
+    }
+
+    async function runResumeLoop() {
       try {
-        const res = await fetch(
-          `/api/workspace/conversations/${activeConversationId}/stream`,
-          { signal: controller.signal },
-        );
-        if (res.status === 404 || res.status === 409) {
-          clearStoredChatStreamDraft(activeConversationId);
-          await reloadConversationMessages();
-          await onConversationsRefresh();
-          return;
-        }
-        if (!res.ok) {
-          const error = await res.json().catch(() => null);
-          throw new Error(error?.error || "Failed to resume chat stream");
-        }
-        if (!res.body) {
-          throw new Error("Failed to resume chat stream");
-        }
-
-        updateAssistant((message) => ({ ...message, parts: [] }));
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        function handleStreamEvent(eventText: string) {
-          const parsed = parseStreamEventText(eventText);
-          if (!parsed) return;
-          applyStreamEvent(parsed, {
-            updateAssistant,
-            addPendingApproval,
-            clearPendingApprovals,
-            setCitations,
-            onDone: () => {
-              completed = true;
-              clearStoredChatStreamDraft(activeConversationId);
-            },
+        while (!controller.signal.aborted) {
+          const source = await waitForChatResumeSource({
+            signal: controller.signal,
+            messageId: activeStreamingMessageId,
+            requestStream: (signal) =>
+              fetch(
+                `/api/workspace/conversations/${activeConversationId}/stream`,
+                { signal },
+              ),
+            reloadMessages: reloadConversationMessages,
           });
-        }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split("\n\n");
-          buffer = events.pop() ?? "";
-          for (const streamEvent of events) {
-            handleStreamEvent(streamEvent);
+          if (source.kind === "terminal") {
+            terminalConfirmed = true;
+            clearPendingApprovals();
+            clearStoredChatStreamDraft(activeConversationId);
+            refreshDirectory();
+            return;
           }
-        }
 
-        buffer += decoder.decode();
-        if (buffer.trim()) handleStreamEvent(buffer);
-
-        if (!controller.signal.aborted) {
-          if (completed) {
-            await onConversationsRefresh();
-          } else {
-            await reloadConversationMessages();
+          if (await consumeStream(source.response)) {
+            refreshDirectory();
+            return;
           }
+          await waitForAbortableResumeDelay(
+            controller.signal,
+            DEFAULT_RESUME_RETRY_MS,
+          );
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
@@ -257,31 +416,26 @@ export function useChatStreamResume(input: {
         clearPendingApprovals();
         clearStoredChatStreamDraft(activeConversationId);
       } finally {
-        flushAssistantRender();
-        cancelScheduledRender();
-        cancelScheduledResumeDraftWrite();
-        if (activeRequestControllerRef.current === controller) {
-          activeRequestControllerRef.current = null;
-          activeConversationIdRef.current = null;
+        if (!controller.signal.aborted && terminalConfirmed) {
+          notifyConversationStreaming(
+            workspaceId,
+            activeConversationId,
+            false,
+            { markUnread: false },
+          );
         }
-        if (!controller.signal.aborted) setResuming(false);
+        cleanupOnce();
       }
     }
 
-    void resumeStream();
+    void runResumeLoop();
     return () => {
       controller.abort();
-      flushAssistantRender();
-      cancelScheduledRender();
-      cancelScheduledResumeDraftWrite();
-      if (activeRequestControllerRef.current === controller) {
-        activeRequestControllerRef.current = null;
-        activeConversationIdRef.current = null;
-      }
-      queueMicrotask(() => setResuming(false));
+      cleanupOnce();
     };
   }, [
     conversationId,
+    workspaceId,
     streamingMessageId,
     sending,
     reloadConversationMessages,

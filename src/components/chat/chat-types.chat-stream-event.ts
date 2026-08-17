@@ -83,6 +83,7 @@ export function canContinueAssistantMessage(
 export function prepareAssistantMessageContinuation(message: ChatMessage) {
   return {
     ...message,
+    streamGenerationId: undefined,
     status: "streaming",
     parts: message.parts.filter(
       (part) => part.type !== "suggestions" && part.type !== "impact",

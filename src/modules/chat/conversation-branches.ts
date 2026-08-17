@@ -138,25 +138,30 @@ export async function forkConversationForRegeneration(input: {
     throw new Error("Assistant message is not ready for regeneration");
   }
 
-  if (input.source.parentConversationId && input.source.branchFromMessageId) {
+  const visitedResponseVersions = new Set<string>();
+  while (
+    baseConversation.branchKind === RESPONSE_VERSION_BRANCH_KIND &&
+    baseConversation.parentConversationId &&
+    baseConversation.branchFromMessageId &&
+    !visitedResponseVersions.has(baseConversation.id)
+  ) {
+    visitedResponseVersions.add(baseConversation.id);
     const [parentConversation] = await db
       .select()
       .from(conversations)
-      .where(activeConversation(input.source.parentConversationId))
+      .where(activeConversation(baseConversation.parentConversationId))
       .limit(1);
-    if (parentConversation?.userId === input.userId) {
-      const parentMessages = await orderedConversationMessages(
-        parentConversation.id,
-      );
-      const parentAnchorIndex = parentMessages.findIndex(
-        (message) => message.id === input.source.branchFromMessageId,
-      );
-      if (parentAnchorIndex === assistantIndex) {
-        baseConversation = parentConversation;
-        baseMessages = parentMessages;
-        assistantIndex = parentAnchorIndex;
-      }
-    }
+    if (parentConversation?.userId !== input.userId) break;
+    const parentMessages = await orderedConversationMessages(
+      parentConversation.id,
+    );
+    const parentAnchorIndex = parentMessages.findIndex(
+      (message) => message.id === baseConversation.branchFromMessageId,
+    );
+    if (parentAnchorIndex !== assistantIndex) break;
+    baseConversation = parentConversation;
+    baseMessages = parentMessages;
+    assistantIndex = parentAnchorIndex;
   }
 
   const branchMessage = baseMessages[assistantIndex];

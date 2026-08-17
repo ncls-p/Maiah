@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type {
@@ -11,7 +11,14 @@ import type {
 } from "@/components/chat/chat-types";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
+import { notifyWorkspaceHistoryChanged } from "@/lib/workspace-history-events";
 import { useWorkspaceHistoryLiveSync } from "./workspace-history-sidebar.use-history-live-sync";
+import {
+  queueWorkspaceHistoryRefresh,
+  resolveWorkspaceHistorySearchState,
+  settleWorkspaceHistoryRefresh,
+  type WorkspaceHistoryRefreshCycle,
+} from "./workspace-history-sidebar.state";
 import {
   AgentPayload,
   ConversationPayload,
@@ -25,67 +32,83 @@ export function useWorkspaceHistory() {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [folders, setFolders] = useState<ChatConversationFolder[]>([]);
   const [agents, setAgents] = useState<ChatAgent[]>([]);
+  const [agentsWorkspaceId, setAgentsWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [resolvedWorkspaceId, setResolvedWorkspaceId] = useState<string | null>(
     null,
   );
+  const resolvedWorkspaceIdRef = useRef<string | null>(null);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ChatConversation[]>([]);
+  const [searchWorkspaceId, setSearchWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
+  const [searchRevision, setSearchRevision] = useState(0);
   const [revision, setRevision] = useState(0);
-  const live = useWorkspaceHistoryLiveSync(() =>
-    setRevision((current) => current + 1),
+  const [serverRevision, setServerRevision] = useState(0);
+  const refreshCycleRef = useRef<WorkspaceHistoryRefreshCycle | null>(null);
+  const requestRefresh = useCallback(() => {
+    const queued = queueWorkspaceHistoryRefresh(refreshCycleRef.current);
+    refreshCycleRef.current = queued.cycle;
+    if (queued.shouldFetch) setRevision((current) => current + 1);
+    return queued.cycle.promise;
+  }, []);
+  const live = useWorkspaceHistoryLiveSync(
+    conversations,
+    serverRevision,
+    requestRefresh,
   );
 
   useEffect(() => {
     if (!workspaceId) return;
     const controller = new AbortController();
     let active = true;
+    const refreshCycle = refreshCycleRef.current;
     const params = new URLSearchParams({
       workspaceId,
       limit: "50",
       includeMeta: "true",
     });
-    const agentParams = new URLSearchParams({
-      workspaceId,
-      includeModelMeta: "true",
-    });
-
-    void Promise.all([
-      fetchJson<ConversationPayload>(
-        `/api/workspace/conversations?${params.toString()}`,
-        { signal: controller.signal },
-      ),
-      fetchJson<AgentPayload>(
-        `/api/workspace/agents?${agentParams.toString()}`,
-        { signal: controller.signal },
-      ),
-    ])
-      .then(([conversationPayload, agentPayload]) => {
+    void fetchJson<ConversationPayload>(
+      `/api/workspace/conversations?${params.toString()}`,
+      { signal: controller.signal, cache: "no-store" },
+    )
+      .then((conversationPayload) => {
         if (!active) return;
         const normalized = normalizeConversations(conversationPayload);
         setConversations(normalized.conversations);
         setFolders(normalized.folders);
-        setAgents(
-          Array.isArray(agentPayload)
-            ? agentPayload
-            : (agentPayload.agents ?? []),
-        );
+        resolvedWorkspaceIdRef.current = workspaceId;
         setResolvedWorkspaceId(workspaceId);
+        setLoadError(false);
+        setServerRevision((current) => current + 1);
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        if (active) {
+        if (active && resolvedWorkspaceIdRef.current !== workspaceId) {
+          resolvedWorkspaceIdRef.current = workspaceId;
           setLoadError(true);
           setResolvedWorkspaceId(workspaceId);
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!active) return;
+        setLoading(false);
+        if (refreshCycle && refreshCycleRef.current === refreshCycle) {
+          const settlement = settleWorkspaceHistoryRefresh(refreshCycle);
+          if (settlement === "refetch") {
+            setRevision((current) => current + 1);
+            return;
+          }
+          refreshCycleRef.current = null;
+        }
       });
 
     return () => {
@@ -93,6 +116,31 @@ export function useWorkspaceHistory() {
       controller.abort();
     };
   }, [revision, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const controller = new AbortController();
+    const agentParams = new URLSearchParams({
+      workspaceId,
+      includeModelMeta: "true",
+    });
+    void fetchJson<AgentPayload>(
+      `/api/workspace/agents?${agentParams.toString()}`,
+      { signal: controller.signal, cache: "no-store" },
+    )
+      .then((agentPayload) => {
+        setAgents(
+          Array.isArray(agentPayload)
+            ? agentPayload
+            : (agentPayload.agents ?? []),
+        );
+        setAgentsWorkspaceId(workspaceId);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+      });
+    return () => controller.abort();
+  }, [workspaceId]);
 
   useEffect(() => {
     const normalizedQuery = query.trim();
@@ -113,17 +161,22 @@ export function useWorkspaceHistory() {
       setSearchError(false);
       void fetchJson<ConversationPayload>(
         `/api/workspace/conversations?${params.toString()}`,
-        { signal: controller.signal },
+        { signal: controller.signal, cache: "no-store" },
       )
         .then((payload) => {
           if (!active) return;
           setSearchResults(normalizeConversations(payload).conversations);
+          setSearchWorkspaceId(workspaceId);
         })
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") {
             return;
           }
-          if (active) setSearchError(true);
+          if (active) {
+            setSearchResults([]);
+            setSearchWorkspaceId(workspaceId);
+            setSearchError(true);
+          }
         })
         .finally(() => {
           if (active) setSearching(false);
@@ -135,7 +188,7 @@ export function useWorkspaceHistory() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query, revision, workspaceId]);
+  }, [query, searchRevision, workspaceId]);
 
   async function renameConversation(conversationId: string, title: string) {
     try {
@@ -159,6 +212,7 @@ export function useWorkspaceHistory() {
         );
       setConversations(applyRename);
       setSearchResults(applyRename);
+      notifyWorkspaceHistoryChanged(workspaceId);
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -177,6 +231,7 @@ export function useWorkspaceHistory() {
         current.filter((conversation) => conversation.id !== conversationId);
       setConversations(removeConversation);
       setSearchResults(removeConversation);
+      notifyWorkspaceHistoryChanged(workspaceId);
       return true;
     } catch (error) {
       toast.error(
@@ -200,6 +255,7 @@ export function useWorkspaceHistory() {
         },
       );
       setFolders((current) => [...current, data.folder]);
+      notifyWorkspaceHistoryChanged(workspaceId);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : tErrors("createFolderFailed"),
@@ -222,6 +278,7 @@ export function useWorkspaceHistory() {
           folder.id === folderId ? data.folder : folder,
         ),
       );
+      notifyWorkspaceHistoryChanged(workspaceId);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : tErrors("renameFolderFailed"),
@@ -244,6 +301,7 @@ export function useWorkspaceHistory() {
             : conversation,
         ),
       );
+      notifyWorkspaceHistoryChanged(workspaceId);
       return true;
     } catch (error) {
       toast.error(
@@ -271,6 +329,7 @@ export function useWorkspaceHistory() {
         );
       setConversations(applyPin);
       setSearchResults(applyPin);
+      notifyWorkspaceHistoryChanged(workspaceId);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : tErrors("updatePinFailed"),
@@ -308,38 +367,60 @@ export function useWorkspaceHistory() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspaceId, ...input }),
       });
+      notifyWorkspaceHistoryChanged(workspaceId);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : tErrors("moveFailed"),
       );
-      setRevision((current) => current + 1);
+      await requestRefresh();
     }
   }
 
+  const scopedSearch = resolveWorkspaceHistorySearchState({
+    query,
+    workspaceId,
+    resultWorkspaceId: searchWorkspaceId,
+    results: searchResults,
+    inFlight: searching,
+    failed: searchError,
+  });
+
   return {
-    agents,
+    agents: agentsWorkspaceId === workspaceId ? agents : [],
     conversations: withConversationLiveState(conversations, live),
     folders,
     loading: loading || resolvedWorkspaceId !== workspaceId,
-    loadError,
+    loadError: resolvedWorkspaceId === workspaceId && loadError,
     query,
-    searchResults: query.trim()
-      ? withConversationLiveState(searchResults, live)
+    searchResults: scopedSearch.results.length
+      ? withConversationLiveState(
+          scopedSearch.results,
+          live.forConversations(scopedSearch.results),
+        )
       : [],
-    searching: Boolean(query.trim()) && searching,
-    searchError: Boolean(query.trim()) && searchError,
+    searching: scopedSearch.searching,
+    searchError: scopedSearch.error,
     setQuery: (nextQuery: string) => {
       setQuery(nextQuery);
       setSearchResults([]);
+      setSearchWorkspaceId(null);
       setSearching(false);
       setSearchError(false);
     },
     retry: () => {
       setLoading(true);
       setLoadError(false);
+      resolvedWorkspaceIdRef.current = null;
       setResolvedWorkspaceId(null);
       setSearchError(false);
-      setRevision((current) => current + 1);
+      void requestRefresh();
+    },
+    retrySearch: () => {
+      setSearchResults([]);
+      setSearchWorkspaceId(null);
+      setSearching(false);
+      setSearchError(false);
+      setSearchRevision((current) => current + 1);
     },
     renameConversation,
     deleteConversation,

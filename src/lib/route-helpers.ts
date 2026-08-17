@@ -3,6 +3,9 @@ import { getSession } from "@/modules/auth/session";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { isUniqueConstraintError } from "@/lib/database-errors";
+
+export { isUniqueConstraintError } from "@/lib/database-errors";
 
 // ─── Auth helpers ────────────────────────────────────────────────────────
 
@@ -35,15 +38,6 @@ export function conflictResponse(message: string) {
 }
 
 // ─── Error handling ──────────────────────────────────────────────────────
-
-export function isUniqueConstraintError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: string }).code === "23505"
-  );
-}
 
 export function handleRouteError(
   context: string,

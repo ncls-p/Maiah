@@ -34,6 +34,10 @@ export interface ChatConversation {
     kind: "title" | "message";
     snippet: string;
   };
+  latestAssistantMessageId?: string;
+  latestAssistantConversationId?: string;
+  latestAssistantStatus?: string;
+  latestAssistantCompletedAt?: string | null;
   isStreaming?: boolean;
   isUnread?: boolean;
 }
@@ -114,6 +118,7 @@ export type ChatAttachment = ChatImageAttachment | ChatFileAttachment;
 
 export interface ChatMessage {
   id: string;
+  streamGenerationId?: string;
   role: "user" | "assistant" | "system" | "tool";
   status?: string;
   parts: ChatMessagePart[];

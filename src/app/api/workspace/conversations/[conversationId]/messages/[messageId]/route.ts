@@ -7,6 +7,8 @@ import {
   type ConversationContextPolicy,
 } from "@/modules/chat/conversation-context-policy";
 import { truncateConversationMessages } from "@/modules/chat/conversation-message-mutations";
+import { withConversationGraphLock } from "@/modules/chat/conversation-graph-lock";
+import { getConversationAccess } from "@/modules/chat/conversation-sharing";
 import { db } from "@/server/infrastructure/db";
 import {
   conversations,
@@ -175,30 +177,41 @@ export async function DELETE(
       if (access.access.role !== "owner")
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       const { conversation } = access;
-      const [message] = await db
-        .select({ id: messages.id })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.id, messageId),
-            eq(messages.conversationId, conversation.id),
-          ),
-        )
-        .limit(1);
-      if (!message) {
+      const deletedMessageIds = await withConversationGraphLock(
+        conversation.id,
+        async () => {
+          const currentAccess = await getConversationAccess(
+            conversation.id,
+            session.user.id,
+          );
+          if (currentAccess?.role !== "owner") return null;
+          const [message] = await db
+            .select({ id: messages.id })
+            .from(messages)
+            .where(
+              and(
+                eq(messages.id, messageId),
+                eq(messages.conversationId, conversation.id),
+              ),
+            )
+            .limit(1);
+          if (!message) return null;
+          return db.transaction((tx) =>
+            truncateConversationMessages({
+              tx,
+              conversationId: conversation.id,
+              anchorMessageId: messageId,
+              includeAnchor: true,
+            }),
+          );
+        },
+      );
+      if (!deletedMessageIds) {
         return NextResponse.json(
           { error: "Message not found" },
           { status: 404 },
         );
       }
-      const deletedMessageIds = await db.transaction((tx) =>
-        truncateConversationMessages({
-          tx,
-          conversationId: conversation.id,
-          anchorMessageId: messageId,
-          includeAnchor: true,
-        }),
-      );
       return NextResponse.json({ ok: true, deletedMessageIds });
     },
     { logLabel: "Failed to delete message" },

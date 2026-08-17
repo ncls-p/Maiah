@@ -56,6 +56,11 @@ export function chatStreamHeaders(context: ChatExecutionContext) {
   return {
     "X-Conversation-Id": context.conversation.id,
     "X-Message-Id": context.assistantMessage.id,
+    ...(context.assistantMessage.streamGenerationId
+      ? {
+          "X-Stream-Generation-Id": context.assistantMessage.streamGenerationId,
+        }
+      : {}),
     ...(context.userMessage
       ? { "X-User-Message-Id": context.userMessage.id }
       : {}),

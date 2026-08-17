@@ -14,7 +14,7 @@ import {
 export function createChatUIMessageStreamResponse(
   messageId: string,
   headers: Record<string, string> = {},
-  options: { replay?: boolean } = {},
+  options: { replay?: boolean; generationId?: string } = {},
 ) {
   const stream = createUIMessageStream({
     execute: ({ writer }) =>

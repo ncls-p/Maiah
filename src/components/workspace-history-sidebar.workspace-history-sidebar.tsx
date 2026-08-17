@@ -27,6 +27,18 @@ import {
 import type { WorkspaceShellState } from "@/lib/workspace-nav";
 import { WorkspaceHistoryContent } from "./workspace-history-sidebar.workspace-history-content";
 
+const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
+
+function subscribeDesktopViewport(onChange: () => void) {
+  const media = window.matchMedia(DESKTOP_MEDIA_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function isDesktopViewport() {
+  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+}
+
 export function WorkspaceHistorySidebar({
   shell,
 }: {
@@ -42,6 +54,11 @@ export function WorkspaceHistorySidebar({
     subscribeAppSidebarOpen,
     getStoredAppSidebarOpen,
     () => DEFAULT_APP_SIDEBAR_OPEN,
+  );
+  const desktop = useSyncExternalStore(
+    subscribeDesktopViewport,
+    isDesktopViewport,
+    () => false,
   );
   const [resizing, setResizing] = useState(false);
 
@@ -76,7 +93,7 @@ export function WorkspaceHistorySidebar({
       className={`relative hidden h-full shrink-0 overflow-hidden bg-sidebar/92 text-sidebar-foreground opacity-100 backdrop-blur-xl transition-[opacity,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] md:flex md:flex-col ${open ? "border-r border-sidebar-border/65" : "pointer-events-none border-r-0"}`}
       style={{ width: open ? `${width}px` : 0, opacity: open ? 1 : 0 }}
     >
-      {open ? (
+      {open && desktop ? (
         <WorkspaceHistoryContent
           shell={shell}
           onCollapsedChange={(collapsed) => setStoredAppSidebarOpen(!collapsed)}
@@ -114,11 +131,15 @@ export function WorkspaceHistoryMobileTrigger({
   shell: WorkspaceShellState;
 }) {
   const t = useTranslations("chat");
-  const [open, setOpen] = useState(false);
   const desktopSidebarOpen = useSyncExternalStore(
     subscribeAppSidebarOpen,
     getStoredAppSidebarOpen,
     () => DEFAULT_APP_SIDEBAR_OPEN,
+  );
+  const desktop = useSyncExternalStore(
+    subscribeDesktopViewport,
+    isDesktopViewport,
+    () => false,
   );
 
   return (
@@ -135,34 +156,47 @@ export function WorkspaceHistoryMobileTrigger({
           <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
         </Button>
       ) : null}
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-10 md:hidden"
-            aria-label={t("openConversations")}
-          >
-            <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent
-          side="left"
-          className="w-[min(100vw-1rem,20rem)] p-0"
-          // Autofocusing the first button opens its tooltip on mobile; let
-          // users focus the drawer content themselves.
-          onOpenAutoFocus={(event) => event.preventDefault()}
-        >
-          <SheetHeader className="sr-only">
-            <SheetTitle>{t("conversations")}</SheetTitle>
-          </SheetHeader>
-          <WorkspaceHistoryContent
-            shell={shell}
-            onNavigate={() => setOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
+      {!desktop ? <WorkspaceHistoryMobileSheet shell={shell} /> : null}
     </>
+  );
+}
+
+function WorkspaceHistoryMobileSheet({
+  shell,
+}: {
+  shell: WorkspaceShellState;
+}) {
+  const t = useTranslations("chat");
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-10 md:hidden"
+          aria-label={t("openConversations")}
+        >
+          <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="w-[min(100vw-1rem,20rem)] p-0"
+        // Autofocusing the first button opens its tooltip on mobile; let
+        // users focus the drawer content themselves.
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>{t("conversations")}</SheetTitle>
+        </SheetHeader>
+        <WorkspaceHistoryContent
+          shell={shell}
+          onNavigate={() => setOpen(false)}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

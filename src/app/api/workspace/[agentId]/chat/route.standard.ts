@@ -6,6 +6,11 @@ import {
 } from "@/modules/agent/runtime-policy";
 import { recordUsageEvent } from "@/modules/agent/use-cases";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import {
+  failChatStreamDueToTimeout,
+  isChatStreamHardTimeoutAbort,
+  startChatStreamLeaseHeartbeat,
+} from "@/modules/chat/chat-stream-lease";
 import { createGenerationClock } from "@/modules/chat/generation-clock";
 import {
   completeChatStream,
@@ -18,9 +23,13 @@ import {
   safeChatErrorMessage,
 } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
-import { messageParts, messages } from "@/server/infrastructure/db/schema";
+import {
+  conversations,
+  messageParts,
+  messages,
+} from "@/server/infrastructure/db/schema";
 import { isStepCount, ToolLoopAgent, type LanguageModel } from "ai";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { after } from "next/server";
 import { reasoningCallSettings } from "@/modules/agent/reasoning-presets";
 import {
@@ -74,6 +83,10 @@ export async function runStandardChat(input: {
     generationHistory,
     useAiSdkUIStream,
   } = executionContext;
+  const streamGenerationId = assistantMessage.streamGenerationId;
+  if (!streamGenerationId) {
+    throw new Error("Chat stream generation is missing its lease identity");
+  }
   const {
     maxToolCalls,
     maxOutputTokens,
@@ -110,6 +123,7 @@ export async function runStandardChat(input: {
   const generationClock = createGenerationClock(startedAt);
   const partWriter = createStreamedPartWriter(
     assistantMessage.id,
+    streamGenerationId,
     continuationClaim,
   );
   const postCompletionAutomationRef: {
@@ -127,7 +141,31 @@ export async function runStandardChat(input: {
     }
   });
   const streamAbortController = new AbortController();
-  registerChatStreamAbortController(assistantMessage.id, streamAbortController);
+  registerChatStreamAbortController(
+    assistantMessage.id,
+    streamAbortController,
+    streamGenerationId,
+  );
+  const hardTimeoutError =
+    "Assistant generation timed out before it could finish. Try again with a narrower request.";
+  const stopLeaseHeartbeat = startChatStreamLeaseHeartbeat(
+    assistantMessage.id,
+    streamGenerationId,
+    streamAbortController,
+    {
+      hardTimeoutMs: agentRuntimePolicy.chatTimeoutMs,
+      onHardTimeout: async () => {
+        const transitioned = await failChatStreamDueToTimeout({
+          messageId: assistantMessage.id,
+          generationId: streamGenerationId,
+          errorMessage: hardTimeoutError,
+        });
+        if (!transitioned) return;
+        enqueueEvent({ type: "error", error: hardTimeoutError });
+        completeChatStream(assistantMessage.id, streamGenerationId);
+      },
+    },
+  );
   const generationSettings = version.generationSettingsJson as {
     topK?: number;
     presencePenalty?: number;
@@ -344,43 +382,87 @@ export async function runStandardChat(input: {
         enqueueEvent,
       });
     } catch (error) {
-      if (streamAbortController.signal.aborted) {
-        await db
-          .update(messages)
-          .set({ status: "completed", completedAt: new Date() })
-          .where(eq(messages.id, assistantMessage.id));
-        logger.info("Chat stream aborted by client", {
-          requestId,
-          agentId,
-          agentVersionId: version.id,
-          workspaceId: agent.workspaceId,
-          userId: actorUserId,
-          conversationId: conversation.id,
-          assistantMessageId: assistantMessage.id,
-          latencyMs: Date.now() - startedAt,
+      if (
+        streamAbortController.signal.aborted &&
+        !isChatStreamHardTimeoutAbort(streamAbortController.signal)
+      ) {
+        const cancelledAt = new Date();
+        const transitioned = await db.transaction(async (tx) => {
+          const [cancelled] = await tx
+            .update(messages)
+            .set({
+              status: "cancelled",
+              completedAt: cancelledAt,
+              streamLeaseExpiresAt: null,
+            })
+            .where(
+              and(
+                eq(messages.id, assistantMessage.id),
+                eq(messages.status, "streaming"),
+                eq(messages.streamGenerationId, streamGenerationId),
+              ),
+            )
+            .returning({ id: messages.id });
+          if (!cancelled) return false;
+          await tx
+            .update(conversations)
+            .set({ updatedAt: cancelledAt })
+            .where(eq(conversations.id, conversation.id));
+          return true;
         });
-        enqueueEvent({ type: "done", stopped: true });
+        if (transitioned) {
+          logger.info("Chat stream aborted by client", {
+            requestId,
+            agentId,
+            agentVersionId: version.id,
+            workspaceId: agent.workspaceId,
+            userId: actorUserId,
+            conversationId: conversation.id,
+            assistantMessageId: assistantMessage.id,
+            latencyMs: Date.now() - startedAt,
+          });
+          enqueueEvent({ type: "done", stopped: true });
+        }
       } else {
         const streamError = runtimeDeadline.timeoutSignal.aborted
-          ? new Error(
-              "Assistant run timed out before it could finish. Try again with a narrower request.",
-            )
+          ? new Error(hardTimeoutError)
           : error;
         const errorMessage = safeChatErrorMessage(
           streamError,
           "Assistant generation failed",
         );
-        await db
-          .update(messages)
-          .set({ status: "failed", completedAt: new Date() })
-          .where(eq(messages.id, assistantMessage.id));
-        await db.insert(messageParts).values({
-          messageId: assistantMessage.id,
-          type: "error",
-          contentEncrypted: await encryptValue(errorMessage),
-          metadataJson: null,
-          sortOrder: partWriter.nextSortOrder,
+        const failedAt = new Date();
+        const transitioned = await db.transaction(async (tx) => {
+          const [failed] = await tx
+            .update(messages)
+            .set({
+              status: "failed",
+              completedAt: failedAt,
+              streamLeaseExpiresAt: null,
+            })
+            .where(
+              and(
+                eq(messages.id, assistantMessage.id),
+                eq(messages.status, "streaming"),
+                eq(messages.streamGenerationId, streamGenerationId),
+              ),
+            )
+            .returning({ id: messages.id });
+          if (!failed) return false;
+          await tx.insert(messageParts).values({
+            messageId: assistantMessage.id,
+            type: "error",
+            contentEncrypted: await encryptValue(errorMessage),
+            metadataJson: null,
+            sortOrder: partWriter.nextSortOrder,
+          });
+          await tx
+            .update(conversations)
+            .set({ updatedAt: failedAt })
+            .where(eq(conversations.id, conversation.id));
+          return true;
         });
+        if (!transitioned) return;
         await recordUsageEvent({
           workspaceId: agent.workspaceId,
           userId: actorUserId,
@@ -409,13 +491,21 @@ export async function runStandardChat(input: {
         enqueueEvent({ type: "error", error: errorMessage });
       }
     } finally {
-      completeChatStream(assistantMessage.id);
+      try {
+        await stopLeaseHeartbeat();
+      } finally {
+        completeChatStream(assistantMessage.id, streamGenerationId);
+      }
     }
   })();
 
   const streamHeaders = chatStreamHeaders(executionContext);
 
   return useAiSdkUIStream
-    ? createChatUIMessageStreamResponse(assistantMessage.id, streamHeaders)
-    : createChatStreamResponse(assistantMessage.id, streamHeaders);
+    ? createChatUIMessageStreamResponse(assistantMessage.id, streamHeaders, {
+        generationId: streamGenerationId,
+      })
+    : createChatStreamResponse(assistantMessage.id, streamHeaders, {
+        generationId: streamGenerationId,
+      });
 }

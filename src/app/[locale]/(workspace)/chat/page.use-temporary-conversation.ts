@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { upsertConversation } from "./chat-page-helpers";
 
 export function useTemporaryConversationPersistence(input: {
+  workspaceId: string | null | undefined;
   activeConversationId: string | null;
   setEphemeral: Dispatch<SetStateAction<boolean>>;
   setEphemeralTtlMinutes: Dispatch<SetStateAction<number>>;
@@ -64,7 +65,7 @@ export function useTemporaryConversationPersistence(input: {
             isEphemeral: false,
           }),
         );
-        notifyWorkspaceHistoryChanged();
+        notifyWorkspaceHistoryChanged(input.workspaceId ?? null);
         removeTemporaryRouteState();
       } else {
         input.setEphemeral(false);
@@ -103,6 +104,7 @@ export function useTemporaryConversationPersistence(input: {
           data.conversation.ephemeralTtlMinutes ?? ttlMinutes;
         input.setEphemeralTtlMinutes(updatedTtlMinutes);
         input.setEphemeralExpiresAt(data.conversation.expiresAt ?? null);
+        notifyWorkspaceHistoryChanged(input.workspaceId ?? null);
         updateTemporaryRouteTtl(updatedTtlMinutes);
         toast.success(input.translate("temporaryExtended"));
       } catch (error) {

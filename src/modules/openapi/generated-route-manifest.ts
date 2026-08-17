@@ -1261,6 +1261,20 @@ export const OPENAPI_ROUTE_MANIFEST = [
     responseKind: "json",
   },
   {
+    path: "/api/workspace/conversations/{conversationId}/read",
+    method: "POST",
+    operationId: "postWorkspaceConversationsConversationIdRead",
+    summary:
+      "Create or execute workspace · conversations · {conversationId} · read",
+    tag: "conversations",
+    auth: ["session", "apiKey"],
+    permissions: ["conversations.viewOwn"],
+    pathParameters: ["conversationId"],
+    queryParameters: [],
+    bodyKind: "json",
+    responseKind: "json",
+  },
+  {
     path: "/api/workspace/conversations/{conversationId}/share",
     method: "DELETE",
     operationId: "deleteWorkspaceConversationsConversationIdShare",
@@ -1338,7 +1352,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     permissions: ["conversations.viewOwn"],
     pathParameters: ["conversationId"],
     queryParameters: [],
-    bodyKind: "none",
+    bodyKind: "json",
     responseKind: "json",
   },
   {

@@ -18,10 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import {
-  createChatHref,
-  type ChatHrefOptions,
-} from "@/lib/chat-navigation";
+import { createChatHref, type ChatHrefOptions } from "@/lib/chat-navigation";
 import type { WorkspaceShellState } from "@/lib/workspace-nav";
 import { useWorkspaceHistory } from "./workspace-history-sidebar.use-workspace-history";
 
@@ -166,7 +163,7 @@ export function WorkspaceHistoryContent({
         searching={history.searching}
         searchError={history.searchError}
         onSearchQueryChange={history.setQuery}
-        onRetrySearch={history.retry}
+        onRetrySearch={history.retrySearch}
         onSelectConversation={openConversation}
         onNewConversation={openNewConversation}
         onNewTemporaryConversation={openNewTemporaryConversation}

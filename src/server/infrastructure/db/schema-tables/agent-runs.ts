@@ -110,6 +110,7 @@ export const agentRuns = pgTable(
     index("agent_runs_workspace_created").on(t.workspaceId, t.createdAt),
     index("agent_runs_parent").on(t.parentRunId, t.createdAt),
     index("agent_runs_status_lease").on(t.status, t.leaseExpiresAt),
+    index("agent_runs_message_status").on(t.messageId, t.status),
     uniqueIndex("agent_runs_workspace_trigger_idempotency_unique")
       .on(t.workspaceId, t.trigger, t.idempotencyKey)
       .where(sql`${t.idempotencyKey} is not null`),

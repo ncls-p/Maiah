@@ -171,6 +171,54 @@ describe("stream-bus", () => {
       expect(received).toEqual([{ type: "text", delta: "continued" }]);
       expect(hasActiveChatStream(id)).toBe(true);
     });
+
+    it("fences a replaced generation and retires its subscribers", () => {
+      const id = crypto.randomUUID();
+      const oldGeneration = crypto.randomUUID();
+      const newGeneration = crypto.randomUUID();
+      const oldController = new AbortController();
+      const oldReceived: Record<string, unknown>[] = [];
+      let oldClosed = false;
+
+      registerChatStreamAbortController(id, oldController, oldGeneration);
+      subscribeToChatStream(
+        id,
+        {
+          enqueue: (event) => oldReceived.push(event),
+          close: () => {
+            oldClosed = true;
+          },
+        },
+        { generationId: oldGeneration },
+      );
+      publishChatStreamEvent(id, { type: "text", delta: "old" }, oldGeneration);
+
+      registerChatStreamAbortController(
+        id,
+        new AbortController(),
+        newGeneration,
+      );
+      publishChatStreamEvent(
+        id,
+        { type: "text", delta: "stale" },
+        oldGeneration,
+      );
+      completeChatStream(id, oldGeneration);
+
+      const newReceived: Record<string, unknown>[] = [];
+      publishChatStreamEvent(id, { type: "text", delta: "new" }, newGeneration);
+      subscribeToChatStream(
+        id,
+        { enqueue: (event) => newReceived.push(event), close: () => {} },
+        { generationId: newGeneration },
+      );
+
+      expect(oldController.signal.aborted).toBe(true);
+      expect(oldClosed).toBe(true);
+      expect(oldReceived).toEqual([{ type: "text", delta: "old" }]);
+      expect(newReceived).toEqual([{ type: "text", delta: "new" }]);
+      expect(hasActiveChatStream(id, newGeneration)).toBe(true);
+    });
   });
 
   describe("AI SDK UI stream response", () => {

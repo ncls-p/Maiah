@@ -1,5 +1,7 @@
 import { handleRoute } from "@/lib/route-handler";
 import { forkConversationAtMessage } from "@/modules/chat/conversation-branches";
+import { withConversationGraphLock } from "@/modules/chat/conversation-graph-lock";
+import { getConversationAccess } from "@/modules/chat/conversation-sharing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -28,11 +30,23 @@ export async function POST(
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       try {
-        const fork = await forkConversationAtMessage({
-          source: access.conversation,
-          messageId: parsed.data.messageId,
-          userId: session.user.id,
-        });
+        const fork = await withConversationGraphLock(
+          access.conversation.id,
+          async () => {
+            const currentAccess = await getConversationAccess(
+              access.conversation.id,
+              session.user.id,
+            );
+            if (!currentAccess?.canContinue) {
+              throw new Error("Conversation is no longer available");
+            }
+            return forkConversationAtMessage({
+              source: currentAccess.conversation,
+              messageId: parsed.data.messageId,
+              userId: session.user.id,
+            });
+          },
+        );
         return NextResponse.json({
           conversation: {
             id: fork.id,

@@ -112,7 +112,7 @@ export function useChatSession(c: SessionContext) {
   const ephemeralRef = useRef(ephemeral);
   const ephemeralTtlMinutesRef = useRef(ephemeralTtlMinutes);
   const processingQueuedMessageRef = useRef(false);
-  const skipNextMessageLoadRef = useRef(false);
+  const skipNextMessageLoadForConversationRef = useRef<string | null>(null);
   const canChat = Boolean(
     activeVersion?.providerId &&
     activeVersion?.modelId &&
@@ -124,7 +124,7 @@ export function useChatSession(c: SessionContext) {
     workspaceId: workspaceId,
     canChat,
     onConversationCreated: (conversationId, firstMessage, options) => {
-      skipNextMessageLoadRef.current = true;
+      skipNextMessageLoadForConversationRef.current = conversationId;
       setLoadedConversationId(conversationId);
       setConversationLoadError(false);
       const currentParams = new URLSearchParams(window.location.search);
@@ -174,7 +174,7 @@ export function useChatSession(c: SessionContext) {
         createdEphemeral,
         createdEphemeralTtlMinutes,
       );
-      notifyWorkspaceHistoryChanged();
+      notifyWorkspaceHistoryChanged(workspaceId);
     },
     onConversationTitle: (conversationId, title) => {
       setConversations((current) => {
@@ -196,7 +196,7 @@ export function useChatSession(c: SessionContext) {
               ...next,
             ];
       });
-      notifyWorkspaceHistoryChanged();
+      notifyWorkspaceHistoryChanged(workspaceId);
     },
     onConversationMetadata: (metadata) => {
       setEphemeral(metadata.isEphemeral === true);
@@ -219,11 +219,11 @@ export function useChatSession(c: SessionContext) {
         setConversations((current) =>
           touchConversation(current, activeConversationId, updatedAt),
         );
-        notifyWorkspaceHistoryChanged();
+        notifyWorkspaceHistoryChanged(workspaceId);
       }
       return submitToStream(...args);
     },
-    [activeConversationId, setConversations, submitToStream],
+    [activeConversationId, setConversations, submitToStream, workspaceId],
   );
   const latestTodoList = useMemo(
     () => latestChatTodoListFromMessages(messages),
@@ -355,8 +355,9 @@ export function useChatSession(c: SessionContext) {
 
   useEffect(() => {
     if (!activeConversationId) {
-      skipNextMessageLoadRef.current = false;
+      skipNextMessageLoadForConversationRef.current = null;
       queueMicrotask(() => {
+        setLoadingMessages(false);
         setLoadedConversationId(null);
         setConversationLoadError(false);
         setConversationCanContinue(true);
@@ -368,11 +369,14 @@ export function useChatSession(c: SessionContext) {
       });
       return;
     }
-    if (skipNextMessageLoadRef.current) {
-      skipNextMessageLoadRef.current = false;
+    if (
+      skipNextMessageLoadForConversationRef.current === activeConversationId
+    ) {
+      skipNextMessageLoadForConversationRef.current = null;
       queueMicrotask(() => setLoadingMessages(false));
       return;
     }
+    skipNextMessageLoadForConversationRef.current = null;
     const controller = new AbortController();
     let cancelled = false;
     queueMicrotask(() => {

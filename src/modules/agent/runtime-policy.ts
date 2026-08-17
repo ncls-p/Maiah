@@ -1,8 +1,10 @@
 export const agentRuntimePolicy = {
   defaultMaxOutputTokens: 30_000,
   stepOverhead: 2,
-  // 0 = no wall-clock abort. Long reasoning + tools must not be killed by us.
-  chatTimeoutMs: 0,
+  // A generation must eventually reach a terminal state. The stream lease
+  // catches crashed producers; this cap also covers a provider connection that
+  // remains open forever without producing a result.
+  chatTimeoutMs: 30 * 60_000,
   automationTimeoutMs: 30_000,
   customToolBuilderMaxSteps: 12,
   customToolBuilderMaxActions: 20,

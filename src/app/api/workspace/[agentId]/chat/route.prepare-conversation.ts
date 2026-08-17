@@ -1,4 +1,5 @@
 import { encryptValue } from "@/lib/crypto";
+import { isUniqueConstraintError } from "@/lib/database-errors";
 import {
   getActiveVersion,
   resolveProviderForVersion,
@@ -6,6 +7,11 @@ import {
 import type { AssistantContinuationClaim } from "@/modules/chat/continuation";
 import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import {
+  chatStreamLeaseValues,
+  reapExpiredChatStreams,
+} from "@/modules/chat/chat-stream-lease";
+import { withConversationGraphLock } from "@/modules/chat/conversation-graph-lock";
 import { forkConversationForRegeneration } from "@/modules/chat/conversation-branches";
 import {
   forkSharedConversation,
@@ -21,7 +27,7 @@ import {
   messageParts,
   messages,
 } from "@/server/infrastructure/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import {
   findUserMessageForResend,
@@ -46,7 +52,7 @@ type RejectRequest = (
   context?: Record<string, unknown>,
 ) => Response;
 
-export async function prepareChatConversation(input: {
+type PrepareChatConversationInput = {
   agent: ChatAgentRow;
   actorUserId: string;
   agentId: string;
@@ -61,7 +67,27 @@ export async function prepareChatConversation(input: {
   messageAttachments: ChatAttachment[];
   reasoningEffort?: ReasoningPreset;
   rejectChatRequest: RejectRequest;
-}) {
+};
+
+export async function prepareChatConversation(
+  input: PrepareChatConversationInput,
+) {
+  if (!input.existingConversationId) {
+    return prepareChatConversationUnlocked(input);
+  }
+
+  // Serialize every history-changing action for a conversation. The lock is
+  // held only during preparation; provider execution remains fully detached.
+  // This prevents a losing resend/regenerate request from truncating history
+  // before the active-assistant uniqueness constraint rejects it.
+  return withConversationGraphLock(input.existingConversationId, () =>
+    prepareChatConversationUnlocked(input),
+  );
+}
+
+async function prepareChatConversationUnlocked(
+  input: PrepareChatConversationInput,
+) {
   const {
     agent,
     actorUserId,
@@ -104,10 +130,24 @@ export async function prepareChatConversation(input: {
             error: "This shared conversation is read-only",
           });
         }
-        conversation =
-          access.continuationMode === "fork"
-            ? await forkSharedConversation(existing, actorUserId)
-            : existing;
+        if (access.continuationMode === "fork") {
+          try {
+            conversation = await forkSharedConversation(existing, actorUserId);
+          } catch (error) {
+            return rejectChatRequest(
+              409,
+              "shared_conversation_still_streaming",
+              {
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Wait for the shared response to finish before continuing",
+              },
+            );
+          }
+        } else {
+          conversation = existing;
+        }
         createdConversation = access.continuationMode === "fork";
       } else {
         conversation = existing;
@@ -266,6 +306,40 @@ export async function prepareChatConversation(input: {
     );
   }
 
+  let activeAssistantMessage: { id: string } | undefined = (
+    await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversation.id),
+          eq(messages.role, "assistant"),
+          inArray(messages.status, ["pending", "streaming"]),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (activeAssistantMessage) {
+    const expired = await reapExpiredChatStreams(new Date(), [
+      activeAssistantMessage.id,
+    ]);
+    if (expired.length > 0) activeAssistantMessage = undefined;
+  }
+  if (activeAssistantMessage) {
+    return rejectChatRequest(
+      409,
+      "conversation_already_streaming",
+      { error: "This conversation already has a response in progress" },
+      {
+        agentId,
+        workspaceId: agent.workspaceId,
+        userId: actorUserId,
+        conversationId: conversation.id,
+        assistantMessageId: activeAssistantMessage.id,
+      },
+    );
+  }
+
   if (regenerateAssistantMessageId) {
     try {
       const regeneration = await forkConversationForRegeneration({
@@ -331,6 +405,7 @@ export async function prepareChatConversation(input: {
   }
 
   let userMessage: typeof messages.$inferSelect | null = null;
+  let createdUserMessage = false;
   if (continueFromMessageId) {
     // The continuation prompt is model-only context. It must never become a
     // visible or persisted user message.
@@ -413,6 +488,7 @@ export async function prepareChatConversation(input: {
       })
       .returning();
     userMessage = newUserMessage;
+    createdUserMessage = true;
 
     await db.insert(messageParts).values({
       messageId: newUserMessage.id,
@@ -447,20 +523,40 @@ export async function prepareChatConversation(input: {
       ? await isFirstUserMessageInConversation(conversation.id, userMessage!.id)
       : false);
 
-  const assistantMessage = continuationClaim
-    ? continuationClaim.message
-    : (
-        await db
-          .insert(messages)
-          .values({
-            conversationId: conversation.id,
-            role: "assistant",
-            status: "streaming",
-            modelId: providerConfig.modelId,
-            providerId: providerConfig.providerId,
-          })
-          .returning()
-      )[0];
+  let assistantMessage: typeof messages.$inferSelect;
+  if (continuationClaim) {
+    assistantMessage = continuationClaim.message;
+  } else {
+    try {
+      [assistantMessage] = await db
+        .insert(messages)
+        .values({
+          conversationId: conversation.id,
+          role: "assistant",
+          status: "streaming",
+          modelId: providerConfig.modelId,
+          providerId: providerConfig.providerId,
+          ...chatStreamLeaseValues(),
+        })
+        .returning();
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      if (createdUserMessage && userMessage) {
+        await db.delete(messages).where(eq(messages.id, userMessage.id));
+      }
+      return rejectChatRequest(
+        409,
+        "conversation_already_streaming",
+        { error: "This conversation already has a response in progress" },
+        {
+          agentId,
+          workspaceId: agent.workspaceId,
+          userId: actorUserId,
+          conversationId: conversation.id,
+        },
+      );
+    }
+  }
   const assistantMessageId = assistantMessage.id;
 
   return {
@@ -474,5 +570,6 @@ export async function prepareChatConversation(input: {
     shouldRegenerateConversationTitle,
     userMessageId,
     assistantMessageId,
+    createdUserMessage,
   };
 }
