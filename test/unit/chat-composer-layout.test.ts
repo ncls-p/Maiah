@@ -73,8 +73,13 @@ describe("chat composer layout", () => {
     expect(selectorSource).toContain("props.needsSetup");
     expect(selectorSource).not.toContain("!props.canChat");
     expect(selectorSource).toContain("SelectedAssistantTrigger");
+    expect(selectorSource).toContain(
+      "hidden size-3.5 shrink-0 text-muted-foreground sm:block",
+    );
     expect(layoutSource).toContain("shrink-0 items-center");
     expect(sliderSource).toContain('data-slot="chat-reasoning-picker"');
+    expect(sliderSource).toContain('size="icon"');
+    expect(sliderSource).toContain("size-10 rounded-xl");
     expect(sliderSource).toContain("sm:hidden");
   });
 
@@ -125,6 +130,9 @@ describe("chat composer layout", () => {
       "utf8",
     );
 
+    expect(menuSource).toContain(
+      "hidden font-mono text-[0.65rem] tabular-nums sm:inline",
+    );
     expect(menuSource).toContain('data-slot="chat-capability-results"');
     expect(menuSource).toContain(
       'className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto',

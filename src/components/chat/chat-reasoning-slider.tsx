@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuitIcon, ChevronDownIcon } from "lucide-react";
+import { BrainCircuitIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
@@ -35,13 +35,11 @@ function ReasoningMobilePicker({
   presets,
   value,
   disabled,
-  valueLabel,
   onChange,
 }: {
   presets: ReasoningPreset[];
   value: ReasoningPreset;
   disabled?: boolean;
-  valueLabel: string;
   onChange: (value: ReasoningPreset) => void;
 }) {
   const t = useTranslations("chat.composer");
@@ -51,18 +49,13 @@ function ReasoningMobilePicker({
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="icon"
           data-slot="chat-reasoning-picker"
-          className="h-10 max-w-[9.75rem] min-w-0 gap-1.5 rounded-xl px-2.5 text-xs font-medium"
+          className="size-10 rounded-xl"
           aria-label={t("reasoningLevel")}
           disabled={disabled}
         >
           <BrainCircuitIcon className="size-4 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 truncate">{valueLabel}</span>
-          <ChevronDownIcon
-            className="size-3.5 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="top" className="min-w-44">
@@ -143,7 +136,6 @@ export const ChatReasoningSlider = memo(function ChatReasoningSlider({
           presets={presets}
           value={value}
           disabled={disabled}
-          valueLabel={valueLabel}
           onChange={onChange}
         />
       </div>

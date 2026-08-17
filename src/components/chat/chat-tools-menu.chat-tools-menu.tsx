@@ -349,7 +349,7 @@ export function ChatToolsMenu({
         >
           <SparklesIcon data-icon="inline-start" aria-hidden="true" />
           <span className="hidden sm:inline">{t("toolsMenu.trigger")}</span>
-          <span className="font-mono text-[0.65rem] tabular-nums">
+          <span className="hidden font-mono text-[0.65rem] tabular-nums sm:inline">
             {displayedActiveCount}
           </span>
         </Button>

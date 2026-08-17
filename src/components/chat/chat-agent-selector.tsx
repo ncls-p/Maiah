@@ -178,7 +178,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
               selectedLabel={selectedLabel}
             />
             <ChevronDownIcon
-              className="size-3.5 shrink-0 text-muted-foreground"
+              className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
               aria-hidden="true"
             />
           </Button>
