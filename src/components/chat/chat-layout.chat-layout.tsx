@@ -29,7 +29,7 @@ export function useChatLayoutController(props: ChatLayoutProps) {
   );
   const composerControls = {
     primary: (
-      <div className="flex min-w-0 flex-wrap items-center gap-1">
+      <div className="flex min-w-0 flex-nowrap items-center gap-1">
         <ChatAgentSelector
           agents={props.agents}
           selectedAgent={props.selectedAgent}

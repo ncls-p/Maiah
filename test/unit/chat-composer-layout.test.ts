@@ -70,6 +70,8 @@ describe("chat composer layout", () => {
     expect(bodySource).not.toContain('t("queueHint")');
     expect(selectorSource).toContain("grid-cols-[minmax(0,1fr)_auto_auto]");
     expect(selectorSource).toContain("sm:flex-nowrap");
+    expect(selectorSource).toContain("overflow-hidden sm:flex sm:flex-nowrap");
+    expect(selectorSource).toContain("block truncate");
     expect(selectorSource).toContain("props.needsSetup");
     expect(selectorSource).not.toContain("!props.canChat");
     expect(selectorSource).toContain("SelectedAssistantTrigger");
@@ -80,6 +82,9 @@ describe("chat composer layout", () => {
       "onPointerDownCapture={preserveComposerTextFocus}",
     );
     expect(bodySource).toContain("element.blur()");
+    expect(layoutSource).toContain(
+      "flex min-w-0 flex-nowrap items-center gap-1",
+    );
     expect(layoutSource).toContain("shrink-0 items-center");
     expect(sliderSource).toContain('data-slot="chat-reasoning-picker"');
     expect(sliderSource).toContain('size="icon"');
