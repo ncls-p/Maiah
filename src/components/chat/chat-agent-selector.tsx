@@ -88,12 +88,11 @@ function SelectedAssistantTrigger(props: {
         <Skeleton className="size-6 shrink-0 rounded-full" />
         <span className="min-w-0 flex-1 text-left leading-tight">
           <Skeleton className="h-3 w-28" />
-          <Skeleton className="mt-0.5 hidden h-2.5 w-20 min-[480px]:block" />
+          <Skeleton className="mt-0.5 hidden h-2.5 w-20 sm:block" />
         </span>
       </span>
     );
   }
-
   return (
     <span className="flex min-w-0 items-center gap-2">
       {props.selectedAgent ? (
@@ -106,9 +105,9 @@ function SelectedAssistantTrigger(props: {
         />
       ) : null}
       <span className="min-w-0 flex-1 text-left leading-tight">
-        <span className="line-clamp-2 font-medium">{props.selectedLabel}</span>
+        <span className="truncate font-medium">{props.selectedLabel}</span>
         {props.selectedAgent?.modelDisplayName ? (
-          <span className="mt-0.5 hidden truncate text-[11px] font-normal text-muted-foreground min-[480px]:block">
+          <span className="mt-0.5 hidden truncate text-[11px] font-normal text-muted-foreground sm:block">
             {props.selectedAgent.modelDisplayName}
           </span>
         ) : null}
@@ -160,14 +159,14 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
     ));
 
   return (
-    <div className="relative z-10 grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 min-[480px]:flex min-[480px]:flex-nowrap min-[480px]:gap-2">
+    <div className="relative z-10 grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 sm:flex sm:flex-nowrap sm:gap-2">
       <DropdownMenu onOpenChange={(open) => !open && setSearch("")}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-10 w-full min-w-0 justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] min-[480px]:max-w-80 min-[480px]:flex-[0_1_20rem]"
+            className="h-10 w-full min-w-0 justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-80 sm:flex-[0_1_20rem]"
             aria-busy={props.isLoading && !props.selectedAgent}
             aria-label={t("currentAssistant")}
             title={props.selectedAgent ? selectedLabel : undefined}

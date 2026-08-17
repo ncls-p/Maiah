@@ -29,7 +29,7 @@ export function useChatLayoutController(props: ChatLayoutProps) {
   );
   const composerControls = {
     primary: (
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-1">
         <ChatAgentSelector
           agents={props.agents}
           selectedAgent={props.selectedAgent}
@@ -47,12 +47,14 @@ export function useChatLayoutController(props: ChatLayoutProps) {
         {props.reasoningPresets &&
         props.reasoningPresets.length > 0 &&
         props.reasoningEffort != null ? (
-          <ChatReasoningSlider
-            presets={props.reasoningPresets}
-            value={props.reasoningEffort}
-            disabled={props.isLoading || props.needsSetup}
-            onChange={handleReasoningEffortChange}
-          />
+          <div className="flex min-h-10 shrink-0 items-center">
+            <ChatReasoningSlider
+              presets={props.reasoningPresets}
+              value={props.reasoningEffort}
+              disabled={props.isLoading || props.needsSetup}
+              onChange={handleReasoningEffortChange}
+            />
+          </div>
         ) : null}
       </div>
     ),

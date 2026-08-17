@@ -175,8 +175,9 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             <p
               className={cn(
                 "pb-1 text-right font-mono text-[0.65rem] tabular-nums text-muted-foreground/70",
-                props.input.length >= props.maxInputCharacters * 0.9 &&
-                  "text-warning",
+                props.input.length >= props.maxInputCharacters * 0.9
+                  ? "text-warning"
+                  : "max-sm:sr-only",
               )}
               aria-live="polite"
             >
@@ -187,7 +188,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             </p>
           ) : null}
         </div>
-        <div className="grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 border-t border-border/55 px-2 py-1 sm:gap-x-2 sm:px-3">
+        <div className="grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-1.5 border-t border-border/55 px-2 py-1 sm:items-center sm:gap-x-2 sm:px-3">
           <div className="col-start-1 row-start-1">
             <ChatComposerMediaControls
               disabled={!props.canChat || props.needsSetup}

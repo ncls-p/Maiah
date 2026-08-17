@@ -47,7 +47,9 @@ test.describe("chat composer", () => {
     await expect(dock).toBeVisible();
     await expect(textarea).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
-    await expect(page.getByRole("slider")).toBeVisible();
+    await expect(
+      page.locator('[data-slot="chat-reasoning-picker"]'),
+    ).toBeVisible();
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
       "content",
       /interactive-widget=resizes-content/,
@@ -160,12 +162,22 @@ test.describe("chat composer", () => {
       expect(primaryBox).not.toBeNull();
       expect(uploadBox).not.toBeNull();
       expect(sendBox).not.toBeNull();
-      expect(Math.abs(uploadBox!.y - sendBox!.y)).toBeLessThanOrEqual(1);
-      expect(Math.abs(primaryBox!.y - uploadBox!.y)).toBeLessThanOrEqual(1);
-      expect(primaryBox!.x).toBeGreaterThan(uploadBox!.x);
-      expect(primaryBox!.x + primaryBox!.width).toBeLessThanOrEqual(
-        sendBox!.x + 1,
-      );
+      expect(Math.abs(uploadBox!.y - sendBox!.y)).toBeLessThanOrEqual(2);
+      expect(uploadBox!.x).toBeLessThan(sendBox!.x);
+      if (viewport.width >= 640) {
+        expect(Math.abs(primaryBox!.y - uploadBox!.y)).toBeLessThanOrEqual(2);
+        expect(primaryBox!.x).toBeGreaterThan(uploadBox!.x);
+        expect(primaryBox!.x + primaryBox!.width).toBeLessThanOrEqual(
+          sendBox!.x + 1,
+        );
+      } else {
+        expect(primaryBox!.x).toBeGreaterThanOrEqual(uploadBox!.x);
+        expect(
+          await primary.evaluate(
+            (element) => element.scrollWidth <= element.clientWidth + 1,
+          ),
+        ).toBe(true);
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,

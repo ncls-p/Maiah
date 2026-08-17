@@ -46,10 +46,22 @@ describe("chat composer layout", () => {
       path.join(process.cwd(), "src/components/chat/chat-agent-selector.tsx"),
       "utf8",
     );
+    const sliderSource = fs.readFileSync(
+      path.join(process.cwd(), "src/components/chat/chat-reasoning-slider.tsx"),
+      "utf8",
+    );
+    const layoutSource = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/chat/chat-layout.chat-layout.tsx",
+      ),
+      "utf8",
+    );
 
     expect(bodySource).toContain(
-      "grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center",
+      "grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start",
     );
+    expect(bodySource).toContain("sm:items-center sm:gap-x-2 sm:px-3");
     expect(bodySource).toContain('data-slot="chat-composer-primary-action"');
     expect(bodySource).toContain("props.sending ? (");
     expect(bodySource).toContain('aria-label={t("stopGeneration")}');
@@ -57,10 +69,13 @@ describe("chat composer layout", () => {
     expect(bodySource).not.toContain('t("sendHint")');
     expect(bodySource).not.toContain('t("queueHint")');
     expect(selectorSource).toContain("grid-cols-[minmax(0,1fr)_auto_auto]");
-    expect(selectorSource).toContain("min-[480px]:flex-nowrap");
+    expect(selectorSource).toContain("sm:flex-nowrap");
     expect(selectorSource).toContain("props.needsSetup");
     expect(selectorSource).not.toContain("!props.canChat");
     expect(selectorSource).toContain("SelectedAssistantTrigger");
+    expect(layoutSource).toContain("shrink-0 items-center");
+    expect(sliderSource).toContain('data-slot="chat-reasoning-picker"');
+    expect(sliderSource).toContain("sm:hidden");
   });
 
   it("offers camera capture and dictation from the composer", () => {
