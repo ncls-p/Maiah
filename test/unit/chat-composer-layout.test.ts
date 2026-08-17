@@ -76,6 +76,10 @@ describe("chat composer layout", () => {
     expect(selectorSource).toContain(
       "hidden size-3.5 shrink-0 text-muted-foreground sm:block",
     );
+    expect(bodySource).toContain(
+      "onPointerDownCapture={preserveComposerTextFocus}",
+    );
+    expect(bodySource).toContain("element.blur()");
     expect(layoutSource).toContain("shrink-0 items-center");
     expect(sliderSource).toContain('data-slot="chat-reasoning-picker"');
     expect(sliderSource).toContain('size="icon"');
@@ -112,6 +116,17 @@ describe("chat composer layout", () => {
 
     expect(source).toContain("shouldUploadPastedText(text)");
     expect(source).toContain("createPastedTextUploadFile(text)");
+  });
+
+  it("keeps the mobile app navigation visible while the composer is focused", () => {
+    const keyboardSource = fs.readFileSync(
+      path.join(process.cwd(), "src/app/styles/mobile-keyboard.pcss"),
+      "utf8",
+    );
+
+    expect(keyboardSource).toContain("height: 100dvh");
+    expect(keyboardSource).not.toContain(".mobile-app-navigation");
+    expect(keyboardSource).not.toContain("textarea:focus");
   });
 
   it("keeps the capability catalog bounded and independently scrollable", () => {

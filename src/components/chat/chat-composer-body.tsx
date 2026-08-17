@@ -18,6 +18,7 @@ import {
 import { useIsTextClamped } from "@/hooks/use-is-text-clamped";
 import { cn } from "@/lib/utils";
 import { ChatComposerMediaControls } from "./chat-composer-media-controls";
+import { preserveComposerTextFocus } from "./chat-composer-mobile";
 import { useComposerDictation } from "./chat-composer.use-dictation";
 import {
   AttachmentPreview,
@@ -95,6 +96,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
   const t = useTranslations("chat.composer");
   const locale = useLocale();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wasSendingRef = useRef(false);
   const { listening, toggleDictation } = useComposerDictation({
     enabled: props.canChat && !props.needsSetup,
     value: props.input,
@@ -104,6 +106,8 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
   useLayoutEffect(() => {
     const element = textareaRef.current;
     if (!element) return;
+    if (props.sending && !wasSendingRef.current) element.blur();
+    wasSendingRef.current = props.sending;
 
     const resize = () => resizeComposerTextarea(element);
     resize();
@@ -143,7 +147,10 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           </AttachmentGroup>
         </div>
       ) : null}
-      <div className="composer-box overflow-hidden rounded-3xl">
+      <div
+        className="composer-box overflow-hidden rounded-3xl"
+        onPointerDownCapture={preserveComposerTextFocus}
+      >
         <div className="px-3 pt-2 sm:px-4 sm:pt-2.5">
           <Textarea
             ref={textareaRef}

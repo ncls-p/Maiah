@@ -100,14 +100,20 @@ test.describe("chat composer", () => {
     const header = page.locator(".app-shell__header");
     const headerBeforeKeyboard = await header.boundingBox();
     await textarea.focus();
-    await expect(mobileNavigation).toBeHidden();
+    await expect(mobileNavigation).toBeVisible();
     await page.setViewportSize({ width: 390, height: 500 });
-    const [headerWithKeyboard, dockWithKeyboard] = await Promise.all([
-      header.boundingBox(),
-      dock.boundingBox(),
-    ]);
+    const [headerWithKeyboard, dockWithKeyboard, navigationWithKeyboard] =
+      await Promise.all([
+        header.boundingBox(),
+        dock.boundingBox(),
+        mobileNavigation.boundingBox(),
+      ]);
     expect(headerWithKeyboard?.y).toBe(headerBeforeKeyboard?.y);
     expect(dockWithKeyboard).not.toBeNull();
+    expect(navigationWithKeyboard).not.toBeNull();
+    expect(dockWithKeyboard!.y + dockWithKeyboard!.height).toBeLessThanOrEqual(
+      navigationWithKeyboard!.y + 1,
+    );
     expect(dockWithKeyboard!.y + dockWithKeyboard!.height).toBeLessThanOrEqual(
       501,
     );
