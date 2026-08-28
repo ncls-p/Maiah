@@ -1,4 +1,5 @@
 import { handleAdminRoute } from "@/lib/route-handler";
+import { logHandledError } from "@/lib/logger";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
   getChatAutomationAdminState,
@@ -38,7 +39,12 @@ export async function GET() {
     const auth = await requireAdminApiSession();
     if (!auth.ok) return auth.response;
     return NextResponse.json(await getChatAutomationAdminState());
-  } catch {
+  } catch (error) {
+    logHandledError(
+      "Failed to load chat automation admin state",
+      {},
+      error instanceof Error ? error : undefined,
+    );
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

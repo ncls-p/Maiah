@@ -1,4 +1,5 @@
 import { handleRoute } from "@/lib/route-handler";
+import { logHandledError } from "@/lib/logger";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
   defaultSidebarNavConfig,
@@ -36,7 +37,12 @@ export async function GET() {
       catalog: getSidebarNavCatalog(),
       isCustomized: saved !== null,
     });
-  } catch {
+  } catch (error) {
+    logHandledError(
+      "Failed to load sidebar navigation config",
+      {},
+      error instanceof Error ? error : undefined,
+    );
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -91,7 +97,12 @@ export async function DELETE() {
       catalog: getSidebarNavCatalog(),
       isCustomized: false,
     });
-  } catch {
+  } catch (error) {
+    logHandledError(
+      "Failed to reset sidebar navigation config",
+      {},
+      error instanceof Error ? error : undefined,
+    );
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

@@ -5,12 +5,18 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { logHandledError } from "@/lib/logger";
 import {
   createCodeWorkspaceZip,
   getCodeWorkspace,
 } from "@/modules/code-workspace/storage";
 
 const paramsSchema = z.object({ projectId: z.uuid() });
+
+// Fixed client-facing messages for known code-workspace domain errors.
+// The raw error message stays in the server log only.
+const FILE_NOT_FOUND_MESSAGES = ["Code workspace not found."];
+const FILE_UNAVAILABLE_MESSAGES = ["Invalid code workspace id."];
 
 function arrayBufferFromBytes(bytes: Uint8Array) {
   const buffer = new ArrayBuffer(bytes.byteLength);
@@ -56,13 +62,18 @@ export async function GET(
       logLabel: "Failed to download code workspace",
       expectedError: (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        if (/not found|workspace/i.test(message)) {
-          return NextResponse.json({ error: message }, { status: 404 });
-        }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
+        const fixedMessage = FILE_NOT_FOUND_MESSAGES.includes(message)
+          ? "File not found"
+          : FILE_UNAVAILABLE_MESSAGES.includes(message)
+            ? "File unavailable"
+            : null;
+        if (!fixedMessage) return null;
+        logHandledError(
+          "Failed to download code workspace",
+          { error: message },
+          error instanceof Error ? error : undefined,
         );
+        return NextResponse.json({ error: fixedMessage }, { status: 404 });
       },
     },
   );

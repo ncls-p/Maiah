@@ -5,6 +5,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { logHandledError } from "@/lib/logger";
 import {
   codeWorkspaceArtifact,
   createCodeWorkspaceFromFiles,
@@ -14,6 +15,30 @@ import {
 const uploadSchema = z.object({
   workspaceId: z.uuid(),
 });
+
+// Fixed client-facing messages for known code-workspace domain errors.
+// The raw error message stays in the server log only.
+const UPLOAD_UNAVAILABLE_MESSAGES = [
+  "ZIP file is too large. Maximum size is 20 MB.",
+  "ZIP symlinks are not allowed.",
+  "ZIP does not contain supported web files.",
+  "Extracted ZIP contents are too large. Maximum is 50 MB.",
+  "Create at least one file in the code workspace.",
+  "Create at least one HTML file, usually index.html.",
+  "rootFile must reference one of the created files.",
+  "rootFile must be an HTML file.",
+  "Code workspace contents are too large. Maximum is 50 MB.",
+];
+const UPLOAD_UNAVAILABLE_PREFIXES = [
+  "Unsafe ZIP path: ",
+  "Unsupported file type in ZIP: ",
+  "Duplicate file path in ZIP: ",
+  "Too many files in ZIP. Maximum is ",
+  "Text file is too large: ",
+  "Duplicate file path: ",
+  "Unsupported text file type: ",
+  "Too many files. Maximum is ",
+];
 
 const maxUploadRequestBytes = 55 * 1024 * 1024;
 const maxDirectWorkspaceBytes = 50 * 1024 * 1024;
@@ -232,14 +257,20 @@ export async function POST(req: NextRequest) {
       logLabel: "Failed to upload code workspace",
       expectedError: (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        if (
-          /zip|file|path|too large|unsupported|symlink|workspace/i.test(message)
-        ) {
-          return NextResponse.json({ error: message }, { status: 400 });
-        }
+        const isExpected =
+          UPLOAD_UNAVAILABLE_MESSAGES.includes(message) ||
+          UPLOAD_UNAVAILABLE_PREFIXES.some((prefix) =>
+            message.startsWith(prefix),
+          );
+        if (!isExpected) return null;
+        logHandledError(
+          "Failed to upload code workspace",
+          { error: message },
+          error instanceof Error ? error : undefined,
+        );
         return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
+          { error: "File unavailable" },
+          { status: 400 },
         );
       },
     },

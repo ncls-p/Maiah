@@ -49,6 +49,27 @@ describe("stream-bus", () => {
       expect(closed.value).toBe(false);
     });
 
+    it("keeps only the most recent MAX_RUN_EVENTS on replay", async () => {
+      const { MAX_RUN_EVENTS } = await import("@/modules/chat/stream-bus");
+      const id = crypto.randomUUID();
+      for (let i = 0; i < MAX_RUN_EVENTS + 50; i += 1) {
+        publishChatStreamEvent(id, { type: "text", index: i });
+      }
+
+      const received: Array<Record<string, unknown>> = [];
+      subscribeToChatStream(id, {
+        enqueue: (e) => received.push(e),
+        close: () => {},
+      });
+
+      expect(received).toHaveLength(MAX_RUN_EVENTS);
+      expect(received[0]).toEqual({ type: "text", index: 50 });
+      expect(received.at(-1)).toEqual({
+        type: "text",
+        index: MAX_RUN_EVENTS + 49,
+      });
+    });
+
     it("skips replay when replay=false", () => {
       const id = crypto.randomUUID();
       publishChatStreamEvent(id, { type: "text", content: "old" });
@@ -218,4 +239,3 @@ describe("stream-bus", () => {
     });
   });
 });
-

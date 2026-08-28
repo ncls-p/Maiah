@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { logHandledError } from "@/lib/logger";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
@@ -32,7 +33,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       await getWorkflowBuilderAdminState(parsed.data.workspaceId),
     );
-  } catch {
+  } catch (error) {
+    logHandledError(
+      "Failed to load workflow builder admin state",
+      { workspaceId: req.nextUrl.searchParams.get("workspaceId") ?? undefined },
+      error instanceof Error ? error : undefined,
+    );
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

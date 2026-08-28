@@ -99,9 +99,8 @@ export async function GET(req: NextRequest) {
       { requestId, durationMs: Date.now() - startedAt },
       error as Error,
     );
-    return chatRedirect(req, {
-      github: "error",
-      message: error instanceof Error ? error.message.slice(0, 160) : "failed",
-    });
+    // Generic code only: the real message is logged above, never forwarded
+    // in a shareable/loggable redirect URL.
+    return chatRedirect(req, { github: "error" });
   }
 }
