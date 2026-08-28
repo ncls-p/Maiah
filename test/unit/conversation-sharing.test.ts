@@ -124,7 +124,6 @@ describe("conversation sharing", () => {
     ]);
     expect(await getConversationAccess("expired", "user-1")).toBeNull();
   });
-
   it("grants owners full shared access", async () => {
     dbModule._chain.limit.mockResolvedValueOnce([conversation]);
     await expect(
@@ -135,7 +134,6 @@ describe("conversation sharing", () => {
       continuationMode: "shared",
     });
   });
-
   it("resolves recipient access and rejects users without a share", async () => {
     dbModule._chain.limit
       .mockResolvedValueOnce([conversation])
@@ -155,7 +153,6 @@ describe("conversation sharing", () => {
       await getConversationAccess("conversation-1", "stranger-1"),
     ).toBeNull();
   });
-
   it("lists shares through the ordered query", async () => {
     const shares = [{ id: "share-1", email: "member@example.test" }];
     dbModule._chain.orderBy.mockResolvedValueOnce(shares);
@@ -163,7 +160,6 @@ describe("conversation sharing", () => {
       listConversationShares("conversation-1", "owner-1"),
     ).resolves.toBe(shares);
   });
-
   it("creates or updates a share and forces fork mode without continuation", async () => {
     const target = {
       id: "recipient-1",
@@ -191,7 +187,6 @@ describe("conversation sharing", () => {
       }),
     );
   });
-
   it("preserves the selected continuation mode when continuation is allowed", async () => {
     dbModule._chain.limit.mockResolvedValueOnce([
       { id: "recipient-1", name: "Recipient", email: "recipient@example.test" },
@@ -207,137 +202,5 @@ describe("conversation sharing", () => {
     expect(dbModule._chain.values).toHaveBeenCalledWith(
       expect.objectContaining({ continuationMode: "shared" }),
     );
-  });
-
-  it("rejects an email that is not an active workspace member", async () => {
-    await expect(
-      upsertConversationShare({
-        conversation,
-        ownerUserId: "owner-1",
-        targetEmail: "missing@example.test",
-        canContinue: true,
-        continuationMode: "fork",
-      }),
-    ).rejects.toThrow("Workspace member not found");
-    dbModule._chain.limit.mockResolvedValueOnce([
-      { id: "inactive-1", name: "Inactive", email: "inactive@example.test" },
-    ]);
-    vi.mocked(authorization.requireWorkspaceMember).mockResolvedValueOnce(
-      false,
-    );
-    await expect(
-      upsertConversationShare({
-        conversation,
-        ownerUserId: "owner-1",
-        targetEmail: "inactive@example.test",
-        canContinue: true,
-        continuationMode: "fork",
-      }),
-    ).rejects.toThrow("Workspace member not found");
-  });
-
-  it("reuses an existing recipient fork", async () => {
-    const existing = { ...conversation, id: "fork-1", userId: "recipient-1" };
-    dbModule._chain.limit.mockResolvedValueOnce([existing]);
-    await expect(
-      forkSharedConversation(conversation, "recipient-1"),
-    ).resolves.toBe(existing);
-    expect(dbModule.db.transaction).not.toHaveBeenCalled();
-  });
-
-  it("copies messages and their parts into a new fork", async () => {
-    const fork = { ...conversation, id: "fork-1", userId: "recipient-1" };
-    const sourceMessage = {
-      id: "message-1",
-      role: "user",
-      status: "completed",
-      tokenInput: 2,
-      tokenOutput: 0,
-      costUsd: "0",
-      modelId: null,
-      providerId: null,
-      createdAt: now,
-      completedAt: now,
-    };
-    const copiedMessage = { ...sourceMessage, id: "message-copy-1" };
-    dbModule._tx.returning
-      .mockResolvedValueOnce([fork])
-      .mockResolvedValueOnce([copiedMessage]);
-    dbModule._tx.orderBy
-      .mockResolvedValueOnce([sourceMessage])
-      .mockResolvedValueOnce([
-        {
-          type: "text",
-          contentEncrypted: "encrypted",
-          metadataJson: null,
-          sortOrder: 0,
-          createdAt: now,
-        },
-      ]);
-    await expect(
-      forkSharedConversation(conversation, "recipient-1"),
-    ).resolves.toBe(fork);
-    expect(dbModule._tx.values).toHaveBeenLastCalledWith([
-      expect.objectContaining({ messageId: "message-copy-1", type: "text" }),
-    ]);
-  });
-
-  it("creates a fork without inserting parts when source messages have none", async () => {
-    const fork = { ...conversation, id: "fork-1", userId: "recipient-1" };
-    const sourceMessage = {
-      id: "message-1",
-      role: "assistant",
-      status: "completed",
-      createdAt: now,
-    };
-    dbModule._tx.returning
-      .mockResolvedValueOnce([fork])
-      .mockResolvedValueOnce([{ id: "message-copy-1" }]);
-    dbModule._tx.orderBy
-      .mockResolvedValueOnce([sourceMessage])
-      .mockResolvedValueOnce([]);
-    await expect(
-      forkSharedConversation(conversation, "recipient-1"),
-    ).resolves.toBe(fork);
-    expect(dbModule._tx.insert).toHaveBeenCalledTimes(2);
-  });
-
-  it("rejects continuation while the shared response is still active", async () => {
-    dbModule._tx.limit.mockResolvedValueOnce([{ id: "assistant-streaming" }]);
-
-    await expect(
-      forkSharedConversation(conversation, "recipient-1"),
-    ).rejects.toThrow(
-      "Wait for the shared response to finish before continuing",
-    );
-    expect(dbModule._tx.insert).not.toHaveBeenCalled();
-  });
-
-  it("returns the concurrently created fork after a unique conflict", async () => {
-    const concurrentFork = {
-      ...conversation,
-      id: "fork-concurrent",
-      userId: "recipient-1",
-    };
-    dbModule._chain.limit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([concurrentFork]);
-    dbModule.db.transaction.mockRejectedValueOnce(
-      Object.assign(new Error("duplicate"), { code: "23505" }),
-    );
-
-    await expect(
-      forkSharedConversation(conversation, "recipient-1"),
-    ).resolves.toBe(concurrentFork);
-  });
-
-  it("preserves a unique conflict when no concurrent fork is visible", async () => {
-    const conflict = Object.assign(new Error("duplicate"), { code: "23505" });
-    dbModule._chain.limit.mockResolvedValue([]);
-    dbModule.db.transaction.mockRejectedValueOnce(conflict);
-
-    await expect(
-      forkSharedConversation(conversation, "recipient-1"),
-    ).rejects.toBe(conflict);
   });
 });

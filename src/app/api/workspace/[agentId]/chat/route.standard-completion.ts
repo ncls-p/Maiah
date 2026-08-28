@@ -1,7 +1,6 @@
 import { encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { getChatUsageMetricsByMessageId } from "@/modules/agent/use-cases.get-conversation-messages";
-import { generateChatAutomationArtifacts } from "@/modules/chat/automation";
 import {
   generateConversationSummary,
   shouldSummarizeConversation,
@@ -12,7 +11,6 @@ import {
   previousMetricsForContinuation,
   type ChatGenerationTimings,
 } from "@/modules/chat/message-metrics";
-import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
 import {
   calculateTokenUsageImpact,
   parseSustainabilityConfig,
@@ -30,6 +28,7 @@ import type { LanguageModel, LanguageModelUsage } from "ai";
 import { and, eq } from "drizzle-orm";
 
 import { accumulateTokenCount } from "./route.accumulate-token-count";
+import { createPostCompletionAutomation } from "./route.standard-completion.part-a";
 import type { ChatExecutionContext } from "./route.execution-context";
 import type { StreamedPartWriter } from "./route.streamed-parts";
 
@@ -125,51 +124,14 @@ export async function completeStandardChat(input: {
       });
     }
   }
-  const postCompletionAutomation = async () => {
-    const shouldSkipSuggestions = consumeSkipNextChatSuggestions(
-      conversation.id,
-    );
-    const artifacts = assistantText
-      ? await generateChatAutomationArtifacts({
-          userMessage: content,
-          assistantText,
-          fallbackTitle: conversation.title,
-          generateSuggestions: !shouldSkipSuggestions,
-        })
-      : { title: conversation.title, suggestions: [] };
-    const generatedTitle = shouldRegenerateConversationTitle
-      ? artifacts.title
-      : conversation.title;
-    if (artifacts.suggestions.length > 0)
-      await partWriter.appendSuggestions(artifacts.suggestions);
-    if (
-      shouldRegenerateConversationTitle &&
-      generatedTitle.trim() &&
-      generatedTitle.trim() !== conversation.title.trim()
-    )
-      await db.transaction(async (tx) => {
-        const [ownedGeneration] = await tx
-          .select({ id: messages.id })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.id, assistantMessage.id),
-              eq(messages.status, "completed"),
-              eq(
-                messages.streamGenerationId,
-                assistantMessage.streamGenerationId!,
-              ),
-            ),
-          )
-          .for("update")
-          .limit(1);
-        if (!ownedGeneration) return;
-        await tx
-          .update(conversations)
-          .set({ title: generatedTitle, updatedAt: new Date() })
-          .where(eq(conversations.id, conversation.id));
-      });
-  };
+  const postCompletionAutomation = createPostCompletionAutomation({
+    conversation,
+    assistantMessage,
+    assistantText,
+    content,
+    shouldRegenerateConversationTitle,
+    partWriter,
+  });
   const previousUsageMetrics = continuationClaim
     ? (await getChatUsageMetricsByMessageId(conversation.id)).get(
         assistantMessage.id,
