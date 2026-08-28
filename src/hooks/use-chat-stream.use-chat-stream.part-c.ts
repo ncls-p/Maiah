@@ -108,9 +108,7 @@ export async function stopChatGeneration(input: {
       stopped?: boolean;
     } | null;
     if (!response.ok || payload?.stopped !== true) {
-      throw new Error(
-        "Stop request was not acknowledged for this generation",
-      );
+      throw new Error("Stop request was not acknowledged for this generation");
     }
     serverAcknowledged = true;
   } catch {
@@ -227,14 +225,10 @@ export async function resolveChatApproval(input: {
         const nextParts = message.parts.map((part) => {
           if (part.type !== TOOL_CALL_PART_TYPE) return part;
           try {
-            const parsed = JSON.parse(part.content) as Record<
-              string,
-              unknown
-            >;
+            const parsed = JSON.parse(part.content) as Record<string, unknown>;
             const inputMatches =
               parsed.input === undefined ||
-              JSON.stringify(parsed.input) ===
-                JSON.stringify(approval.input);
+              JSON.stringify(parsed.input) === JSON.stringify(approval.input);
             if (
               inputMatches &&
               toolNameMatches(

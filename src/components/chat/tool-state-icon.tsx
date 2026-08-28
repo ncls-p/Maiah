@@ -9,7 +9,11 @@ import {
 import { cn } from "@/lib/utils";
 
 export type ToolVisualState =
-  "pending" | "approval" | "completed" | "warning" | "error";
+  | "pending"
+  | "approval"
+  | "completed"
+  | "warning"
+  | "error";
 
 export function ToolStateIcon({
   state,

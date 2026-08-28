@@ -23,12 +23,8 @@ import { handleOrchestratorChatFailure } from "./route.orchestrator.part-b";
 
 export function runOrchestratorChat(context: ChatExecutionContext) {
   const startedAt = Date.now();
-  const {
-    assistantMessage,
-    continuationClaim,
-    userMessage,
-    useAiSdkUIStream,
-  } = context;
+  const { assistantMessage, continuationClaim, userMessage, useAiSdkUIStream } =
+    context;
   const streamAbortController = new AbortController();
   const streamGenerationId = assistantMessage.streamGenerationId;
   if (!streamGenerationId) {

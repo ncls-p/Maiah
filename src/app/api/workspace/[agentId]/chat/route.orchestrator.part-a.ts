@@ -94,9 +94,7 @@ export async function runOrchestratorChatCore(input: {
     usageImpactSetting.co2GramsPerKwh,
   );
   const completedAt = new Date();
-  const encryptedText = result.text
-    ? await encryptValue(result.text)
-    : null;
+  const encryptedText = result.text ? await encryptValue(result.text) : null;
   const durableDelegationParts = await Promise.all(
     progress.durableDelegationProgress.map(
       async ({ progress: event, sortOrder }) => {
@@ -154,9 +152,7 @@ export async function runOrchestratorChatCore(input: {
             `${continuationClaim.appendableTextPart.content}${result.text}`,
           ),
         })
-        .where(
-          eq(messageParts.id, continuationClaim.appendableTextPart.id),
-        );
+        .where(eq(messageParts.id, continuationClaim.appendableTextPart.id));
     } else if (encryptedText) {
       await tx.insert(messageParts).values({
         messageId: assistantMessage.id,
@@ -193,8 +189,7 @@ export async function runOrchestratorChatCore(input: {
     type: "done",
     metrics: normalizeChatMessageMetrics({
       inputTokens:
-        (continuationClaim?.message.tokenInput ?? 0) +
-        usageImpact.inputTokens,
+        (continuationClaim?.message.tokenInput ?? 0) + usageImpact.inputTokens,
       outputTokens:
         (continuationClaim?.message.tokenOutput ?? 0) +
         usageImpact.outputTokens,

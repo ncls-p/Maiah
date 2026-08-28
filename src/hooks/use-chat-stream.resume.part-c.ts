@@ -139,12 +139,9 @@ export function runChatStreamResumeSession(
       clearStoredChatStreamDraft(activeConversationId);
     } finally {
       if (!controller.signal.aborted && terminalConfirmed) {
-        notifyConversationStreaming(
-          workspaceId,
-          activeConversationId,
-          false,
-          { markUnread: false },
-        );
+        notifyConversationStreaming(workspaceId, activeConversationId, false, {
+          markUnread: false,
+        });
       }
       cleanupOnce();
     }

@@ -66,8 +66,7 @@ export async function finalizeResolvedAgentExecution(
     output: { text },
     inputTokens,
     outputTokens,
-    reservationTokens:
-      input.depth === 0 ? input.budget.tokensUsed : undefined,
+    reservationTokens: input.depth === 0 ? input.budget.tokensUsed : undefined,
     usage: {
       workspaceId: input.workspaceId,
       userId: input.userId,
@@ -75,8 +74,7 @@ export async function finalizeResolvedAgentExecution(
       modelId: provider.modelRecordId,
       agentId: input.resolved.agent.id,
       conversationId: input.conversationId ?? undefined,
-      operation:
-        input.trigger === "delegation" ? "delegation" : input.trigger,
+      operation: input.trigger === "delegation" ? "delegation" : input.trigger,
       latencyMs: Date.now() - startedAt,
     },
   });

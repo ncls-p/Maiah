@@ -141,7 +141,8 @@ export function useAgentConfigurationData(
         "policy"
       > & { policy: DelegationConfig["policy"] | null };
       const agentsPayload = (await agentsResponse.json()) as
-        Agent[] | { agents?: Agent[] };
+        | Agent[]
+        | { agents?: Agent[] };
       setDelegationConfig({
         ...defaultDelegationConfig,
         ...delegationPayload,

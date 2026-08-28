@@ -20,8 +20,15 @@ import {
 import { useConversationFolderVisibility } from "@/hooks/use-conversation-folder-visibility";
 import { cn } from "@/lib/utils";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
+import { ChatSidebarConversationRow } from "./chat-sidebar.chat-sidebar.section-3";
+import {
+  canMoveConversation,
+  deriveConversationBuckets,
+  moveConversation,
+  orderedIdsWithInsertion,
+  sortConversations,
+} from "./chat-sidebar.chat-sidebar.section-4";
 import { ChatSidebarView } from "./chat-sidebar.chat-sidebar.view";
-import { ConversationItem } from "./chat-sidebar.conversation-item";
 import {
   BUTTON_TYPE,
   ChatSidebarProps,
@@ -91,64 +98,17 @@ export function useChatSidebarController({
     [shell],
   );
   const searchActive = searchQuery.trim().length > 0;
-  const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => {
-      const aPinned = a.pinnedAt ? 0 : 1;
-      const bPinned = b.pinnedAt ? 0 : 1;
-      if (aPinned !== bPinned) return aPinned - bPinned;
-
-      const aHasManualOrder =
-        a.sidebarOrder !== null && a.sidebarOrder !== undefined;
-      const bHasManualOrder =
-        b.sidebarOrder !== null && b.sidebarOrder !== undefined;
-      if (aHasManualOrder !== bHasManualOrder) {
-        return aHasManualOrder ? 1 : -1;
-      }
-
-      if (
-        aHasManualOrder &&
-        bHasManualOrder &&
-        a.sidebarOrder !== b.sidebarOrder
-      ) {
-        return (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0);
-      }
-
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }, [conversations]);
-  const pinnedConversations = useMemo(
-    () => sortedConversations.filter((conversation) => conversation.pinnedAt),
-    [sortedConversations],
+  const sortedConversations = useMemo(
+    () => sortConversations(conversations),
+    [conversations],
   );
-  const unpinnedConversations = useMemo(
-    () => sortedConversations.filter((conversation) => !conversation.pinnedAt),
-    [sortedConversations],
+  const buckets = useMemo(
+    () => deriveConversationBuckets(sortedConversations, conversationFolders),
+    [sortedConversations, conversationFolders],
   );
-  const topLevelConversations = useMemo(
-    () =>
-      unpinnedConversations.filter((conversation) => !conversation.folderId),
-    [unpinnedConversations],
-  );
-  const folderSections = useMemo(() => {
-    return conversationFolders.map((folder) => ({
-      folder,
-      conversations: unpinnedConversations.filter(
-        (conversation) => conversation.folderId === folder.id,
-      ),
-    }));
-  }, [conversationFolders, unpinnedConversations]);
-  function orderedIdsWithInsertion(
-    items: ChatConversation[],
-    draggedId: string,
-    beforeId?: string,
-  ) {
-    const ids = items
-      .map((conversation) => conversation.id)
-      .filter((id) => id !== draggedId);
-    const insertionIndex = beforeId ? ids.indexOf(beforeId) : -1;
-    ids.splice(insertionIndex >= 0 ? insertionIndex : ids.length, 0, draggedId);
-    return ids;
-  }
+  const pinnedConversations = buckets.pinned;
+  const topLevelConversations = buckets.topLevel;
+  const folderSections = buckets.folders;
   function reorderDraggedConversation({
     folderId,
     pinned,
@@ -194,40 +154,6 @@ export function useChatSidebarController({
     });
   }
 
-  function conversationGroup(conversation: ChatConversation) {
-    const pinned = Boolean(conversation.pinnedAt);
-    const folderId = pinned ? null : (conversation.folderId ?? null);
-    const items = pinned
-      ? pinnedConversations
-      : folderId
-        ? (folderSections.find((section) => section.folder.id === folderId)
-            ?.conversations ?? [])
-        : topLevelConversations;
-    return { folderId, pinned, items };
-  }
-
-  function canMoveConversation(conversation: ChatConversation, delta: -1 | 1) {
-    if (!onReorderConversations) return false;
-    const { items } = conversationGroup(conversation);
-    const currentIndex = items.findIndex((item) => item.id === conversation.id);
-    const nextIndex = currentIndex + delta;
-    return currentIndex >= 0 && nextIndex >= 0 && nextIndex < items.length;
-  }
-
-  function moveConversation(conversation: ChatConversation, delta: -1 | 1) {
-    if (!onReorderConversations) return;
-    const { folderId, pinned, items } = conversationGroup(conversation);
-    const currentIndex = items.findIndex((item) => item.id === conversation.id);
-    const nextIndex = currentIndex + delta;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= items.length) return;
-
-    const conversationIds = items.map((item) => item.id);
-    const [conversationId] = conversationIds.splice(currentIndex, 1);
-    if (!conversationId) return;
-    conversationIds.splice(nextIndex, 0, conversationId);
-    onReorderConversations({ conversationIds, folderId, pinned });
-  }
-
   function startFolderCreate() {
     setCreatingFolder(true);
     setNewFolderName("");
@@ -269,43 +195,44 @@ export function useChatSidebarController({
     conversation: ChatConversation,
     options?: { searchResult?: boolean },
   ) {
-    const targetConversationId =
-      conversation.latestAssistantConversationId ?? conversation.id;
-    const isActive =
-      activeConversationId === conversation.id ||
-      activeConversationId === targetConversationId;
-    const isEditing = editingConversationId === conversation.id;
-    const agentName = agentNameById.get(conversation.agentId) ?? t("assistant");
-
     return (
-      <ConversationItem
+      <ChatSidebarConversationRow
         key={conversation.id}
         conversation={conversation}
-        isActive={isActive}
-        isEditing={isEditing}
-        editingTitle={isEditing ? editingTitle : ""}
-        agentName={agentName}
-        onSelect={() =>
-          onSelectConversation(targetConversationId, conversation.agentId)
-        }
-        onRename={(title) => {
-          onRenameConversation?.(conversation.id, title);
-          setEditingConversationId(null);
-        }}
-        onDelete={() => onDeleteConversation?.(conversation.id)}
+        searchResult={options?.searchResult}
+        activeConversationId={activeConversationId}
+        editingConversationId={editingConversationId}
+        editingTitle={editingTitle}
+        agentNameById={agentNameById}
+        t={t}
+        onSelectConversation={onSelectConversation}
+        onRenameConversation={onRenameConversation}
+        onDeleteConversation={onDeleteConversation}
+        onToggleConversationPin={onToggleConversationPin}
         onEditStart={() => {
           setEditingConversationId(conversation.id);
           setEditingTitle(conversation.title);
         }}
         onEditChange={setEditingTitle}
         onEditCancel={() => setEditingConversationId(null)}
-        onTogglePin={() =>
-          onToggleConversationPin?.(conversation.id, !conversation.pinnedAt)
+        onMoveUp={() =>
+          moveConversation(conversation, buckets, -1, onReorderConversations)
         }
-        onMoveUp={() => moveConversation(conversation, -1)}
-        onMoveDown={() => moveConversation(conversation, 1)}
-        canMoveUp={canMoveConversation(conversation, -1)}
-        canMoveDown={canMoveConversation(conversation, 1)}
+        onMoveDown={() =>
+          moveConversation(conversation, buckets, 1, onReorderConversations)
+        }
+        canMoveUp={canMoveConversation(
+          conversation,
+          buckets,
+          Boolean(onReorderConversations),
+          -1,
+        )}
+        canMoveDown={canMoveConversation(
+          conversation,
+          buckets,
+          Boolean(onReorderConversations),
+          1,
+        )}
         onDragStart={(event) => {
           setDraggingConversationId(conversation.id);
           event.dataTransfer.effectAllowed = "move";
@@ -314,9 +241,6 @@ export function useChatSidebarController({
         onDragEnd={() => setDraggingConversationId(null)}
         onDropBefore={(event) => handleConversationDrop(event, conversation)}
         isDragging={draggingConversationId === conversation.id}
-        searchMatch={
-          options?.searchResult ? conversation.searchMatch : undefined
-        }
         readOnly={readOnly || conversation.isOwner === false}
       />
     );

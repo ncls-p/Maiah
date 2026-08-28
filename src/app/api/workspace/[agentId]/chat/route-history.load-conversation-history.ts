@@ -7,9 +7,7 @@ import {
   messages,
 } from "@/server/infrastructure/db/schema";
 import type { ModelMessage } from "ai";
-import {
-  mergeHistoryWithAttachmentMessages,
-} from "./route-history.merge-history-with-attachment-messages";
+import { mergeHistoryWithAttachmentMessages } from "./route-history.merge-history-with-attachment-messages";
 import { buildConversationModelMessages } from "./route-history.load-conversation-history.part-a";
 
 export async function loadConversationHistory(

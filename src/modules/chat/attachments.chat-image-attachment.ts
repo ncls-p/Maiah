@@ -40,14 +40,22 @@ export type ChatImageAttachmentMetadata = ChatImageAttachment &
 export type ChatFileAttachmentMetadata = ChatFileAttachment &
   ChatAttachmentMetadataFields;
 export type ChatAttachmentMetadata =
-  ChatImageAttachmentMetadata | ChatFileAttachmentMetadata;
+  | ChatImageAttachmentMetadata
+  | ChatFileAttachmentMetadata;
 
 export type AttachmentDetection = {
   mimeType: string;
   extension: string;
   category: ChatFileAttachment["category"];
   textKind:
-    "text" | "markdown" | "pdf" | "docx" | "pptx" | "xlsx" | "rtf" | "none";
+    | "text"
+    | "markdown"
+    | "pdf"
+    | "docx"
+    | "pptx"
+    | "xlsx"
+    | "rtf"
+    | "none";
 };
 
 export type ExtractedText = {

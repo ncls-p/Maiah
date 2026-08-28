@@ -104,9 +104,7 @@ export async function generateResolvedAgentResponse(
           depth: input.depth,
           ...progressModelHistoryMetadata({
             depth: input.depth,
-            isDelegation: toolCall.toolName.startsWith(
-              "delegate_specialist_",
-            ),
+            isDelegation: toolCall.toolName.startsWith("delegate_specialist_"),
             phase: "start",
           }),
           input: toolCall.input,
@@ -123,9 +121,7 @@ export async function generateResolvedAgentResponse(
           depth: input.depth,
           ...progressModelHistoryMetadata({
             depth: input.depth,
-            isDelegation: toolCall.toolName.startsWith(
-              "delegate_specialist_",
-            ),
+            isDelegation: toolCall.toolName.startsWith("delegate_specialist_"),
             phase: toolOutput.type === "tool-error" ? "error" : "success",
           }),
         } satisfies AgentToolProgressContext;
@@ -143,13 +139,8 @@ export async function generateResolvedAgentResponse(
                   new Error(executionError.safeDetail),
                   "Tool execution failed",
                 )
-              : safeToolErrorMessage(
-                  toolOutput.error,
-                  "Tool execution failed",
-                ),
-            ...(executionError?.code
-              ? { errorCode: executionError.code }
-              : {}),
+              : safeToolErrorMessage(toolOutput.error, "Tool execution failed"),
+            ...(executionError?.code ? { errorCode: executionError.code } : {}),
           });
           return;
         }
@@ -230,10 +221,7 @@ export async function generateResolvedAgentResponse(
                   provider.contextWindow),
             requestedOutputTokens: Math.max(
               1,
-              Math.min(
-                runtimeLimits.maxOutputTokens,
-                recoveryRemainingTokens,
-              ),
+              Math.min(runtimeLimits.maxOutputTokens, recoveryRemainingTokens),
             ),
             systemPrompt: recoveryInstructions,
           });

@@ -9,9 +9,16 @@ import { agentRuns } from "@/server/infrastructure/db/schema";
 import { and, eq, gt, isNull } from "drizzle-orm";
 
 export type AgentRunTrigger =
-  "chat" | "scheduled" | "api" | "delegation" | "dry_run";
+  | "chat"
+  | "scheduled"
+  | "api"
+  | "delegation"
+  | "dry_run";
 export type AgentRunTerminalStatus =
-  "success" | "failed" | "cancelled" | "timed_out";
+  | "success"
+  | "failed"
+  | "cancelled"
+  | "timed_out";
 
 export type AgentRunUsageEvent = {
   workspaceId: string;

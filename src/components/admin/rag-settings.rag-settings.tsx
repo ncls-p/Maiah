@@ -142,7 +142,8 @@ export function useRagSettingsController({
         body: JSON.stringify(settings),
       });
       const data = (await response.json().catch(() => null)) as
-        (RagConfig & { error?: string }) | null;
+        | (RagConfig & { error?: string })
+        | null;
       if (!response.ok || !data)
         throw new Error(data?.error || t("saveFailed"));
       setSettings(data);

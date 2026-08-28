@@ -173,14 +173,22 @@ export function createChatSubmitRun(
         onEvent: handleStreamEvent,
       });
 
-      api.updateAssistantDraft((message) => ({ ...message, status: "completed" }));
+      api.updateAssistantDraft((message) => ({
+        ...message,
+        status: "completed",
+      }));
       api.flushAssistantRender();
       api.clearPendingApprovals();
       if (state.activeConversationId)
         clearStoredChatStreamDraft(state.activeConversationId);
-      notifyConversationStreaming(workspaceId, state.activeConversationId, false, {
-        markUnread: false,
-      });
+      notifyConversationStreaming(
+        workspaceId,
+        state.activeConversationId,
+        false,
+        {
+          markUnread: false,
+        },
+      );
 
       await onConversationsRefresh().catch(() => undefined);
       return true;
@@ -200,9 +208,14 @@ export function createChatSubmitRun(
         api.clearPendingApprovals();
         if (state.activeConversationId)
           clearStoredChatStreamDraft(state.activeConversationId);
-        notifyConversationStreaming(workspaceId, state.activeConversationId, false, {
-          markUnread: false,
-        });
+        notifyConversationStreaming(
+          workspaceId,
+          state.activeConversationId,
+          false,
+          {
+            markUnread: false,
+          },
+        );
         return false;
       }
       const errorMessage =
@@ -217,9 +230,14 @@ export function createChatSubmitRun(
       api.clearPendingApprovals();
       if (state.activeConversationId)
         clearStoredChatStreamDraft(state.activeConversationId);
-      notifyConversationStreaming(workspaceId, state.activeConversationId, false, {
-        markUnread: false,
-      });
+      notifyConversationStreaming(
+        workspaceId,
+        state.activeConversationId,
+        false,
+        {
+          markUnread: false,
+        },
+      );
       return false;
     } finally {
       const requestWasDetached =

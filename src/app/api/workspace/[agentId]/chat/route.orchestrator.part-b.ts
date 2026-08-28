@@ -4,10 +4,7 @@ import type { executeAgent } from "@/modules/agent/runtime-executor";
 import { isChatStreamHardTimeoutAbort } from "@/modules/chat/chat-stream-lease";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
-import {
-  conversations,
-  messages,
-} from "@/server/infrastructure/db/schema";
+import { conversations, messages } from "@/server/infrastructure/db/schema";
 import { and, eq } from "drizzle-orm";
 
 import type { ChatExecutionContext } from "./route.execution-context";
@@ -67,8 +64,7 @@ export async function handleOrchestratorChatFailure(input: {
     return true;
   });
   if (!transitioned) return;
-  if (aborted && !hardTimedOut)
-    enqueueEvent({ type: "done", stopped: true });
+  if (aborted && !hardTimedOut) enqueueEvent({ type: "done", stopped: true });
   else
     enqueueEvent({
       type: "error",
@@ -90,10 +86,9 @@ export async function handleOrchestratorChatFailure(input: {
       conversationId: conversation.id,
       assistantMessageId: assistantMessage.id,
       errorCode:
-        error instanceof AgentExecutionError
-          ? error.code
-          : "AGENT_RUN_FAILED",
-      runId: error instanceof AgentExecutionError ? (error.runId ?? null) : null,
+        error instanceof AgentExecutionError ? error.code : "AGENT_RUN_FAILED",
+      runId:
+        error instanceof AgentExecutionError ? (error.runId ?? null) : null,
       errorDetail:
         error instanceof AgentExecutionError
           ? (error.safeDetail ?? null)

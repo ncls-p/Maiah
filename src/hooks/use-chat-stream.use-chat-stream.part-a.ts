@@ -12,9 +12,7 @@ import {
   mergeStoredDraft,
 } from "@/hooks/use-chat-stream-events";
 import { UseChatStreamOptions } from "./use-chat-stream.compact-error-message";
-import {
-  reloadConversationMessagesForScope,
-} from "./use-chat-stream.operation-scope";
+import { reloadConversationMessagesForScope } from "./use-chat-stream.operation-scope";
 import { useChatStreamResume } from "./use-chat-stream.resume";
 import { useChatSubmitHandler } from "./use-chat-stream.submit";
 import { useChatStreamDraftSync } from "./use-chat-stream.use-chat-stream.part-b";

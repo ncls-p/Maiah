@@ -22,10 +22,7 @@ import {
   listProviders,
   toSafeProvider,
 } from "@/modules/provider/use-cases";
-import type {
-  aiModels,
-  aiProviders,
-} from "@/server/infrastructure/db/schema";
+import type { aiModels, aiProviders } from "@/server/infrastructure/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 

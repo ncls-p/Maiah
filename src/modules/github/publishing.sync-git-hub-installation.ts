@@ -175,15 +175,17 @@ export async function getUserGitHubStatus(input: {
       connectPath && input.origin
         ? new URL(connectPath, input.origin).toString()
         : connectPath,
-    connections: connections.map((connection): GitHubConnectionSummary => ({
-      id: connection.id,
-      installationId: connection.installationId,
-      accountLogin: connection.accountLogin,
-      accountType: connection.accountType,
-      repositorySelection: connection.repositorySelection,
-      settingsUrl: connection.settingsUrl,
-      lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
-    })),
+    connections: connections.map(
+      (connection): GitHubConnectionSummary => ({
+        id: connection.id,
+        installationId: connection.installationId,
+        accountLogin: connection.accountLogin,
+        accountType: connection.accountType,
+        repositorySelection: connection.repositorySelection,
+        settingsUrl: connection.settingsUrl,
+        lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
+      }),
+    ),
     repositories: repositories
       .map((repo): GitHubRepositorySummary => {
         const permissions = normalizePermissions(repo.permissionsJson);

@@ -126,7 +126,8 @@ async function requestCodeWorkspaceJson<T>(
 ) {
   const response = await fetch(url, init);
   const data = (await response.json().catch(() => null)) as
-    (T & { error?: string }) | null;
+    | (T & { error?: string })
+    | null;
   if (!response.ok) throw new Error(data?.error || fallbackError);
   return data as T | null;
 }

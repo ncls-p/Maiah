@@ -114,7 +114,9 @@ export function usageRecorder(input: {
   context: ProxyExecutionContext;
   model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>;
   operation:
-    "openai.chat.completions" | "openai.responses" | "anthropic.messages";
+    | "openai.chat.completions"
+    | "openai.responses"
+    | "anthropic.messages";
   startedAt: number;
 }) {
   let recorded = false;

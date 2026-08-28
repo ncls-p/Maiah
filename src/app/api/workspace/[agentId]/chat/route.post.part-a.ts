@@ -145,8 +145,8 @@ export async function validateChatRequest(input: {
     : null;
   const canContinueSharedConversation = Boolean(
     conversationAccess?.role === "recipient" &&
-      conversationAccess.canContinue &&
-      conversationAccess.conversation.agentId === agentId,
+    conversationAccess.canContinue &&
+    conversationAccess.conversation.agentId === agentId,
   );
   const directlyShared = await authorization.hasDirectPermission(
     { principalType: "user", principalId: actorUserId },
@@ -220,9 +220,8 @@ export async function validateChatRequest(input: {
     );
   }
 
-  let codeWorkspaceAttachment: ReturnType<
-    typeof codeWorkspaceArtifact
-  > | null = null;
+  let codeWorkspaceAttachment: ReturnType<typeof codeWorkspaceArtifact> | null =
+    null;
   const messageAttachments: ChatAttachment[] = [];
   if (codeWorkspaceId) {
     const metadata = await getCodeWorkspace(codeWorkspaceId);

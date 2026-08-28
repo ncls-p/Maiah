@@ -1,10 +1,7 @@
 import { generateChatAutomationArtifacts } from "@/modules/chat/automation";
 import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
 import { db } from "@/server/infrastructure/db";
-import {
-  conversations,
-  messages,
-} from "@/server/infrastructure/db/schema";
+import { conversations, messages } from "@/server/infrastructure/db/schema";
 import { and, eq } from "drizzle-orm";
 
 import type {

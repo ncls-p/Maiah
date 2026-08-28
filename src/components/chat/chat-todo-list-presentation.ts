@@ -9,7 +9,9 @@ export function chatTodoPlanKey(todoList: ChatTodoList) {
   return `${todoList.title}::${todoList.items.map((item) => item.id).join("|")}`;
 }
 
-export function readTodoDockPresentation(planKey: string): TodoDockPresentation {
+export function readTodoDockPresentation(
+  planKey: string,
+): TodoDockPresentation {
   return presentationByPlanKey.get(planKey) ?? "expanded";
 }
 

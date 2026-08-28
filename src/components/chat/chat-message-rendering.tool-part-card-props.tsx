@@ -32,9 +32,7 @@ export function ToolSequenceBadge({
     <span
       className={cn(
         "grid shrink-0 place-items-center rounded-md bg-primary/[0.08] font-mono font-medium tabular-nums text-primary",
-        compact
-          ? "size-5 text-[9px]"
-          : "size-7 rounded-lg text-[10px]",
+        compact ? "size-5 text-[9px]" : "size-7 rounded-lg text-[10px]",
       )}
     >
       {String(sequence).padStart(2, "0")}

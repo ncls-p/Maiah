@@ -40,7 +40,8 @@ export type RuntimeModel = {
 };
 
 export type ResolveRuntimeResult =
-  { ok: true; runtime: RuntimeModel } | { ok: false; reason: string };
+  | { ok: true; runtime: RuntimeModel }
+  | { ok: false; reason: string };
 
 function defaultChatAutomationConfig(): ChatAutomationConfig {
   return {

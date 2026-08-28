@@ -11,11 +11,13 @@ import { NextResponse } from "next/server";
 
 import type { ValidatedChatRequest } from "./route.post.part-a";
 
-export async function executePreparedChatRequest(input: ValidatedChatRequest & {
-  agentId: string;
-  requestId: string;
-  requestStartedAt: number;
-}): Promise<{
+export async function executePreparedChatRequest(
+  input: ValidatedChatRequest & {
+    agentId: string;
+    requestId: string;
+    requestStartedAt: number;
+  },
+): Promise<{
   response: Response;
   userMessageId: string | undefined;
   assistantMessageId: string | undefined;
