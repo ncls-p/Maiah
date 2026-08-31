@@ -11,7 +11,7 @@ import {
   REASONING_PRESETS,
   type ReasoningPreset,
 } from "@/modules/agent/reasoning-presets";
-import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
+import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields";
 
 export function ReasoningPresetsField({
   model,

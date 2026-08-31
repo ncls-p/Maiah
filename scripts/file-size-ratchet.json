@@ -13,19 +13,19 @@
             "lines": 395,
             "maxFunctionLines": 329
         },
-        "src/app/[locale]/(workspace)/agents/[agentId]/essential-tab.view.tsx": {
-            "lines": 334,
+        "src/app/[locale]/(workspace)/agents/[agentId]/essential-tab.tsx": {
+            "lines": 519,
             "maxFunctionLines": 297
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/model-advanced-fields.model-advanced-fields.tsx": {
+            "lines": 975
         },
         "src/app/[locale]/(workspace)/agents/[agentId]/orchestration-tab.orchestration-tab.tsx": {
             "maxFunctionLines": 261
         },
         "src/app/[locale]/(workspace)/agents/[agentId]/page.agent-configure-page.tsx": {
-            "lines": 418,
+            "lines": 675,
             "maxFunctionLines": 383
-        },
-        "src/app/[locale]/(workspace)/agents/[agentId]/page.agent-configure-page.view.tsx": {
-            "maxFunctionLines": 251
         },
         "src/app/[locale]/(workspace)/agents/[agentId]/page.use-agent-configuration-data.ts": {
             "lines": 372,
@@ -36,12 +36,8 @@
             "maxFunctionLines": 409
         },
         "src/app/[locale]/(workspace)/chat/page.chat-page.tsx": {
-            "lines": 532,
+            "lines": 854,
             "maxFunctionLines": 488
-        },
-        "src/app/[locale]/(workspace)/chat/page.chat-page.view.tsx": {
-            "lines": 327,
-            "maxFunctionLines": 301
         },
         "src/app/[locale]/(workspace)/chat/page.use-chat-directory.ts": {
             "lines": 369,
@@ -52,26 +48,19 @@
             "maxFunctionLines": 411
         },
         "src/app/[locale]/(workspace)/knowledge/page.knowledge-page.tsx": {
-            "lines": 577,
+            "lines": 2095,
             "maxFunctionLines": 538
         },
-        "src/app/[locale]/(workspace)/knowledge/page.knowledge-page.view.branch-1.section-4.branch-1.section-1.branch-1.tsx": {
-            "lines": 302,
-            "maxFunctionLines": 285
-        },
-        "src/app/[locale]/(workspace)/knowledge/page.knowledge-page.view.tsx": {
-            "maxFunctionLines": 240
+        "src/app/[locale]/(workspace)/knowledge/page.rag-config-fields.tsx": {
+            "lines": 567
         },
         "src/app/[locale]/(workspace)/marketplace/items/[itemId]/page.tsx": {
             "lines": 312,
             "maxFunctionLines": 277
         },
         "src/app/[locale]/(workspace)/marketplace/page.marketplace-page.tsx": {
-            "lines": 350,
+            "lines": 574,
             "maxFunctionLines": 322
-        },
-        "src/app/[locale]/(workspace)/marketplace/page.marketplace-page.view.tsx": {
-            "maxFunctionLines": 216
         },
         "src/app/[locale]/(workspace)/tools/builtin-tools-panel.builtin-tools-panel.tsx": {
             "maxFunctionLines": 242
@@ -136,6 +125,9 @@
             "lines": 313,
             "maxFunctionLines": 281
         },
+        "src/components/admin/rag-settings.rag-settings.tsx": {
+            "lines": 646
+        },
         "src/components/admin/sidebar-navigation-settings.sidebar-navigation-settings.tsx": {
             "lines": 323,
             "maxFunctionLines": 288
@@ -143,10 +135,11 @@
         "src/components/admin/workflow-builder-settings.tsx": {
             "maxFunctionLines": 206
         },
-        "src/components/chat/chat-message-list.chat-message-list.tsx": {
-            "maxFunctionLines": 224
+        "src/components/chat/chat-composer.chat-composer.tsx": {
+            "lines": 384
         },
-        "src/components/chat/chat-message-list.chat-message-list.view.section-1.tsx": {
+        "src/components/chat/chat-message-list.chat-message-list.tsx": {
+            "lines": 586,
             "maxFunctionComplexity": 46,
             "maxFunctionLines": 232
         },
@@ -154,7 +147,11 @@
             "maxFunctionLines": 225
         },
         "src/components/chat/chat-message-list.user-message-rail.tsx": {
+            "lines": 382,
             "maxFunctionLines": 204
+        },
+        "src/components/chat/chat-message-rendering.message-content.tsx": {
+            "lines": 384
         },
         "src/components/chat/chat-message-rendering.tool-part-card.tsx": {
             "lines": 533,
@@ -166,11 +163,8 @@
             "maxFunctionLines": 233
         },
         "src/components/chat/chat-sidebar.chat-sidebar.tsx": {
-            "lines": 397,
+            "lines": 1274,
             "maxFunctionLines": 350
-        },
-        "src/components/chat/chat-sidebar.chat-sidebar.view.section-1.section-1.section-1.branch-1.tsx": {
-            "maxFunctionLines": 216
         },
         "src/components/chat/chat-sidebar.conversation-item.tsx": {
             "maxFunctionLines": 257
@@ -186,9 +180,7 @@
             "maxFunctionLines": 201
         },
         "src/components/chat/code-workspace-artifact-card.code-workspace-artifact-card.tsx": {
-            "maxFunctionLines": 237
-        },
-        "src/components/chat/code-workspace-artifact-card.code-workspace-artifact-card.view.section-2.tsx": {
+            "lines": 764,
             "maxFunctionLines": 261
         },
         "src/components/chat/conversation-share-dialog.tsx": {
@@ -196,72 +188,31 @@
             "maxFunctionLines": 257
         },
         "src/components/chat/github-publish-dialog.git-hub-publish-dialog.tsx": {
-            "maxFunctionLines": 258
-        },
-        "src/components/chat/github-publish-dialog.git-hub-publish-dialog.view.section-1.tsx": {
-            "lines": 366,
+            "lines": 645,
             "maxFunctionLines": 348
         },
         "src/components/iam/access-console.access-console.tsx": {
-            "lines": 452,
+            "lines": 2911,
             "maxFunctionLines": 416
         },
-        "src/components/iam/access-console.access-console.view.section-1.section-1.section-1.tsx": {
-            "maxFunctionLines": 222
-        },
-        "src/components/iam/access-console.access-console.view.section-1.section-1.section-2.tsx": {
-            "lines": 425,
-            "maxFunctionLines": 384
-        },
-        "src/components/iam/access-console.access-console.view.section-1.section-2.tsx": {
-            "maxFunctionLines": 213
-        },
-        "src/components/iam/access-console.access-console.view.section-1.section-3.branch-2.tsx": {
-            "lines": 351,
-            "maxFunctionLines": 328
-        },
-        "src/components/iam/access-console.access-console.view.section-1.section-3.branch-4.tsx": {
-            "lines": 386,
-            "maxFunctionLines": 343
-        },
-        "src/components/iam/access-console.access-console.view.section-1.section-3.branch-5.branch-1.tsx": {
-            "maxFunctionLines": 251
-        },
-        "src/components/iam/access-console.access-console.view.section-1.section-3.branch-5.branch-2.tsx": {
-            "maxFunctionLines": 258
-        },
         "src/components/iam/access-console.resource-access-panel.tsx": {
-            "lines": 376,
-            "maxFunctionLines": 344
-        },
-        "src/components/iam/access-console.resource-access-panel.view.section-1.tsx": {
-            "lines": 466,
+            "lines": 1394,
             "maxFunctionLines": 426
-        },
-        "src/components/iam/access-console.resource-access-panel.view.section-2.tsx": {
-            "lines": 335,
-            "maxFunctionLines": 311
         },
         "src/components/iam/scope-lifecycle-dialog.tsx": {
             "maxFunctionLines": 241
         },
-        "src/components/iam/scope-migration-dialog.scope-migration-dialog.view.section-1.tsx": {
-            "lines": 307,
+        "src/components/iam/scope-migration-dialog.scope-migration-dialog.tsx": {
+            "lines": 535,
             "maxFunctionLines": 277
         },
         "src/components/marketplace/resource-share-dialog.resource-share-dialog.tsx": {
-            "lines": 344,
+            "lines": 597,
             "maxFunctionLines": 320
         },
-        "src/components/marketplace/resource-share-dialog.resource-share-dialog.view.tsx": {
-            "maxFunctionLines": 242
-        },
         "src/components/mcp/mcp-server-manager.mcp-server-manager.tsx": {
-            "lines": 474,
+            "lines": 695,
             "maxFunctionLines": 435
-        },
-        "src/components/mcp/mcp-server-manager.mcp-server-manager.view.tsx": {
-            "maxFunctionLines": 224
         },
         "src/components/mcp/mcp-server-manager/tool-connections-panel.connection-dialog.tsx": {
             "maxFunctionLines": 227
@@ -274,23 +225,19 @@
             "lines": 317
         },
         "src/components/providers/provider-manager.tsx": {
-            "lines": 436,
+            "lines": 636,
             "maxFunctionLines": 400
-        },
-        "src/components/providers/provider-manager.view.tsx": {
-            "maxFunctionLines": 202
         },
         "src/components/resource-access-dialog.tsx": {
             "lines": 419,
             "maxFunctionLines": 372
         },
         "src/components/scheduled-tasks/scheduled-task-manager.scheduled-task-manager.tsx": {
+            "lines": 764,
             "maxFunctionLines": 248
         },
-        "src/components/scheduled-tasks/scheduled-task-manager.scheduled-task-manager.view.section-1.tsx": {
-            "maxFunctionLines": 246
-        },
         "src/components/setup/setup-wizard.setup-wizard.tsx": {
+            "lines": 817,
             "maxFunctionLines": 273
         },
         "src/components/skills/skill-manager.skill-editor-dialog.tsx": {
@@ -298,10 +245,8 @@
             "maxFunctionLines": 339
         },
         "src/components/skills/skill-manager.skill-manager.tsx": {
+            "lines": 744,
             "maxFunctionLines": 253
-        },
-        "src/components/skills/skill-manager.skill-manager.view.tsx": {
-            "maxFunctionLines": 227
         },
         "src/components/workflows/workflow-agentic-panel.workflow-agentic-panel.tsx": {
             "lines": 459,

@@ -1,13 +1,18 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
 import { useWorkspace } from "@/hooks/use-workspace";
-import type { RagConfig } from "@/modules/knowledge/rag-config";
+import { RagConfig } from "@/modules/knowledge/rag-config";
 import { DiscoveredModel } from "./rag-settings.discovered-model";
-import { RagSettingsView } from "./rag-settings.rag-settings.view";
+import { DatabaseZapIcon, SaveIcon } from "lucide-react";
+import { SettingsSection, SettingsStatusBadge } from "@/components/admin/settings-panel";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 export function useRagSettingsController({
   initialState,
@@ -180,3 +185,461 @@ export function RagSettings(
   if (!("kind" in model)) return model;
   return <RagSettingsView model={model} />;
 }
+
+
+export type RagSettingsViewModel = Extract<
+  ReturnType<typeof useRagSettingsController>,
+  { kind: "ready" }
+>;
+export function RagSettingsView({ model }: { model: RagSettingsViewModel }) {
+  const { configured, t } = model;
+  return (
+    <SettingsSection
+      icon={DatabaseZapIcon}
+      title={t("title")}
+      description={t("description")}
+      badge={
+        <SettingsStatusBadge
+          label={configured ? t("statusConfigured") : t("statusFallback")}
+          tone={configured ? "success" : "warning"}
+        />
+      }
+    >
+      <RagSettingsSection1 model={model} />
+    </SettingsSection>
+  );
+}
+
+
+export function RagSettingsFieldsSection1({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const {
+    discovering,
+    modelValue,
+    numberValue,
+    selectModel,
+    setSettings,
+    settings,
+    t,
+    visionModels,
+  } = model;
+  return (
+    <div className="rounded-xl border bg-background p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <Label htmlFor="rag-ocr" help={t("ocrHint")}>
+            {t("ocr")}
+          </Label>
+          <p className="mt-1 text-xs text-muted-foreground">{t("ocrHint")}</p>
+        </div>
+        <Switch
+          id="rag-ocr"
+          checked={settings.extraction.ocr.enabled}
+          onCheckedChange={(enabled) =>
+            setSettings({
+              ...settings,
+              extraction: {
+                ...settings.extraction,
+                ocr: { ...settings.extraction.ocr, enabled },
+              },
+            })
+          }
+        />
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">{t("anydocHint")}</p>
+      {settings.extraction.ocr.enabled ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5 sm:col-span-2">
+            <Label htmlFor="rag-discovered-ocr-model" help={t("ocrModelHelp")}>
+              {t("discoveredOcrModel")}
+            </Label>
+            <Select onValueChange={(value) => selectModel(value, "ocr")}>
+              <SelectTrigger id="rag-discovered-ocr-model">
+                <SelectValue
+                  placeholder={
+                    discovering
+                      ? t("discoveringModels")
+                      : t("selectVisionModel")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {visionModels.map((model) => (
+                    <SelectItem
+                      key={`ocr-${modelValue(model)}`}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} ·{" "}
+                      {model.displayName || model.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Label htmlFor="rag-ocr-model" help={t("ocrModelHelp")}>
+              {t("ocrModel")}
+            </Label>
+            <Input
+              id="rag-ocr-model"
+              value={settings.extraction.ocr.modelId}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  extraction: {
+                    ...settings.extraction,
+                    ocr: {
+                      ...settings.extraction.ocr,
+                      providerId: null,
+                      modelId: event.target.value,
+                    },
+                  },
+                })
+              }
+              placeholder={t("modelPlaceholder")}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label
+              htmlFor="rag-ocr-minimum-text"
+              help={t("ocrMinimumTextHelp")}
+            >
+              {t("ocrMinimumText")}
+            </Label>
+            <Input
+              id="rag-ocr-minimum-text"
+              type="number"
+              min={0}
+              max={10000}
+              value={settings.extraction.ocr.minimumTextCharactersPerPage}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  extraction: {
+                    ...settings.extraction,
+                    ocr: {
+                      ...settings.extraction.ocr,
+                      minimumTextCharactersPerPage: numberValue(
+                        event.target.value,
+                        settings.extraction.ocr.minimumTextCharactersPerPage,
+                      ),
+                    },
+                  },
+                })
+              }
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="rag-ocr-max-pages" help={t("ocrMaxPagesHelp")}>
+              {t("ocrMaxPages")}
+            </Label>
+            <Input
+              id="rag-ocr-max-pages"
+              type="number"
+              min={1}
+              max={500}
+              value={settings.extraction.ocr.maxVisualPages}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  extraction: {
+                    ...settings.extraction,
+                    ocr: {
+                      ...settings.extraction.ocr,
+                      maxVisualPages: numberValue(
+                        event.target.value,
+                        settings.extraction.ocr.maxVisualPages,
+                      ),
+                    },
+                  },
+                })
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-3 sm:col-span-2">
+            <Label
+              htmlFor="rag-ocr-diagrams"
+              help={t("ocrDescribeDiagramsHelp")}
+            >
+              {t("ocrDescribeDiagrams")}
+            </Label>
+            <Switch
+              id="rag-ocr-diagrams"
+              checked={settings.extraction.ocr.describeDiagrams}
+              onCheckedChange={(describeDiagrams) =>
+                setSettings({
+                  ...settings,
+                  extraction: {
+                    ...settings.extraction,
+                    ocr: {
+                      ...settings.extraction.ocr,
+                      describeDiagrams,
+                    },
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
+export function RagSettingsFieldsSection2({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const {
+    discovering,
+    modelValue,
+    rerankingModels,
+    selectModel,
+    setSettings,
+    settings,
+    t,
+  } = model;
+  return (
+    <div className="rounded-xl border bg-background p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <Label htmlFor="rag-reranking" help={t("rerankingHint")}>
+            {t("reranking")}
+          </Label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("rerankingHint")}
+          </p>
+        </div>
+        <Switch
+          id="rag-reranking"
+          checked={settings.reranking.enabled}
+          onCheckedChange={(enabled) =>
+            setSettings({
+              ...settings,
+              reranking: { ...settings.reranking, enabled },
+            })
+          }
+        />
+      </div>
+      {settings.reranking.enabled ? (
+        <div className="mt-4 grid gap-1.5">
+          <Label
+            htmlFor="rag-discovered-reranking-model"
+            help={t("rerankingModelHelp")}
+          >
+            {t("discoveredRerankingModel")}
+          </Label>
+          <Select onValueChange={(value) => selectModel(value, "reranking")}>
+            <SelectTrigger id="rag-discovered-reranking-model">
+              <SelectValue
+                placeholder={
+                  discovering ? t("discoveringModels") : t("selectModel")
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {rerankingModels.map((model) => (
+                  <SelectItem key={modelValue(model)} value={modelValue(model)}>
+                    {model.providerName} · {model.displayName || model.modelId}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Label htmlFor="rag-reranking-model" help={t("rerankingModelHelp")}>
+            {t("rerankingModel")}
+          </Label>
+          <Input
+            id="rag-reranking-model"
+            value={settings.reranking.modelId}
+            onChange={(event) =>
+              setSettings({
+                ...settings,
+                reranking: {
+                  ...settings.reranking,
+                  modelId: event.target.value,
+                },
+              })
+            }
+            placeholder={t("modelPlaceholder")}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
+export function RagSettingsFieldsSection3({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const { numberValue, setSettings, settings, t } = model;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {(
+        [
+          ["chunkSize", "maxCharacters", settings.chunking.maxCharacters],
+          [
+            "chunkOverlap",
+            "overlapCharacters",
+            settings.chunking.overlapCharacters,
+          ],
+          ["candidates", "candidateCount", settings.retrieval.candidateCount],
+          ["results", "resultCount", settings.retrieval.resultCount],
+        ] as const
+      ).map(([label, key, value]) => (
+        <div className="grid gap-1.5" key={key}>
+          <Label htmlFor={`rag-${key}`} help={t(`${label}Help`)}>
+            {t(label)}
+          </Label>
+          <Input
+            id={`rag-${key}`}
+            type="number"
+            min={key === "overlapCharacters" ? 0 : 1}
+            value={value}
+            onChange={(event) => {
+              const next = numberValue(event.target.value, value);
+              setSettings(
+                key === "maxCharacters" || key === "overlapCharacters"
+                  ? {
+                      ...settings,
+                      chunking: { ...settings.chunking, [key]: next },
+                    }
+                  : {
+                      ...settings,
+                      retrieval: { ...settings.retrieval, [key]: next },
+                    },
+              );
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+export function RagSettingsFieldsSection4({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const {
+    discovering,
+    embeddingModels,
+    modelValue,
+    numberValue,
+    selectModel,
+    setSettings,
+    settings,
+    t,
+  } = model;
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-1.5">
+        <Label
+          htmlFor="rag-discovered-embedding-model"
+          help={t("discoveredEmbeddingModelHelp")}
+        >
+          {t("discoveredEmbeddingModel")}
+        </Label>
+        <Select onValueChange={(value) => selectModel(value, "embedding")}>
+          <SelectTrigger id="rag-discovered-embedding-model">
+            <SelectValue
+              placeholder={
+                discovering ? t("discoveringModels") : t("selectModel")
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {embeddingModels.map((model) => (
+                <SelectItem key={modelValue(model)} value={modelValue(model)}>
+                  {model.providerName} · {model.displayName || model.modelId}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Label htmlFor="rag-embedding-model" help={t("embeddingModelHelp")}>
+          {t("embeddingModel")}
+        </Label>
+        <Input
+          id="rag-embedding-model"
+          value={settings.embedding.modelId}
+          onChange={(event) =>
+            setSettings({
+              ...settings,
+              embedding: {
+                ...settings.embedding,
+                modelId: event.target.value,
+              },
+            })
+          }
+          placeholder={t("modelPlaceholder")}
+        />
+        <p className="text-xs text-muted-foreground">{t("autoProviderHint")}</p>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="rag-dimensions" help={t("dimensionsHelp")}>
+          {t("dimensions")}
+        </Label>
+        <Input
+          id="rag-dimensions"
+          type="number"
+          min={1}
+          value={settings.embedding.dimensions ?? ""}
+          onChange={(event) =>
+            setSettings({
+              ...settings,
+              embedding: {
+                ...settings.embedding,
+                dimensions: event.target.value
+                  ? numberValue(event.target.value, 1)
+                  : null,
+              },
+            })
+          }
+          placeholder={t("dimensionsPlaceholder")}
+        />
+      </div>
+    </div>
+  );
+}
+
+
+export function RagSettingsSection1({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const { save, saving, t } = model;
+  return (
+    <div className="grid gap-5">
+      <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        {t("simpleHint")}
+      </div>
+      <RagSettingsFieldsSection4 model={model} />
+      <RagSettingsFieldsSection3 model={model} />
+      <RagSettingsFieldsSection2 model={model} />
+      <RagSettingsFieldsSection1 model={model} />
+      <Button type="button" onClick={() => void save()} disabled={saving}>
+        {saving ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <SaveIcon data-icon="inline-start" />
+        )}
+        {t("save")}
+      </Button>
+    </div>
+  );
+}
+

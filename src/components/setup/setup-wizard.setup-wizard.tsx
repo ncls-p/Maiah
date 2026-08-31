@@ -1,27 +1,23 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
-
-import type { DiscoveredModel } from "@/components/providers/provider-manager/types";
+import { DiscoveredModel } from "@/components/providers/provider-manager/types";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
-import {
-  ProviderModel,
-  ProviderSummary,
-  SetupWizardProps,
-  StepId,
-  defaultAuthType,
-  slugify,
-} from "./setup-wizard.button-type";
+import { ProviderModel, ProviderSummary, SetupWizardProps, StepId, defaultAuthType, slugify, SetupStepper, BUTTON_TYPE, OUTLINE_VARIANT, ModelMetadata, ProviderKind } from "./setup-wizard.button-type";
 import { createSetupProviderForm } from "./setup-wizard.provider-form";
-import {
-  SetupWizardLoadError,
-  SetupWizardLoading,
-} from "./setup-wizard.status";
+import { SetupWizardLoadError, SetupWizardLoading } from "./setup-wizard.status";
 import { useSetupWizardCatalog } from "./setup-wizard.use-catalog";
+import { Link } from "@/i18n/navigation";
+import { Loader2, MessageSquareIcon, CheckCircle2Icon, PlugZapIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 export function useSetupWizardController({
   mode = "page",
@@ -296,3 +292,525 @@ export function useSetupWizardController({
     t,
   } as const;
 }
+
+
+export type SetupWizardViewModel = Extract<
+  ReturnType<typeof useSetupWizardController>,
+  { kind: "ready" }
+>;
+export function SetupWizardView({ model }: { model: SetupWizardViewModel }) {
+  const { onCancelAction, step } = model;
+  return (
+    <div className="flex flex-col gap-6">
+      <SetupStepper currentStep={step} />
+
+      {/* ── Step: Provider ── */}
+      {step === "provider" && <SetupWizardProviderStep model={model} />}
+
+      {/* ── Step: SetupWizardViewModel ── */}
+      {step === "model" && <SetupWizardModelStep model={model} />}
+
+      {/* ── Step: Agent ── */}
+      {step === "agent" && <SetupWizardAgentStep model={model} />}
+
+      {onCancelAction && <SetupWizardPart1Step model={model} />}
+    </div>
+  );
+}
+
+
+export function SetupWizardAgentStep({
+  model,
+}: {
+  model: SetupWizardViewModel;
+}) {
+  const {
+    agentForm,
+    agentId,
+    busy,
+    finishSetup,
+    mode,
+    modelDbId,
+    selectedModel,
+    selectedProvider,
+    setAgentForm,
+    setStep,
+    t,
+  } = model;
+  return (
+    <Card className="animate-in-up">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5">
+          <MessageSquareIcon
+            className="size-5 text-primary"
+            aria-hidden="true"
+          />
+          {t("agentTitle")}
+        </CardTitle>
+        <CardDescription>{t("agentStepDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          {/* Summary */}
+          <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">{t("connection")}</span>
+                <span className="font-medium">{selectedProvider?.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">{t("model")}</span>
+                <span className="font-medium">
+                  {selectedModel?.displayName ?? selectedModel?.modelId}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {agentId ? (
+            <FieldDescription>{t("currentAssistantHint")}</FieldDescription>
+          ) : (
+            <Field>
+              <FieldLabel htmlFor="agent-name">{t("assistantName")}</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="agent-name"
+                  name="setup-agent-name"
+                  autoComplete="off"
+                  placeholder={t("assistantNamePlaceholder")}
+                  value={agentForm.name}
+                  onChange={(event) =>
+                    setAgentForm({ name: event.target.value })
+                  }
+                />
+              </FieldContent>
+            </Field>
+          )}
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              type={BUTTON_TYPE}
+              onClick={() => void finishSetup()}
+              disabled={
+                busy || !modelDbId || (!agentId && !agentForm.name.trim())
+              }
+            >
+              {busy ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <MessageSquareIcon
+                  data-icon="inline-start"
+                  aria-hidden="true"
+                />
+              )}
+              {t("startChat")}
+            </Button>
+            <Button
+              type={BUTTON_TYPE}
+              variant={OUTLINE_VARIANT}
+              onClick={() => setStep("model")}
+            >
+              {t("back")}
+            </Button>
+            {mode === "page" && (
+              <Button variant="ghost" asChild>
+                <Link href={agentId ? `/chat?agentId=${agentId}` : "/chat"}>
+                  {t("skipForNow")}
+                </Link>
+              </Button>
+            )}
+          </div>
+        </FieldGroup>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+export function SetupWizardModelStep({
+  model,
+}: {
+  model: SetupWizardViewModel;
+}) {
+  const {
+    addAndSelectModel,
+    addDiscoveredModel,
+    busy,
+    discoveredModels,
+    loadingModels,
+    manualModelId,
+    modelDbId,
+    models,
+    providerId,
+    providers,
+    selectedModel,
+    setManualModelId,
+    setModelDbId,
+    setProviderId,
+    setStep,
+    t,
+  } = model;
+  return (
+    <Card className="animate-in-up">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5">
+          <CheckCircle2Icon
+            className="size-5 text-primary"
+            aria-hidden="true"
+          />
+          {t("modelTitle")}
+        </CardTitle>
+        <CardDescription>{t("modelStepDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          {providers.length > 0 ? (
+            <Field>
+              <FieldLabel htmlFor="setup-provider">
+                {t("connection")}
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  value={providerId ?? undefined}
+                  onValueChange={(value) => {
+                    setProviderId(value);
+                    setModelDbId(null);
+                  }}
+                >
+                  <SelectTrigger id="setup-provider" className="w-full">
+                    <SelectValue placeholder={t("selectConnection")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {providers.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type={BUTTON_TYPE}
+              variant="ghost"
+              onClick={() => setStep("provider")}
+            >
+              {t("changeConnection")}
+            </Button>
+          </div>
+
+          {/* Saved models selector */}
+          {models.length > 0 && (
+            <Field>
+              <FieldLabel htmlFor="setup-model">
+                {t("modelForAssistant")}
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  value={modelDbId ?? undefined}
+                  onValueChange={setModelDbId}
+                  disabled={loadingModels}
+                >
+                  <SelectTrigger id="setup-model" className="w-full">
+                    <SelectValue placeholder={t("selectModel")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {models.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.displayName ?? model.modelId}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {selectedModel && (
+                  <ModelMetadata
+                    capabilities={selectedModel.capabilitiesJson}
+                    contextWindow={selectedModel.contextWindow}
+                    maxOutputTokens={selectedModel.maxOutputTokens}
+                    inputTokenCost={selectedModel.inputTokenCost}
+                    outputTokenCost={selectedModel.outputTokenCost}
+                    enabled={selectedModel.enabled}
+                  />
+                )}
+              </FieldContent>
+            </Field>
+          )}
+
+          {models.length === 0 && discoveredModels.length > 0 && (
+            <Field>
+              <FieldLabel htmlFor="setup-discovered-model">
+                {t("modelForAssistant")}
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  onValueChange={(value) => void addDiscoveredModel(value)}
+                  disabled={loadingModels || busy}
+                >
+                  <SelectTrigger id="setup-discovered-model" className="w-full">
+                    <SelectValue placeholder={t("selectModel")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {discoveredModels.map((model) => (
+                        <SelectItem key={model.modelId} value={model.modelId}>
+                          {model.displayName ?? model.modelId}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+          )}
+
+          {models.length === 0 && discoveredModels.length === 0 && (
+            <Field>
+              <FieldLabel htmlFor="manual-model">
+                {t("manualModelLabel")}
+              </FieldLabel>
+              <FieldContent>
+                <div className="flex gap-2">
+                  <Input
+                    id="manual-model"
+                    name="setup-manual-model"
+                    autoComplete="off"
+                    placeholder="gpt-4o-mini…"
+                    value={manualModelId}
+                    onChange={(event) => setManualModelId(event.target.value)}
+                  />
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant={OUTLINE_VARIANT}
+                    disabled={busy || !providerId || !manualModelId.trim()}
+                    onClick={() => void addAndSelectModel()}
+                  >
+                    {t("addModel")}
+                  </Button>
+                </div>
+                <FieldDescription>{t("noRegisteredModels")}</FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+
+          <Button
+            type={BUTTON_TYPE}
+            className="mt-2"
+            onClick={() => setStep("agent")}
+            disabled={!modelDbId}
+          >
+            {t("continue")}
+          </Button>
+        </FieldGroup>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+export function SetupWizardPart1Step({
+  model,
+}: {
+  model: SetupWizardViewModel;
+}) {
+  const { onCancelAction, t } = model;
+  return (
+    <Button type={BUTTON_TYPE} variant="ghost" onClick={onCancelAction}>
+      {t("cancel")}
+    </Button>
+  );
+}
+
+
+export function SetupWizardProviderStep({
+  model,
+}: {
+  model: SetupWizardViewModel;
+}) {
+  const {
+    busy,
+    createProvider,
+    loadingProviders,
+    providerForm,
+    providers,
+    setProviderForm,
+    setStep,
+    t,
+  } = model;
+  return (
+    <Card className="animate-in-up">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5">
+          <PlugZapIcon className="size-5 text-primary" aria-hidden="true" />
+          {t("providerTitle")}
+        </CardTitle>
+        <CardDescription>{t("providerStepDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="provider-name">
+              {t("connectionName")}
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                id="provider-name"
+                name="setup-provider-name"
+                autoComplete="organization"
+                placeholder={t("connectionNamePlaceholder")}
+                value={providerForm.name}
+                onChange={(event) =>
+                  setProviderForm({
+                    ...providerForm,
+                    name: event.target.value,
+                  })
+                }
+              />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="provider-kind">{t("providerType")}</FieldLabel>
+            <FieldContent>
+              <Select
+                value={providerForm.kind}
+                onValueChange={(value) =>
+                  setProviderForm({
+                    ...providerForm,
+                    kind: value as ProviderKind,
+                  })
+                }
+              >
+                <SelectTrigger id="provider-kind" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="openai-compatible">
+                      OpenAI-compatible
+                    </SelectItem>
+                    <SelectItem value="vercel-ai-gateway">
+                      Vercel AI Gateway
+                    </SelectItem>
+                    <SelectItem value="dragonfly">Dragonfly</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </FieldContent>
+          </Field>
+
+          {providerForm.kind === "openai-compatible" ? (
+            <Field>
+              <FieldLabel htmlFor="openai-compatible-api-route">
+                {t("apiRoute")}
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  value={providerForm.openaiCompatibleApiRoute}
+                  onValueChange={(value) =>
+                    setProviderForm({
+                      ...providerForm,
+                      openaiCompatibleApiRoute:
+                        value as OpenAICompatibleApiRoute,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    id="openai-compatible-api-route"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="responses">
+                        {t("apiRouteResponses")}
+                      </SelectItem>
+                      <SelectItem value="chat-completions">
+                        {t("apiRouteChatCompletions")}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FieldDescription>{t("apiRouteHint")}</FieldDescription>
+              </FieldContent>
+            </Field>
+          ) : null}
+
+          <Field>
+            <FieldLabel htmlFor="base-url">{t("serviceUrl")}</FieldLabel>
+            <FieldContent>
+              <Input
+                id="base-url"
+                name="setup-provider-base-url"
+                inputMode="url"
+                autoComplete="url"
+                placeholder="https://api.openai.com/v1"
+                value={providerForm.baseUrl}
+                onChange={(event) =>
+                  setProviderForm({
+                    ...providerForm,
+                    baseUrl: event.target.value,
+                  })
+                }
+              />
+              <FieldDescription>{t("serviceUrlHint")}</FieldDescription>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="api-key">{t("apiKey")}</FieldLabel>
+            <FieldContent>
+              <Input
+                id="api-key"
+                name="setup-provider-api-key"
+                type="password"
+                autoComplete="new-password"
+                placeholder="sk-…"
+                value={providerForm.apiKey}
+                onChange={(event) =>
+                  setProviderForm({
+                    ...providerForm,
+                    apiKey: event.target.value,
+                  })
+                }
+              />
+            </FieldContent>
+          </Field>
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              type={BUTTON_TYPE}
+              onClick={() => void createProvider()}
+              disabled={busy || !providerForm.name.trim()}
+            >
+              {busy ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <PlugZapIcon data-icon="inline-start" aria-hidden="true" />
+              )}
+              {t("saveContinue")}
+            </Button>
+            {providers.length > 0 ? (
+              <Button
+                type={BUTTON_TYPE}
+                variant={OUTLINE_VARIANT}
+                disabled={loadingProviders}
+                onClick={() => setStep("model")}
+              >
+                {t("useExistingConnection")}
+              </Button>
+            ) : null}
+          </div>
+        </FieldGroup>
+      </CardContent>
+    </Card>
+  );
+}
+
