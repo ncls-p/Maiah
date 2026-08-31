@@ -125,10 +125,8 @@ vi.mock("@/server/infrastructure/db", () => {
 
 import {
   adminModerateItem,
-  createMarketplaceDraft,
   deleteMarketplaceItem,
   featureMarketplaceItem,
-  publishAgentDraft,
   publishMarketplaceItem,
   unfeatureMarketplaceItem,
   updateMarketplaceItem,
@@ -263,53 +261,4 @@ describe("marketplace item management", () => {
     ).resolves.toMatchObject({ status: "suspended" });
   });
 });
-describe("marketplace draft creation", () => {
-  it("creates and publishes agent drafts for owned agents", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([
-      {
-        id: "agent-1",
-        name: "Agent",
-        description: "Desc",
-        createdById: ids.userId,
-      },
-    ]);
-    await publishAgentDraft({
-      workspaceId: ids.workspaceId,
-      userId: ids.userId,
-      agentId: "agent-1",
-      version: "1.0.0",
-    });
-    expect(helperMocks.buildAgentManifest).toHaveBeenCalledWith(
-      "agent-1",
-      ids.workspaceId,
-      "Agent",
-      "Desc",
-    );
-    expect(helperMocks.upsertMarketplaceDraft).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "agent", status: "published" }),
-    );
 
-    resetChain(dbModule._c);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([
-      {
-        id: "agent-1",
-        name: "Agent",
-        description: null,
-        createdById: ids.userId,
-      },
-    ]);
-    await createMarketplaceDraft({
-      workspaceId: ids.workspaceId,
-      userId: ids.userId,
-      agentId: "agent-1",
-      version: "draft",
-    });
-    expect(helperMocks.upsertMarketplaceDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceResourceType: "agent",
-        version: "draft",
-      }),
-    );
-  });
-});

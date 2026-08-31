@@ -1,5 +1,10 @@
+import { logHandledError } from "@/lib/logger";
 import { handleRoute } from "@/lib/route-handler";
-import { requireAdminApiSession } from "@/modules/admin/auth";
+import {
+  isPlatformAdminSession,
+  requireAdminApiSession,
+} from "@/modules/admin/auth";
+import { getSession } from "@/modules/auth/session";
 import {
   getRegistrationSetting,
   setRegistrationEnabled,
@@ -13,8 +18,23 @@ const updateSettingsSchema = z.object({
 
 export async function GET() {
   try {
-    return NextResponse.json(await getRegistrationSetting());
-  } catch {
+    const session = await getSession();
+    const setting = await getRegistrationSetting();
+    if (await isPlatformAdminSession(session)) {
+      return NextResponse.json(setting);
+    }
+    // Public consumers (the signup page) only need to know whether public
+    // registration is open; the user count stays behind the admin session.
+    return NextResponse.json({
+      registrationEnabled: setting.registrationEnabled,
+      canPublicSignUp: setting.canPublicSignUp,
+    });
+  } catch (error) {
+    logHandledError(
+      "Failed to read admin settings",
+      {},
+      error instanceof Error ? error : undefined,
+    );
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

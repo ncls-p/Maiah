@@ -1,31 +1,12 @@
 "use client";
-
-import { ChevronDownIcon, ListTreeIcon, XIcon } from "lucide-react";
+import { ListTreeIcon, ChevronDownIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type * as React from "react";
+import * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-
-import {
-  useMessageScroller,
-  useMessageScrollerVisibility,
-} from "@/components/ui/message-scroller";
+import { useMessageScroller, useMessageScrollerVisibility } from "@/components/ui/message-scroller";
 import { cn } from "@/lib/utils";
-import {
-  MESSAGE_JUMP_SCROLL_MARGIN,
-  UserMessageShortcut,
-  preferredScrollBehavior,
-  rememberUserMessageAnchor,
-} from "./chat-message-list.initial-visible-messages";
-
-const RAIL_EXPANDED_CHAR_LIMIT = 420;
-const RAIL_LONG_CHAR_THRESHOLD = 140;
-
-function clipRailText(text: string, limit: number) {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (normalized.length <= limit) return normalized;
-  return `${normalized.slice(0, limit).trimEnd()}…`;
-}
+import { MESSAGE_JUMP_SCROLL_MARGIN, UserMessageShortcut, preferredScrollBehavior, rememberUserMessageAnchor } from "./chat-message-list.initial-visible-messages";
 
 function canHoverOpenPanel() {
   return (
@@ -137,7 +118,136 @@ export function UserMessageRail({
     setExpandedShortcutId(null);
   };
 
-  const panelBody = (
+  return (
+    <>
+      {typeof document !== "undefined" && isPanelOpen
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-40 bg-background/45 sm:hidden"
+                onClick={closePanel}
+              />
+              <div
+                className="fixed inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.75rem))] z-40 flex max-h-[min(70dvh,32rem)] min-h-0 flex-col overflow-hidden rounded-[1.35rem] border border-transparent bg-popover text-popover-foreground shadow-[var(--floating-shadow)] origin-bottom animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-3 duration-150 motion-reduce:animate-none sm:hidden"
+                onWheelCapture={(event) => event.stopPropagation()}
+              >
+                <UserMessageRailPanelBody
+                  t={t}
+                  shortcuts={shortcuts}
+                  currentShortcutId={currentShortcutId}
+                  expandedShortcutId={expandedShortcutId}
+                  onShortcutJump={jumpToShortcut}
+                  onToggleExpand={(shortcutId) =>
+                    setExpandedShortcutId((current) =>
+                      current === shortcutId ? null : shortcutId,
+                    )
+                  }
+                  onClose={closePanel}
+                />
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
+
+      <nav
+        aria-label={t("userMessageShortcuts")}
+        className={cn(
+          "absolute z-30 flex items-end gap-2 sm:items-center",
+          "right-2 bottom-[max(5.75rem,calc(env(safe-area-inset-bottom)+5rem))] sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2",
+        )}
+        onMouseEnter={() => {
+          if (canHoverOpenPanel()) setIsPanelOpen(true);
+        }}
+        onMouseLeave={() => {
+          if (canHoverOpenPanel()) closePanel();
+        }}
+        onBlur={(event) => {
+          const nextFocusedElement = event.relatedTarget as Node | null;
+          if (
+            !nextFocusedElement ||
+            !event.currentTarget.contains(nextFocusedElement)
+          ) {
+            if (canHoverOpenPanel()) closePanel();
+          }
+        }}
+      >
+        {isPanelOpen ? (
+          <div
+            className="hidden max-h-[min(42vh,22rem)] w-[min(18.5rem,calc(100vw-5.5rem))] origin-right animate-in fade-in-0 zoom-in-95 slide-in-from-right-2 flex-col overflow-hidden rounded-2xl border border-transparent bg-popover text-popover-foreground shadow-[var(--floating-shadow)] duration-150 motion-reduce:animate-none sm:flex"
+            onWheelCapture={(event) => event.stopPropagation()}
+          >
+            <UserMessageRailPanelBody
+              t={t}
+              shortcuts={shortcuts}
+              currentShortcutId={currentShortcutId}
+              expandedShortcutId={expandedShortcutId}
+              onShortcutJump={jumpToShortcut}
+              onToggleExpand={(shortcutId) =>
+                setExpandedShortcutId((current) =>
+                  current === shortcutId ? null : shortcutId,
+                )
+              }
+              onClose={closePanel}
+            />
+          </div>
+        ) : null}
+        <button
+          type="button"
+          aria-expanded={isPanelOpen}
+          aria-label={t("showUserMessages", { count: shortcuts.length })}
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/96 text-muted-foreground outline-none transition-[background-color,border-color,box-shadow,color,transform] duration-150 ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96] sm:size-8",
+            isPanelOpen
+              ? "border-primary/25 bg-primary/[0.06] text-primary shadow-[var(--control-shadow)]"
+              : "shadow-[var(--control-shadow)] hover:shadow-[var(--control-shadow-hover)]",
+          )}
+          onFocus={() => {
+            if (canHoverOpenPanel()) setIsPanelOpen(true);
+          }}
+          onClick={() =>
+            setIsPanelOpen((open) => {
+              if (open) setExpandedShortcutId(null);
+              return !open;
+            })
+          }
+        >
+          <ListTreeIcon className="size-3.5" aria-hidden="true" />
+        </button>
+      </nav>
+    </>
+  );
+}
+
+
+const RAIL_EXPANDED_CHAR_LIMIT = 420;
+const RAIL_LONG_CHAR_THRESHOLD = 140;
+
+function clipRailText(text: string, limit: number) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, limit).trimEnd()}…`;
+}
+
+export function UserMessageRailPanelBody({
+  t,
+  shortcuts,
+  currentShortcutId,
+  expandedShortcutId,
+  onShortcutJump,
+  onToggleExpand,
+  onClose,
+}: {
+  t: ReturnType<typeof useTranslations<"chat.messageList">>;
+  shortcuts: UserMessageShortcut[];
+  currentShortcutId: string | null;
+  expandedShortcutId: string | null;
+  onShortcutJump: (shortcut: UserMessageShortcut) => void;
+  onToggleExpand: (shortcutId: string) => void;
+  onClose: () => void;
+}) {
+  return (
     <>
       <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-2 pt-3 sm:px-2.5 sm:pb-1.5 sm:pt-1.5">
         <div className="min-w-0">
@@ -156,7 +266,7 @@ export function UserMessageRail({
             type="button"
             className="flex size-8 items-center justify-center rounded-xl text-muted-foreground outline-none transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96] sm:hidden"
             aria-label={t("closeUserMessages")}
-            onClick={closePanel}
+            onClick={onClose}
           >
             <XIcon className="size-3.5" aria-hidden="true" />
           </button>
@@ -167,8 +277,9 @@ export function UserMessageRail({
         {shortcuts.map((shortcut, index) => {
           const isCurrent = currentShortcutId === shortcut.id;
           const isExpanded = expandedShortcutId === shortcut.id;
-          const normalizedLength = shortcut.fullText.replace(/\s+/g, " ").trim()
-            .length;
+          const normalizedLength = shortcut.fullText
+            .replace(/\s+/g, " ")
+            .trim().length;
           const isLong = normalizedLength > RAIL_LONG_CHAR_THRESHOLD;
           const displayText = isExpanded
             ? clipRailText(shortcut.fullText, RAIL_EXPANDED_CHAR_LIMIT)
@@ -206,7 +317,7 @@ export function UserMessageRail({
                   preview: shortcut.preview,
                 })}
                 className="relative z-[1] flex w-full items-start gap-2.5 px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset active:scale-[0.99]"
-                onClick={() => jumpToShortcut(shortcut)}
+                onClick={() => onShortcutJump(shortcut)}
               >
                 <span
                   className={cn(
@@ -245,9 +356,7 @@ export function UserMessageRail({
                   aria-expanded={isExpanded}
                   onClick={(event) => {
                     event.stopPropagation();
-                    setExpandedShortcutId((current) =>
-                      current === shortcut.id ? null : shortcut.id,
-                    );
+                    onToggleExpand(shortcut.id);
                   }}
                 >
                   <ChevronDownIcon
@@ -268,82 +377,5 @@ export function UserMessageRail({
       </div>
     </>
   );
-
-  return (
-    <>
-      {typeof document !== "undefined" && isPanelOpen
-        ? createPortal(
-            <>
-              <button
-                type="button"
-                aria-label={t("closeUserMessages")}
-                className="fixed inset-0 z-40 bg-background/45 sm:hidden"
-                onClick={closePanel}
-              />
-              <div
-                className="fixed inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.75rem))] z-40 flex max-h-[min(70dvh,32rem)] min-h-0 flex-col overflow-hidden rounded-[1.35rem] border border-transparent bg-popover text-popover-foreground shadow-[var(--floating-shadow)] origin-bottom animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-3 duration-150 motion-reduce:animate-none sm:hidden"
-                onWheelCapture={(event) => event.stopPropagation()}
-              >
-                {panelBody}
-              </div>
-            </>,
-            document.body,
-          )
-        : null}
-
-      <nav
-        aria-label={t("userMessageShortcuts")}
-        className={cn(
-          "absolute z-30 flex items-end gap-2 sm:items-center",
-          "right-2 bottom-[max(5.75rem,calc(env(safe-area-inset-bottom)+5rem))] sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2",
-        )}
-        onMouseEnter={() => {
-          if (canHoverOpenPanel()) setIsPanelOpen(true);
-        }}
-        onMouseLeave={() => {
-          if (canHoverOpenPanel()) closePanel();
-        }}
-        onBlur={(event) => {
-          const nextFocusedElement = event.relatedTarget as Node | null;
-          if (
-            !nextFocusedElement ||
-            !event.currentTarget.contains(nextFocusedElement)
-          ) {
-            if (canHoverOpenPanel()) closePanel();
-          }
-        }}
-      >
-        {isPanelOpen ? (
-          <div
-            className="hidden max-h-[min(42vh,22rem)] w-[min(18.5rem,calc(100vw-5.5rem))] origin-right animate-in fade-in-0 zoom-in-95 slide-in-from-right-2 flex-col overflow-hidden rounded-2xl border border-transparent bg-popover text-popover-foreground shadow-[var(--floating-shadow)] duration-150 motion-reduce:animate-none sm:flex"
-            onWheelCapture={(event) => event.stopPropagation()}
-          >
-            {panelBody}
-          </div>
-        ) : null}
-        <button
-          type="button"
-          aria-expanded={isPanelOpen}
-          aria-label={t("showUserMessages", { count: shortcuts.length })}
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/96 text-muted-foreground outline-none transition-[background-color,border-color,box-shadow,color,transform] duration-150 ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96] sm:size-8",
-            isPanelOpen
-              ? "border-primary/25 bg-primary/[0.06] text-primary shadow-[var(--control-shadow)]"
-              : "shadow-[var(--control-shadow)] hover:shadow-[var(--control-shadow-hover)]",
-          )}
-          onFocus={() => {
-            if (canHoverOpenPanel()) setIsPanelOpen(true);
-          }}
-          onClick={() =>
-            setIsPanelOpen((open) => {
-              if (open) setExpandedShortcutId(null);
-              return !open;
-            })
-          }
-        >
-          <ListTreeIcon className="size-3.5" aria-hidden="true" />
-        </button>
-      </nav>
-    </>
-  );
 }
+

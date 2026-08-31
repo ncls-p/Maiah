@@ -33,6 +33,8 @@ __pycache__/
 
 # local app/agent caches (keep .agents/ skills and AGENT*.md tracked)
 .pi-lens/
+.pi/
+.work/
 .data/
 
 # debug

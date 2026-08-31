@@ -3,6 +3,7 @@ export {
   completeChatStream,
   createChatStreamResponse,
   hasActiveChatStream,
+  MAX_RUN_EVENTS,
   publishChatStreamEvent,
   registerChatStreamAbortController,
   subscribeToChatStream,

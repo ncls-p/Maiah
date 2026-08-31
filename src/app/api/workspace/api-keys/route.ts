@@ -80,13 +80,27 @@ export async function POST(req: NextRequest) {
     {
       logLabel: "Failed to create API key",
       expectedError: (error) => {
+        // Whitelist the expected domain messages (fixed text — the raw
+        // message may embed caller-supplied scope names); anything else
+        // falls through to the generic 500 + server log.
         const message = error instanceof Error ? error.message : null;
-        if (
-          message?.startsWith("At least one API token scope") ||
-          message?.startsWith("Unknown API token scopes") ||
-          message?.startsWith("API token scopes exceed")
-        ) {
-          return NextResponse.json({ error: message }, { status: 400 });
+        if (message?.startsWith("At least one API token scope")) {
+          return NextResponse.json(
+            { error: "At least one API token scope is required" },
+            { status: 400 },
+          );
+        }
+        if (message?.startsWith("Unknown API token scopes")) {
+          return NextResponse.json(
+            { error: "Unknown API token scopes" },
+            { status: 400 },
+          );
+        }
+        if (message?.startsWith("API token scopes exceed")) {
+          return NextResponse.json(
+            { error: "API token scopes exceed current permissions" },
+            { status: 400 },
+          );
         }
         return null;
       },

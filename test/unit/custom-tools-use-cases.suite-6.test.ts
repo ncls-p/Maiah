@@ -160,132 +160,74 @@ beforeEach(() => {
   vi.mocked(decryptValue).mockResolvedValue("decrypted-value");
 });
 describe("runCustomToolBuilder", () => {
-  it("executes builder tool callbacks for previews, secrets, workflows, credentials, and registration", async () => {
-    const credentialRef = "55555555-5555-4555-8555-555555555555";
-    vi.mocked(decryptValue)
-      .mockResolvedValueOnce("api-key")
-      .mockResolvedValueOnce("header-value")
-      .mockResolvedValueOnce(
-        JSON.stringify({ webhookUrl: "https://discord.test/webhook" }),
-      )
-      .mockResolvedValueOnce(JSON.stringify({ token: "secret-token" }));
-    vi.mocked(callRemoteMcpTool)
-      .mockResolvedValueOnce({
-        content: [{ type: "text", text: JSON.stringify({ id: "wf-created" }) }],
-      })
-      .mockResolvedValueOnce({ content: [{ type: "text", text: "activated" }] })
-      .mockResolvedValueOnce({ content: [{ type: "text", text: "valid" }] })
-      .mockResolvedValueOnce({
-        structuredContent: { id: "n8n-cred-1" },
-        content: [],
-      } as never);
+  it("stops builder side effects at the action budget", async () => {
     vi.mocked(generateText).mockImplementationOnce((async (
       options: unknown,
     ) => {
-      const opts = options as {
-        tools: Record<string, { execute: (input: never) => Promise<unknown> }>;
-      };
-      await opts.tools.update_workflow_preview.execute({
-        title: "Discord notifier",
-        summary: "Send a message",
-        status: "draft",
-        steps: [{ label: "Receive", description: "Get input" }],
-      } as never);
-      await opts.tools.request_user_secrets.execute({
-        title: "Discord",
-        description: "Webhook",
-        fields: [
-          {
-            name: "webhookUrl",
-            label: "Webhook URL",
-            type: "secret",
-            required: true,
-          },
-        ],
-      } as never);
-      await opts.tools.create_n8n_workflow.execute({
-        name: "Discord notifier",
-        nodes: [
-          {
-            name: "Internal trigger",
-            type: "n8n-nodes-base.executeWorkflowTrigger",
-            parameters: { url: `__SECRET:${credentialRef}:webhookUrl__` },
-          },
-        ],
-        connections: {},
-        settings: { executionOrder: "v1" },
-      } as never);
-      await opts.tools.validate_n8n_workflow.execute({
-        id: "wf-created",
-      } as never);
-      await opts.tools.create_n8n_credential_from_ref.execute({
-        credentialRef,
-        credentialType: "discordWebhookApi",
-        name: "Discord webhook",
-      } as never);
-      await opts.tools.register_custom_tool.execute({
-        name: "Discord notifier",
-        description: "Notify Discord",
-        inputSchema: { type: "object" },
-      } as never);
-      return { text: "Registered." } as never;
+      const previewTool = (
+        options as {
+          tools: {
+            update_workflow_preview: {
+              execute: (input: unknown) => Promise<unknown>;
+            };
+          };
+        }
+      ).tools.update_workflow_preview;
+      for (let index = 0; index < 21; index += 1) {
+        await previewTool.execute({
+          title: "Preview",
+          summary: "Summary",
+          status: "draft",
+          steps: [{ label: "Step", description: "Description" }],
+        });
+      }
+      return { text: "never" } as never;
     }) as never);
     dbModule._c.limit
-      .mockResolvedValueOnce([
-        { valueJson: { ...enabledConfig, allowWorkflowActivation: true } },
-      ])
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
       .mockResolvedValueOnce([providerRow])
-      .mockResolvedValueOnce([modelRow])
-      .mockResolvedValueOnce([
-        { id: credentialRef, encryptedPayload: "enc-payload" },
-      ])
-      .mockResolvedValueOnce([
-        { id: credentialRef, encryptedPayload: "enc-payload" },
-      ]);
+      .mockResolvedValueOnce([modelRow]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockReturnValueOnce(dbModule._c)
       .mockReturnValueOnce(dbModule._c)
-      .mockResolvedValueOnce([{ name: "server__n8n_create_workflow" }])
+      .mockResolvedValueOnce([]);
+    await expect(
+      runCustomToolBuilder({
+        workspaceId: "ws-1",
+        userId: "user-1",
+        messages: [{ role: "user", content: "Loop forever" }],
+      }),
+    ).rejects.toThrow("Custom tool builder action limit reached");
+  });
+  it("infers a secure Discord webhook request from assistant text", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      text: "Il me manque le webhook Discord. Clique le bouton sécurisé pour le renseigner.",
+    } as never);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([providerRow])
+      .mockResolvedValueOnce([modelRow]);
+    dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
-      .mockResolvedValueOnce([{ name: "server__n8n_create_workflow" }])
-      .mockResolvedValueOnce([{ name: "server__n8n_update_partial_workflow" }])
-      .mockResolvedValueOnce([{ name: "server__n8n_validate_workflow" }])
       .mockReturnValueOnce(dbModule._c)
-      .mockResolvedValueOnce([{ name: "server__n8n_manage_credentials" }]);
-    dbModule._c.returning
-      .mockResolvedValueOnce([
-        {
-          id: "secret-request-1",
-          title: "Discord",
-          description: "Webhook",
-          expiresAt: new Date(Date.now() + 1000),
-        },
-      ])
-      .mockResolvedValueOnce([
-        { id: "tool-1", name: "Discord notifier", status: "workflow_created" },
-      ]);
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      {
+        id: "secret-req-1",
+        title: "Connexion Discord",
+        description: "desc",
+        expiresAt: new Date(Date.now() + 1000),
+      },
+    ]);
     const result = await runCustomToolBuilder({
       workspaceId: "ws-1",
       userId: "user-1",
-      messages: [{ role: "user", content: "Build it" }],
-      credentialRefs: [{ requestId: "req-1", credentialRef }],
-      isGlobal: true,
+      messages: [{ role: "user", content: "Send Discord alerts" }],
     });
-    expect(result.message).toBe("Registered.");
     expect(result.secretRequests).toHaveLength(1);
-    expect(result.createdWorkflows).toHaveLength(1);
-    expect(result.workflowPreviews).toHaveLength(1);
-    expect(result.registeredTools).toEqual([
-      { id: "tool-1", name: "Discord notifier", status: "workflow_created" },
-    ]);
-    expect(result.progressEvents.map((event) => event.label)).toContain(
-      "Tool enregistré",
-    );
-    expect(callRemoteMcpTool).toHaveBeenCalledWith(
-      expect.any(Object),
-      "server__n8n_create_workflow",
-      expect.objectContaining({ name: "Discord notifier" }),
-    );
+    expect(result.secretRequests[0].fields[0].name).toBe("discord_webhook_url");
+    expect(result.actionCount).toBe(1);
   });
 });

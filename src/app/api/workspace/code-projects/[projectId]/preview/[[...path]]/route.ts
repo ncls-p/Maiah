@@ -5,6 +5,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { logHandledError } from "@/lib/logger";
 import {
   getCodeWorkspace,
   getCodeWorkspaceFileBytes,
@@ -14,6 +15,21 @@ const paramsSchema = z.object({
   projectId: z.uuid(),
   path: z.array(z.string()).optional(),
 });
+
+// Fixed client-facing messages for known code-workspace domain errors.
+// The raw error message stays in the server log only.
+const FILE_NOT_FOUND_MESSAGES = [
+  "File not found in code workspace.",
+  "Code workspace not found.",
+];
+const FILE_UNAVAILABLE_MESSAGES = [
+  "Invalid code workspace id.",
+  "Invalid file path.",
+  "Absolute paths are not allowed.",
+  "Path traversal is not allowed.",
+  "File path is too long.",
+  "File path is too deep.",
+];
 
 const previewCsp = [
   "sandbox allow-scripts allow-modals",
@@ -184,13 +200,18 @@ export async function GET(
       logLabel: "Failed to serve code workspace preview",
       expectedError: (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        if (/not found|path|workspace/i.test(message)) {
-          return NextResponse.json({ error: message }, { status: 404 });
-        }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
+        const fixedMessage = FILE_NOT_FOUND_MESSAGES.includes(message)
+          ? "File not found"
+          : FILE_UNAVAILABLE_MESSAGES.includes(message)
+            ? "File unavailable"
+            : null;
+        if (!fixedMessage) return null;
+        logHandledError(
+          "Failed to serve code workspace preview",
+          { error: message },
+          error instanceof Error ? error : undefined,
         );
+        return NextResponse.json({ error: fixedMessage }, { status: 404 });
       },
     },
   );

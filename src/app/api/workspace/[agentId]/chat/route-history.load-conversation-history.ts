@@ -1,5 +1,20 @@
-import { and, asc, desc, eq, inArray, notInArray, or } from "drizzle-orm";
-
+import { and, asc, desc, eq, notInArray, or, inArray } from "drizzle-orm";
+import { db } from "@/server/infrastructure/db";
+import {
+  conversations,
+  messageParts,
+  messages,
+} from "@/server/infrastructure/db/schema";
+import { ModelMessage } from "ai";
+import {
+  mergeHistoryWithAttachmentMessages,
+  codeSandboxContextFromToolMetadata,
+  codeWorkspaceContextFromToolMetadata,
+  htmlArtifactCodeFromToolMetadata,
+  sandboxAttachmentExplorerPathHint,
+  sandboxAttachmentPathHint,
+  toolMetadataForModelHistory,
+} from "./route-history.merge-history-with-attachment-messages";
 import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
 import { projectAgentProgressForModelHistory } from "@/modules/agent/progress-model-history";
@@ -8,22 +23,6 @@ import {
   isChatFileAttachment,
   isChatImageAttachment,
 } from "@/modules/chat/attachments";
-import { db } from "@/server/infrastructure/db";
-import {
-  conversations,
-  messageParts,
-  messages,
-} from "@/server/infrastructure/db/schema";
-import type { ModelMessage } from "ai";
-import {
-  codeSandboxContextFromToolMetadata,
-  codeWorkspaceContextFromToolMetadata,
-  htmlArtifactCodeFromToolMetadata,
-  mergeHistoryWithAttachmentMessages,
-  sandboxAttachmentExplorerPathHint,
-  sandboxAttachmentPathHint,
-  toolMetadataForModelHistory,
-} from "./route-history.merge-history-with-attachment-messages";
 
 export async function loadConversationHistory(
   conversationId: string,
@@ -123,6 +122,26 @@ export async function loadConversationHistory(
     attachmentMessageRows,
   );
 
+  const modelMessageRows = messageRows.filter(
+    (message) => message.role === "user" || message.role === "assistant",
+  );
+  return buildConversationModelMessages({
+    conversationId,
+    summaryRow,
+    modelMessageRows,
+    context,
+  });
+}
+
+export async function buildConversationModelMessages(input: {
+  conversationId: string;
+  summaryRow:
+    | { encrypted: string | null; throughMessageId: string | null }
+    | undefined;
+  modelMessageRows: Array<{ id: string; role: string; createdAt: Date }>;
+  context: { workspaceId: string; userId: string };
+}): Promise<ModelMessage[]> {
+  const { conversationId, summaryRow, modelMessageRows, context } = input;
   const modelMessages: ModelMessage[] = [];
   if (summaryRow?.encrypted) {
     try {
@@ -139,9 +158,6 @@ export async function loadConversationHistory(
       });
     }
   }
-  const modelMessageRows = messageRows.filter(
-    (message) => message.role === "user" || message.role === "assistant",
-  );
   if (modelMessageRows.length === 0) return modelMessages;
 
   const partsByMessageId = new Map<

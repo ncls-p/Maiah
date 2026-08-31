@@ -1,0 +1,468 @@
+{
+    "version": 1,
+    "defaults": {
+        "fileLines": 300,
+        "functionComplexity": 30,
+        "functionLines": 200
+    },
+    "files": {
+        "scripts/check-code-size.mjs": {
+            "lines": 340
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/capabilities-tab.capabilities-tab.tsx": {
+            "lines": 395,
+            "maxFunctionLines": 329
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/essential-tab.tsx": {
+            "lines": 519,
+            "maxFunctionLines": 297
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/model-advanced-fields.model-advanced-fields.tsx": {
+            "lines": 975
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/orchestration-tab.orchestration-tab.tsx": {
+            "maxFunctionLines": 261
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/page.agent-configure-page.tsx": {
+            "lines": 675,
+            "maxFunctionLines": 383
+        },
+        "src/app/[locale]/(workspace)/agents/[agentId]/page.use-agent-configuration-data.ts": {
+            "lines": 372,
+            "maxFunctionLines": 340
+        },
+        "src/app/[locale]/(workspace)/agents/page.agents-page.tsx": {
+            "lines": 1179,
+            "maxFunctionLines": 409
+        },
+        "src/app/[locale]/(workspace)/chat/page.chat-page.tsx": {
+            "lines": 854,
+            "maxFunctionLines": 488
+        },
+        "src/app/[locale]/(workspace)/chat/page.use-chat-directory.ts": {
+            "lines": 369,
+            "maxFunctionLines": 344
+        },
+        "src/app/[locale]/(workspace)/chat/page.use-chat-session.ts": {
+            "lines": 483,
+            "maxFunctionLines": 411
+        },
+        "src/app/[locale]/(workspace)/knowledge/page.knowledge-page.tsx": {
+            "lines": 2095,
+            "maxFunctionLines": 538
+        },
+        "src/app/[locale]/(workspace)/knowledge/page.rag-config-fields.tsx": {
+            "lines": 567
+        },
+        "src/app/[locale]/(workspace)/marketplace/items/[itemId]/page.tsx": {
+            "lines": 312,
+            "maxFunctionLines": 277
+        },
+        "src/app/[locale]/(workspace)/marketplace/page.marketplace-page.tsx": {
+            "lines": 574,
+            "maxFunctionLines": 322
+        },
+        "src/app/[locale]/(workspace)/tools/builtin-tools-panel.builtin-tools-panel.tsx": {
+            "maxFunctionLines": 242
+        },
+        "src/app/[locale]/auth/signup/page.tsx": {
+            "maxFunctionLines": 219
+        },
+        "src/app/api/workspace/[agentId]/chat/route-history.load-conversation-history.ts": {
+            "lines": 335,
+            "maxFunctionComplexity": 41
+        },
+        "src/app/api/workspace/[agentId]/chat/route-support.build-bound-tools.ts": {
+            "lines": 383,
+            "maxFunctionLines": 321
+        },
+        "src/app/api/workspace/[agentId]/chat/route-support.knowledge-tools.ts": {
+            "maxFunctionLines": 272
+        },
+        "src/app/api/workspace/[agentId]/chat/route.orchestrator.ts": {
+            "lines": 406
+        },
+        "src/app/api/workspace/[agentId]/chat/route.post.ts": {
+            "lines": 574,
+            "maxFunctionLines": 239
+        },
+        "src/app/api/workspace/[agentId]/chat/route.prepare-conversation.ts": {
+            "lines": 576,
+            "maxFunctionComplexity": 49,
+            "maxFunctionLines": 488
+        },
+        "src/app/api/workspace/[agentId]/chat/route.standard-completion.ts": {
+            "lines": 341,
+            "maxFunctionLines": 239
+        },
+        "src/app/api/workspace/[agentId]/chat/route.standard-config.ts": {
+            "maxFunctionLines": 210
+        },
+        "src/app/api/workspace/[agentId]/chat/route.standard.ts": {
+            "lines": 512,
+            "maxFunctionLines": 457
+        },
+        "src/app/api/workspace/conversations/route.get.ts": {
+            "lines": 504
+        },
+        "src/app/api/workspace/iam/route.post.ts": {
+            "maxFunctionLines": 203
+        },
+        "src/app/api/workspace/knowledge-bases/[knowledgeBaseId]/documents/route.post.ts": {
+            "maxFunctionLines": 248
+        },
+        "src/app/api/workspace/tool-invocations/[invocationId]/approve/route.post.ts": {
+            "maxFunctionLines": 221
+        },
+        "src/app/styles/global-components.pcss": {
+            "lines": 314
+        },
+        "src/components/admin/assistant-governance-settings.assistant-governance-settings.tsx": {
+            "lines": 415,
+            "maxFunctionLines": 372
+        },
+        "src/components/admin/chat-automation-settings.chat-automation-settings.tsx": {
+            "lines": 313,
+            "maxFunctionLines": 281
+        },
+        "src/components/admin/rag-settings.rag-settings.tsx": {
+            "lines": 646
+        },
+        "src/components/admin/sidebar-navigation-settings.sidebar-navigation-settings.tsx": {
+            "lines": 323,
+            "maxFunctionLines": 288
+        },
+        "src/components/admin/workflow-builder-settings.tsx": {
+            "maxFunctionLines": 206
+        },
+        "src/components/chat/chat-composer.chat-composer.tsx": {
+            "lines": 384
+        },
+        "src/components/chat/chat-message-list.chat-message-list.tsx": {
+            "lines": 586,
+            "maxFunctionComplexity": 46,
+            "maxFunctionLines": 232
+        },
+        "src/components/chat/chat-message-list.message-action-bar.tsx": {
+            "maxFunctionLines": 225
+        },
+        "src/components/chat/chat-message-list.user-message-rail.tsx": {
+            "lines": 382,
+            "maxFunctionLines": 204
+        },
+        "src/components/chat/chat-message-rendering.message-content.tsx": {
+            "lines": 384
+        },
+        "src/components/chat/chat-message-rendering.tool-part-card.tsx": {
+            "lines": 533,
+            "maxFunctionComplexity": 48,
+            "maxFunctionLines": 466
+        },
+        "src/components/chat/chat-message-rendering.work-phase.tsx": {
+            "maxFunctionComplexity": 31,
+            "maxFunctionLines": 233
+        },
+        "src/components/chat/chat-sidebar.chat-sidebar.tsx": {
+            "lines": 1274,
+            "maxFunctionLines": 350
+        },
+        "src/components/chat/chat-sidebar.conversation-item.tsx": {
+            "maxFunctionLines": 257
+        },
+        "src/components/chat/chat-todo-list-card.tsx": {
+            "maxFunctionLines": 247
+        },
+        "src/components/chat/chat-tools-menu.chat-tools-menu.tsx": {
+            "lines": 606,
+            "maxFunctionLines": 557
+        },
+        "src/components/chat/citation-block.citation-block-props.tsx": {
+            "maxFunctionLines": 201
+        },
+        "src/components/chat/code-workspace-artifact-card.code-workspace-artifact-card.tsx": {
+            "lines": 764,
+            "maxFunctionLines": 261
+        },
+        "src/components/chat/conversation-share-dialog.tsx": {
+            "lines": 305,
+            "maxFunctionLines": 257
+        },
+        "src/components/chat/github-publish-dialog.git-hub-publish-dialog.tsx": {
+            "lines": 645,
+            "maxFunctionLines": 348
+        },
+        "src/components/iam/access-console.access-console.tsx": {
+            "lines": 2911,
+            "maxFunctionLines": 416
+        },
+        "src/components/iam/access-console.resource-access-panel.tsx": {
+            "lines": 1394,
+            "maxFunctionLines": 426
+        },
+        "src/components/iam/scope-lifecycle-dialog.tsx": {
+            "maxFunctionLines": 241
+        },
+        "src/components/iam/scope-migration-dialog.scope-migration-dialog.tsx": {
+            "lines": 535,
+            "maxFunctionLines": 277
+        },
+        "src/components/marketplace/resource-share-dialog.resource-share-dialog.tsx": {
+            "lines": 597,
+            "maxFunctionLines": 320
+        },
+        "src/components/mcp/mcp-server-manager.mcp-server-manager.tsx": {
+            "lines": 695,
+            "maxFunctionLines": 435
+        },
+        "src/components/mcp/mcp-server-manager/tool-connections-panel.connection-dialog.tsx": {
+            "maxFunctionLines": 227
+        },
+        "src/components/mcp/mcp-server-manager/tool-connections-panel.tool-connections-panel.tsx": {
+            "lines": 388,
+            "maxFunctionLines": 346
+        },
+        "src/components/orbit-product-navigation.tsx": {
+            "lines": 317
+        },
+        "src/components/providers/provider-manager.tsx": {
+            "lines": 636,
+            "maxFunctionLines": 400
+        },
+        "src/components/resource-access-dialog.tsx": {
+            "lines": 419,
+            "maxFunctionLines": 372
+        },
+        "src/components/scheduled-tasks/scheduled-task-manager.scheduled-task-manager.tsx": {
+            "lines": 764,
+            "maxFunctionLines": 248
+        },
+        "src/components/setup/setup-wizard.setup-wizard.tsx": {
+            "lines": 817,
+            "maxFunctionLines": 273
+        },
+        "src/components/skills/skill-manager.skill-editor-dialog.tsx": {
+            "lines": 367,
+            "maxFunctionLines": 339
+        },
+        "src/components/skills/skill-manager.skill-manager.tsx": {
+            "lines": 744,
+            "maxFunctionLines": 253
+        },
+        "src/components/workflows/workflow-agentic-panel.workflow-agentic-panel.tsx": {
+            "lines": 459,
+            "maxFunctionLines": 418
+        },
+        "src/components/workflows/workflow-builder.use-agentic-editor.ts": {
+            "lines": 430,
+            "maxFunctionLines": 407
+        },
+        "src/components/workflows/workflow-builder.workflow-builder.tsx": {
+            "lines": 989,
+            "maxFunctionLines": 349
+        },
+        "src/components/workspace-api-keys.workspace-api-keys.tsx": {
+            "lines": 447,
+            "maxFunctionLines": 394
+        },
+        "src/components/workspace-history-sidebar.use-workspace-history.tsx": {
+            "lines": 434,
+            "maxFunctionLines": 405
+        },
+        "src/components/workspace-history-sidebar.workspace-history-content.tsx": {
+            "maxFunctionLines": 219
+        },
+        "src/hooks/ai-sdk-ui-chat-transport.stream-ai-sdk-uichat.ts": {
+            "maxFunctionComplexity": 38
+        },
+        "src/hooks/use-chat-stream-events.apply-stream-event.ts": {
+            "lines": 374,
+            "maxFunctionLines": 203
+        },
+        "src/hooks/use-chat-stream.resume.ts": {
+            "lines": 497,
+            "maxFunctionLines": 216
+        },
+        "src/hooks/use-chat-stream.submit.ts": {
+            "lines": 568,
+            "maxFunctionLines": 233
+        },
+        "src/hooks/use-chat-stream.use-chat-stream.ts": {
+            "lines": 613,
+            "maxFunctionLines": 212
+        },
+        "src/modules/agent/access-scope.ts": {
+            "lines": 388
+        },
+        "src/modules/agent/runtime-executor.build-delegation-tools.ts": {
+            "lines": 316,
+            "maxFunctionLines": 265
+        },
+        "src/modules/agent/runtime-executor.execute-resolved-agent.ts": {
+            "lines": 667,
+            "maxFunctionComplexity": 31,
+            "maxFunctionLines": 244
+        },
+        "src/modules/agent/use-cases.create-agent.ts": {
+            "maxFunctionLines": 226
+        },
+        "src/modules/agent/use-cases.get-visible-agent-by-id.ts": {
+            "lines": 315
+        },
+        "src/modules/agent/use-cases.update-agent-unlocked.ts": {
+            "lines": 436,
+            "maxFunctionComplexity": 59,
+            "maxFunctionLines": 392
+        },
+        "src/modules/chat/stream-bus.ai-hub-chat-uimessage-metadata.ts": {
+            "lines": 310
+        },
+        "src/modules/chat/stream-bus.create-chat-uimessage-stream-response.ts": {
+            "lines": 315,
+            "maxFunctionComplexity": 48,
+            "maxFunctionLines": 301
+        },
+        "src/modules/custom-tools/use-cases.custom-tool-builder-tools.ts": {
+            "lines": 320,
+            "maxFunctionLines": 282
+        },
+        "src/modules/github/publishing.publish-code-workspace-to-git-hub.ts": {
+            "lines": 356,
+            "maxFunctionLines": 335
+        },
+        "src/modules/iam/organization-transfer.execute-organization-clone.ts": {
+            "maxFunctionLines": 226
+        },
+        "src/modules/iam/resource-direct-sharing.ts": {
+            "lines": 426
+        },
+        "src/modules/iam/resource-transfer.apply-transaction.ts": {
+            "lines": 423,
+            "maxFunctionComplexity": 53,
+            "maxFunctionLines": 381
+        },
+        "src/modules/iam/resource-transfer.expand-transfer-graph.ts": {
+            "lines": 437,
+            "maxFunctionComplexity": 46,
+            "maxFunctionLines": 401
+        },
+        "src/modules/iam/use-cases.get-access-console-snapshot.ts": {
+            "maxFunctionLines": 231
+        },
+        "src/modules/iam/workspace-clone.workflows-and-access.ts": {
+            "maxFunctionLines": 257
+        },
+        "src/modules/knowledge/use-cases.list-documents.ts": {
+            "lines": 423
+        },
+        "src/modules/marketplace/install-helpers.install-agent-manifest.ts": {
+            "maxFunctionComplexity": 53,
+            "maxFunctionLines": 274
+        },
+        "src/modules/marketplace/manifest-builders.build-agent-manifest.ts": {
+            "maxFunctionLines": 203
+        },
+        "src/modules/openai-proxy/streams.create-responses-stream.ts": {
+            "maxFunctionLines": 269
+        },
+        "src/modules/organization/themes.ts": {
+            "lines": 307
+        },
+        "src/modules/tool/code-sandbox.prepare-sandbox-runner-request.ts": {
+            "maxFunctionComplexity": 31
+        },
+        "src/server/infrastructure/db/access-resource-repository.find-access-resource.ts": {
+            "maxFunctionLines": 211
+        },
+        "src/server/infrastructure/db/access-resource-repository.list-access-resources.ts": {
+            "maxFunctionLines": 230
+        },
+        "src/server/infrastructure/db/schema-tables/conversations.ts": {
+            "lines": 349
+        },
+        "src/server/infrastructure/providers/openai-compatible-adapter.normalize-responses-reasoning-sse-line.ts": {
+            "lines": 381,
+            "maxFunctionComplexity": 43
+        },
+        "src/server/infrastructure/worker/index.ts": {
+            "lines": 323
+        },
+        "test/e2e/chat.suite-3.helpers.ts": {
+            "maxFunctionLines": 214
+        },
+        "test/e2e/openai-proxy.spec.module-2.ts": {
+            "maxFunctionLines": 246
+        },
+        "test/e2e/providers.spec.ts": {
+            "maxFunctionLines": 249
+        },
+        "test/e2e/workflow-agentic-live.spec.module-3.ts": {
+            "maxFunctionLines": 206
+        },
+        "test/e2e/workflows.spec.module-2.ts": {
+            "maxFunctionLines": 261
+        },
+        "test/e2e/workflows.spec.module-4.ts": {
+            "maxFunctionLines": 201
+        },
+        "test/integration/iam-use-cases-db.scenario-4.ts": {
+            "maxFunctionLines": 256
+        },
+        "test/unit/agent-use-cases.test.module-3.ts": {
+            "maxFunctionLines": 203
+        },
+        "test/unit/agent-use-cases.test.module-6.ts": {
+            "maxFunctionLines": 209
+        },
+        "test/unit/agent-use-cases.test.module-7.ts": {
+            "maxFunctionLines": 203
+        },
+        "test/unit/ai-sdk-ui-chat-transport.test.ts": {
+            "maxFunctionLines": 209
+        },
+        "test/unit/anthropic-proxy-protocol.test.ts": {
+            "maxFunctionLines": 278
+        },
+        "test/unit/api-client.test.ts": {
+            "maxFunctionLines": 227
+        },
+        "test/unit/business-artifact-tools.test.ts": {
+            "maxFunctionLines": 224
+        },
+        "test/unit/chat-route-support.test.ts": {
+            "maxFunctionLines": 204
+        },
+        "test/unit/code-sandbox-runner.test.ts": {
+            "maxFunctionLines": 207
+        },
+        "test/unit/executor-and-sidebar.test.module-2.ts": {
+            "maxFunctionLines": 252
+        },
+        "test/unit/marketplace-install-helpers.test.module-2.ts": {
+            "maxFunctionLines": 229
+        },
+        "test/unit/marketplace-manifest-builders-db.test.module-2.ts": {
+            "maxFunctionLines": 253
+        },
+        "test/unit/openai-compatible-adapter.suite-3.test.ts": {
+            "maxFunctionLines": 205
+        },
+        "test/unit/resource-access-scope.suite-2.test.ts": {
+            "maxFunctionLines": 201
+        },
+        "test/unit/stream-bus.test.module-2.ts": {
+            "maxFunctionLines": 231
+        },
+        "test/unit/upload-security.test.ts": {
+            "maxFunctionLines": 208
+        },
+        "test/unit/visual-ocr.test.ts": {
+            "maxFunctionLines": 243
+        },
+        "test/unit/workflow-runtime-coverage.test.module-5.ts": {
+            "maxFunctionLines": 235
+        },
+        "test/unit/workspace-history-events.test.ts": {
+            "maxFunctionLines": 242
+        }
+    }
+}

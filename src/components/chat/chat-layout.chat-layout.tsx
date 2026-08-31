@@ -1,15 +1,14 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
-
 import { ChatAgentSelector } from "@/components/chat/chat-agent-selector";
 import { ChatComposerImpact } from "@/components/chat/chat-composer-impact";
 import { ChatReasoningSlider } from "@/components/chat/chat-reasoning-slider";
 import { useWorkspace } from "@/hooks/use-workspace";
-import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
-import { ChatLayoutProps } from "./chat-layout.chat-composer-controls-context";
-import { ChatLayoutView } from "./chat-layout.chat-layout.view";
+import { ReasoningPreset } from "@/modules/agent/reasoning-presets";
+import { ChatLayoutProps, ChatComposerControlsContext } from "./chat-layout.chat-composer-controls-context";
+import { SetupWizard } from "@/components/setup/setup-wizard";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function useChatLayoutController(props: ChatLayoutProps) {
   const t = useTranslations("chat");
@@ -84,3 +83,49 @@ export function ChatLayout(
   if (!("kind" in model)) return model;
   return <ChatLayoutView model={model} />;
 }
+
+
+type Model = Extract<
+  ReturnType<typeof useChatLayoutController>,
+  { kind: "ready" }
+>;
+export function ChatLayoutView({ model }: { model: Model }) {
+  const {
+    canRunSetup,
+    children,
+    composerControls,
+    onSetupComplete,
+    selectedAgentId,
+    setSetupOpen,
+    setupOpen,
+    t,
+  } = model;
+  return (
+    <ChatComposerControlsContext.Provider value={composerControls}>
+      <div className="chat-shell-brand flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+        {children}
+
+        <Dialog open={canRunSetup && setupOpen} onOpenChange={setSetupOpen}>
+          <DialogContent className="max-h-[calc(100svh-2rem)] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("finishSetup")}</DialogTitle>
+              <DialogDescription>
+                {t("setupDialogDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <SetupWizard
+              mode="dialog"
+              initialAgentId={selectedAgentId}
+              onCancelAction={() => setSetupOpen(false)}
+              onCompleteAction={() => {
+                setSetupOpen(false);
+                onSetupComplete?.();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ChatComposerControlsContext.Provider>
+  );
+}
+

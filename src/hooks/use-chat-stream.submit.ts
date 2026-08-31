@@ -1,33 +1,32 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import {
+  createLocalMessage,
+  prepareAssistantMessageContinuation,
+  ChatCitation,
+  ChatMessage,
+  PendingToolApproval,
+  ChatStreamEvent,
+} from "@/components/chat/chat-types";
+import {
+  type SubmitOptions,
+  type UseChatStreamOptions,
+  appendErrorPart,
+  compactErrorMessage,
+} from "./use-chat-stream.compact-error-message";
+import {
+  STREAM_DRAFT_WRITE_BATCH_MS,
+  filterResolvedApprovals,
+  storeChatStreamDraft,
+  upsertPendingApproval,
+  applyStreamEvent,
+  clearStoredChatStreamDraft,
+} from "@/hooks/use-chat-stream-events";
 import { toast } from "sonner";
-
 import {
   migrateDraftCapabilityOverrides,
   readChatCapabilityOverrides,
 } from "@/components/chat/chat-capability-overrides";
-import {
-  createLocalMessage,
-  prepareAssistantMessageContinuation,
-  type ChatCitation,
-  type ChatMessage,
-  type ChatStreamEvent,
-  type PendingToolApproval,
-} from "@/components/chat/chat-types";
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
-import {
-  STREAM_DRAFT_WRITE_BATCH_MS,
-  applyStreamEvent,
-  clearStoredChatStreamDraft,
-  filterResolvedApprovals,
-  storeChatStreamDraft,
-  upsertPendingApproval,
-} from "@/hooks/use-chat-stream-events";
-import {
-  appendErrorPart,
-  compactErrorMessage,
-  type SubmitOptions,
-  type UseChatStreamOptions,
-} from "./use-chat-stream.compact-error-message";
 import { notifyConversationStreaming } from "@/lib/workspace-history-events";
 
 export function useChatSubmitHandler(input: {
@@ -112,112 +111,28 @@ export function useChatSubmitHandler(input: {
     const assistantMessage = continuedAssistantMessage
       ? prepareAssistantMessageContinuation(continuedAssistantMessage)
       : createLocalMessage("assistant", "");
-    let activeConversationId = conversationId;
-    let assistantMessageId = assistantMessage.id;
-    let assistantDraft = assistantMessage;
-    let pendingApprovalsDraft: PendingToolApproval[] = [];
-    let renderBatchTimeout: number | null = null;
-    let draftWriteTimeout: number | null = null;
-
-    function commitAssistantDraft() {
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === assistantMessage.id ||
-          message.id === assistantMessageId
-            ? assistantDraft
-            : message,
-        ),
-      );
-    }
-
-    function cancelScheduledRender() {
-      if (renderBatchTimeout === null) return;
-      window.cancelAnimationFrame(renderBatchTimeout);
-      renderBatchTimeout = null;
-    }
-
-    function flushAssistantRender() {
-      if (renderBatchTimeout === null) return;
-      cancelScheduledRender();
-      commitAssistantDraft();
-    }
-
-    function scheduleAssistantRender() {
-      if (renderBatchTimeout !== null) return;
-      // Align commits to the next paint so markdown updates feel continuous.
-      renderBatchTimeout = window.requestAnimationFrame(() => {
-        renderBatchTimeout = null;
-        commitAssistantDraft();
-      });
-    }
-
-    function cancelScheduledDraftWrite() {
-      if (draftWriteTimeout === null) return;
-      window.clearTimeout(draftWriteTimeout);
-      draftWriteTimeout = null;
-    }
-
-    function writeDraft() {
-      if (!activeConversationId) return;
-      const visibleApprovals = filterResolvedApprovals(
-        pendingApprovalsDraft,
-        resolvedApprovalIdsRef.current,
-      );
-      storeChatStreamDraft(
-        {
-          conversationId: activeConversationId,
-          assistantMessage: assistantDraft,
-          pendingApprovals: visibleApprovals,
-          pendingApproval: visibleApprovals[0] ?? null,
-          updatedAt: Date.now(),
-        },
-        { notify: false },
-      );
-    }
-
-    function persistDraft(options: { immediate?: boolean } = {}) {
-      if (options.immediate) {
-        cancelScheduledDraftWrite();
-        writeDraft();
-        return;
-      }
-      if (draftWriteTimeout !== null) return;
-      draftWriteTimeout = window.setTimeout(() => {
-        draftWriteTimeout = null;
-        writeDraft();
-      }, STREAM_DRAFT_WRITE_BATCH_MS);
-    }
-
-    function updatePendingApprovals(
-      updater: (approvals: PendingToolApproval[]) => PendingToolApproval[],
-    ) {
-      pendingApprovalsDraft = filterResolvedApprovals(
-        updater(pendingApprovalsDraft),
-        resolvedApprovalIdsRef.current,
-      );
-      setPendingApprovals(pendingApprovalsDraft);
-      persistDraft({ immediate: true });
-    }
-
-    function addPendingApproval(approval: PendingToolApproval) {
-      if (resolvedApprovalIdsRef.current.has(approval.invocationId)) return;
-      updatePendingApprovals((approvals) =>
-        upsertPendingApproval(approvals, approval),
-      );
-    }
-
-    function clearPendingApprovals() {
-      updatePendingApprovals(() => []);
-    }
-
-    function updateAssistantDraft(
-      updater: (message: ChatMessage) => ChatMessage,
-    ) {
-      assistantDraft = updater(assistantDraft);
-      scheduleAssistantRender();
-      persistDraft();
-    }
-
+    const session = createChatSubmitSession({
+      content,
+      options,
+      userMessage,
+      assistantMessage,
+      workspaceId,
+      agentId,
+      conversationId,
+      activeRequestControllerRef,
+      activeConversationIdRef,
+      detachedRequestControllersRef,
+      stopRequestedRef,
+      resolvedApprovalIdsRef,
+      setMessages,
+      setSending,
+      setPendingApprovals,
+      setCitations,
+      onConversationTitle,
+      onConversationMetadata,
+      onConversationCreated,
+      onConversationsRefresh,
+    });
     stopRequestedRef.current = false;
     setMessages((current) => {
       if (options.continueFromMessageId) {
@@ -238,34 +153,242 @@ export function useChatSubmitHandler(input: {
       return [...current, userMessage, assistantMessage];
     });
     setSending(true);
-    clearPendingApprovals();
+    session.clearPendingApprovals();
     setCitations([]);
-    persistDraft({ immediate: true });
+    session.persistDraft({ immediate: true });
 
     const controller = new AbortController();
     activeRequestControllerRef.current = controller;
-    activeConversationIdRef.current = activeConversationId;
+    activeConversationIdRef.current = session.getActiveConversationId();
+
+    return session.run(controller);
+  }
+  return handleSubmit;
+}
+
+export type ChatSubmitSessionInput = {
+  content: string;
+  options: SubmitOptions;
+  userMessage: ChatMessage;
+  assistantMessage: ChatMessage;
+  workspaceId: string | null;
+  agentId: string;
+  conversationId: string | null;
+  activeRequestControllerRef: MutableRefObject<AbortController | null>;
+  activeConversationIdRef: MutableRefObject<string | null>;
+  detachedRequestControllersRef: MutableRefObject<WeakSet<AbortController>>;
+  stopRequestedRef: MutableRefObject<boolean>;
+  resolvedApprovalIdsRef: MutableRefObject<Set<string>>;
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setSending: Dispatch<SetStateAction<boolean>>;
+  setPendingApprovals: Dispatch<SetStateAction<PendingToolApproval[]>>;
+  setCitations: Dispatch<SetStateAction<ChatCitation[]>>;
+  onConversationTitle: UseChatStreamOptions["onConversationTitle"];
+  onConversationMetadata: UseChatStreamOptions["onConversationMetadata"];
+  onConversationCreated: UseChatStreamOptions["onConversationCreated"];
+  onConversationsRefresh: UseChatStreamOptions["onConversationsRefresh"];
+};
+
+export type ChatSubmitSessionState = {
+  activeConversationId: string | null;
+  assistantMessageId: string;
+  assistantDraft: ChatMessage;
+  pendingApprovalsDraft: PendingToolApproval[];
+  renderBatchTimeout: number | null;
+  draftWriteTimeout: number | null;
+};
+
+export function createChatSubmitSession(input: ChatSubmitSessionInput) {
+  const state: ChatSubmitSessionState = {
+    activeConversationId: input.conversationId,
+    assistantMessageId: input.assistantMessage.id,
+    assistantDraft: input.assistantMessage,
+    pendingApprovalsDraft: [],
+    renderBatchTimeout: null,
+    draftWriteTimeout: null,
+  };
+  const {
+    assistantMessage,
+    setMessages,
+    setPendingApprovals,
+    resolvedApprovalIdsRef,
+  } = input;
+
+  function commitAssistantDraft() {
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === assistantMessage.id ||
+        message.id === state.assistantMessageId
+          ? state.assistantDraft
+          : message,
+      ),
+    );
+  }
+
+  function cancelScheduledRender() {
+    if (state.renderBatchTimeout === null) return;
+    window.cancelAnimationFrame(state.renderBatchTimeout);
+    state.renderBatchTimeout = null;
+  }
+
+  function flushAssistantRender() {
+    if (state.renderBatchTimeout === null) return;
+    cancelScheduledRender();
+    commitAssistantDraft();
+  }
+
+  function scheduleAssistantRender() {
+    if (state.renderBatchTimeout !== null) return;
+    // Align commits to the next paint so markdown updates feel continuous.
+    state.renderBatchTimeout = window.requestAnimationFrame(() => {
+      state.renderBatchTimeout = null;
+      commitAssistantDraft();
+    });
+  }
+
+  function cancelScheduledDraftWrite() {
+    if (state.draftWriteTimeout === null) return;
+    window.clearTimeout(state.draftWriteTimeout);
+    state.draftWriteTimeout = null;
+  }
+
+  function writeDraft() {
+    const activeConversationId = state.activeConversationId;
+    if (!activeConversationId) return;
+    const visibleApprovals = filterResolvedApprovals(
+      state.pendingApprovalsDraft,
+      resolvedApprovalIdsRef.current,
+    );
+    storeChatStreamDraft(
+      {
+        conversationId: activeConversationId,
+        assistantMessage: state.assistantDraft,
+        pendingApprovals: visibleApprovals,
+        pendingApproval: visibleApprovals[0] ?? null,
+        updatedAt: Date.now(),
+      },
+      { notify: false },
+    );
+  }
+
+  function persistDraft(options: { immediate?: boolean } = {}) {
+    if (options.immediate) {
+      cancelScheduledDraftWrite();
+      writeDraft();
+      return;
+    }
+    if (state.draftWriteTimeout !== null) return;
+    state.draftWriteTimeout = window.setTimeout(() => {
+      state.draftWriteTimeout = null;
+      writeDraft();
+    }, STREAM_DRAFT_WRITE_BATCH_MS);
+  }
+
+  function updatePendingApprovals(
+    updater: (approvals: PendingToolApproval[]) => PendingToolApproval[],
+  ) {
+    state.pendingApprovalsDraft = filterResolvedApprovals(
+      updater(state.pendingApprovalsDraft),
+      resolvedApprovalIdsRef.current,
+    );
+    setPendingApprovals(state.pendingApprovalsDraft);
+    persistDraft({ immediate: true });
+  }
+
+  function addPendingApproval(approval: PendingToolApproval) {
+    if (resolvedApprovalIdsRef.current.has(approval.invocationId)) return;
+    updatePendingApprovals((approvals) =>
+      upsertPendingApproval(approvals, approval),
+    );
+  }
+
+  function clearPendingApprovals() {
+    updatePendingApprovals(() => []);
+  }
+
+  function updateAssistantDraft(
+    updater: (message: ChatMessage) => ChatMessage,
+  ) {
+    state.assistantDraft = updater(state.assistantDraft);
+    scheduleAssistantRender();
+    persistDraft();
+  }
+
+  const run = createChatSubmitRun(input, state, {
+    updateAssistantDraft,
+    addPendingApproval,
+    clearPendingApprovals,
+    flushAssistantRender,
+    persistDraft,
+    cancelScheduledDraftWrite,
+    cancelScheduledRender,
+  });
+
+  return {
+    getActiveConversationId: () => state.activeConversationId,
+    clearPendingApprovals,
+    persistDraft,
+    run,
+  };
+}
+
+export function createChatSubmitRun(
+  input: ChatSubmitSessionInput,
+  state: ChatSubmitSessionState,
+  api: {
+    updateAssistantDraft: (
+      updater: (message: ChatMessage) => ChatMessage,
+    ) => void;
+    addPendingApproval: (approval: PendingToolApproval) => void;
+    clearPendingApprovals: () => void;
+    flushAssistantRender: () => void;
+    persistDraft: (options?: { immediate?: boolean }) => void;
+    cancelScheduledDraftWrite: () => void;
+    cancelScheduledRender: () => void;
+  },
+): (controller: AbortController) => Promise<boolean> {
+  const {
+    content,
+    options,
+    userMessage,
+    assistantMessage,
+    workspaceId,
+    agentId,
+    conversationId,
+    activeRequestControllerRef,
+    activeConversationIdRef,
+    detachedRequestControllersRef,
+    stopRequestedRef,
+    setMessages,
+    setSending,
+    setCitations,
+    onConversationTitle,
+    onConversationMetadata,
+    onConversationCreated,
+    onConversationsRefresh,
+  } = input;
+
+  return async (controller: AbortController) => {
+    function handleStreamEvent(parsed: ChatStreamEvent) {
+      applyStreamEvent(parsed, {
+        updateAssistant: api.updateAssistantDraft,
+        addPendingApproval: api.addPendingApproval,
+        clearPendingApprovals: api.clearPendingApprovals,
+        setCitations,
+        onConversationTitle: (title) => {
+          const targetConversationId = activeConversationIdRef.current;
+          if (targetConversationId) {
+            onConversationTitle?.(targetConversationId, title);
+          }
+        },
+      });
+    }
 
     try {
-      function handleStreamEvent(parsed: ChatStreamEvent) {
-        applyStreamEvent(parsed, {
-          updateAssistant: updateAssistantDraft,
-          addPendingApproval,
-          clearPendingApprovals,
-          setCitations,
-          onConversationTitle: (title) => {
-            const targetConversationId = activeConversationIdRef.current;
-            if (targetConversationId) {
-              onConversationTitle?.(targetConversationId, title);
-            }
-          },
-        });
-      }
-
       const attachmentsToSend = options.attachments ?? [];
       await streamAiSdkUIChat({
         api: `/api/workspace/${agentId}/chat`,
-        chatId: activeConversationId ?? userMessage.id,
+        chatId: state.activeConversationId ?? userMessage.id,
         content,
         localUserMessageId: userMessage.id,
         resendFromMessageId: options.resendFromMessageId,
@@ -302,8 +425,8 @@ export function useChatSubmitHandler(input: {
                 metadata.conversationId,
               ]),
             );
-            assistantDraft = {
-              ...assistantDraft,
+            state.assistantDraft = {
+              ...state.assistantDraft,
               branch: {
                 conversationIds,
                 activeIndex: conversationIds.indexOf(metadata.conversationId),
@@ -311,7 +434,7 @@ export function useChatSubmitHandler(input: {
             };
           }
           if (metadata.conversationId) {
-            activeConversationId = metadata.conversationId;
+            state.activeConversationId = metadata.conversationId;
             activeConversationIdRef.current = metadata.conversationId;
             notifyConversationStreaming(
               workspaceId,
@@ -320,18 +443,20 @@ export function useChatSubmitHandler(input: {
             );
           }
           if (metadata.messageId) {
-            assistantMessageId = metadata.messageId;
-            assistantDraft = {
-              ...assistantDraft,
+            state.assistantMessageId = metadata.messageId;
+            state.assistantDraft = {
+              ...state.assistantDraft,
               id: metadata.messageId,
               streamGenerationId: metadata.streamGenerationId,
             };
             setMessages((current) =>
               current.map((message) =>
-                message.id === assistantMessage.id ? assistantDraft : message,
+                message.id === assistantMessage.id
+                  ? state.assistantDraft
+                  : message,
               ),
             );
-            persistDraft({ immediate: true });
+            api.persistDraft({ immediate: true });
           }
           if (metadata.userMessageId) {
             setMessages((current) =>
@@ -357,14 +482,22 @@ export function useChatSubmitHandler(input: {
         onEvent: handleStreamEvent,
       });
 
-      updateAssistantDraft((message) => ({ ...message, status: "completed" }));
-      flushAssistantRender();
-      clearPendingApprovals();
-      if (activeConversationId)
-        clearStoredChatStreamDraft(activeConversationId);
-      notifyConversationStreaming(workspaceId, activeConversationId, false, {
-        markUnread: false,
-      });
+      api.updateAssistantDraft((message) => ({
+        ...message,
+        status: "completed",
+      }));
+      api.flushAssistantRender();
+      api.clearPendingApprovals();
+      if (state.activeConversationId)
+        clearStoredChatStreamDraft(state.activeConversationId);
+      notifyConversationStreaming(
+        workspaceId,
+        state.activeConversationId,
+        false,
+        {
+          markUnread: false,
+        },
+      );
 
       await onConversationsRefresh().catch(() => undefined);
       return true;
@@ -373,44 +506,54 @@ export function useChatSubmitHandler(input: {
         detachedRequestControllersRef.current.has(controller);
       if (err instanceof Error && err.name === "AbortError") {
         if (requestWasDetached) {
-          persistDraft({ immediate: true });
+          api.persistDraft({ immediate: true });
           return true;
         }
-        updateAssistantDraft((message) => ({
+        api.updateAssistantDraft((message) => ({
           ...message,
           status: stopRequestedRef.current ? "cancelled" : "completed",
         }));
-        flushAssistantRender();
-        clearPendingApprovals();
-        if (activeConversationId)
-          clearStoredChatStreamDraft(activeConversationId);
-        notifyConversationStreaming(workspaceId, activeConversationId, false, {
-          markUnread: false,
-        });
+        api.flushAssistantRender();
+        api.clearPendingApprovals();
+        if (state.activeConversationId)
+          clearStoredChatStreamDraft(state.activeConversationId);
+        notifyConversationStreaming(
+          workspaceId,
+          state.activeConversationId,
+          false,
+          {
+            markUnread: false,
+          },
+        );
         return false;
       }
       const errorMessage =
         err instanceof Error ? err.message : "Chat request failed";
       toast.error(compactErrorMessage(errorMessage));
-      updateAssistantDraft((message) =>
+      api.updateAssistantDraft((message) =>
         options.continueFromMessageId
           ? { ...message, status: "completed" }
           : appendErrorPart(message, errorMessage),
       );
-      flushAssistantRender();
-      clearPendingApprovals();
-      if (activeConversationId)
-        clearStoredChatStreamDraft(activeConversationId);
-      notifyConversationStreaming(workspaceId, activeConversationId, false, {
-        markUnread: false,
-      });
+      api.flushAssistantRender();
+      api.clearPendingApprovals();
+      if (state.activeConversationId)
+        clearStoredChatStreamDraft(state.activeConversationId);
+      notifyConversationStreaming(
+        workspaceId,
+        state.activeConversationId,
+        false,
+        {
+          markUnread: false,
+        },
+      );
       return false;
     } finally {
       const requestWasDetached =
         detachedRequestControllersRef.current.has(controller);
-      if (!requestWasDetached) flushAssistantRender();
-      cancelScheduledDraftWrite();
-      cancelScheduledRender();
+      if (!requestWasDetached) api.flushAssistantRender();
+      api.cancelScheduledDraftWrite();
+      api.cancelScheduledRender();
       if (activeRequestControllerRef.current === controller) {
         activeRequestControllerRef.current = null;
         activeConversationIdRef.current = null;
@@ -420,6 +563,5 @@ export function useChatSubmitHandler(input: {
         setSending(false);
       }
     }
-  }
-  return handleSubmit;
+  };
 }

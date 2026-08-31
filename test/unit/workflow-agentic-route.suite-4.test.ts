@@ -117,8 +117,8 @@ vi.mock("@/server/infrastructure/providers", () => ({
 
 import { POST } from "@/app/api/workspace/workflows/[workflowId]/agentic/route";
 import { request } from "./workflow-agentic-route.suite-3.fixture";
+import { applyWorkflowSuite4Defaults } from "./workflow-agentic-route.suite-4.defaults";
 import {
-  createWorkflowAgenticModelFixture,
   generatedDefinition,
   textStream,
   toolCallStream,
@@ -133,86 +133,12 @@ const versionId = "55555555-5555-4555-8555-555555555555";
 describe("workflow agentic route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requirePermission.mockResolvedValue(null);
-    mocks.getWorkflowDetail.mockResolvedValue({
-      id: workflowId,
+    applyWorkflowSuite4Defaults(mocks, {
       workspaceId,
-      name: "Summary",
-      description: null,
-      latestVersion: 1,
-      version: 1,
-      definition: createStarterDefinition(),
+      workflowId,
+      agentId,
+      versionId,
     });
-    mocks.listAgents.mockResolvedValue([
-      { id: agentId, name: "Workflow assistant" },
-    ]);
-    mocks.getAgentById.mockResolvedValue(null);
-    mocks.getConfiguredWorkflowBuilderAgentId.mockResolvedValue(null);
-    mocks.getWorkflowAgentHistory.mockResolvedValue({
-      messages: [],
-      pendingRequests: [],
-    });
-    mocks.getPendingWorkflowAgentRunRequests.mockResolvedValue([]);
-    mocks.getWorkflowAgentTodoList.mockResolvedValue(null);
-    mocks.updateWorkflowAgentTodoList.mockImplementation(async (input) => ({
-      kind: "chat_todo_list",
-      title: input.todoList.title,
-      items: input.todoList.items,
-      completedCount: input.todoList.items.filter(
-        (item: { status: string }) => item.status === "completed",
-      ).length,
-      totalCount: input.todoList.items.length,
-    }));
-    mocks.createWorkflowAgentRunRequest.mockImplementation(async (input) => ({
-      id: "99999999-9999-4999-8999-999999999999",
-      title: input.title,
-      reason: input.reason ?? null,
-      inputPreview: input.payload ?? {},
-      expectedVersion: input.expectedVersion,
-      status: "pending",
-      expiresAt: "2099-07-23T10:00:00.000Z",
-    }));
-    mocks.executeCodeSandbox.mockResolvedValue({
-      ok: true,
-      stdout: "tests passed",
-      stderr: "",
-      exitCode: 0,
-    });
-    mocks.appendWorkflowAgentMessage.mockImplementation(async (input) => ({
-      id: crypto.randomUUID(),
-      role: input.role,
-      content: input.content,
-      createdAt: new Date().toISOString(),
-    }));
-    mocks.searchWebWithSearxng.mockResolvedValue({
-      ok: true,
-      query: "Build a summary workflow",
-      results: [],
-    });
-    mocks.getAgentDefaultPreferences.mockResolvedValue({
-      organizationDefaultAgentId: agentId,
-      userDefaultAgentId: null,
-      effectiveDefaultAgentId: agentId,
-    });
-    mocks.getActiveVersion.mockResolvedValue({
-      id: versionId,
-      maxOutputTokens: 4_000,
-      temperature: null,
-      topP: null,
-    });
-    mocks.resolveProviderForVersion.mockResolvedValue({
-      providerKind: "openai-compatible",
-      providerId: "provider-1",
-      modelId: "model-1",
-      runtimeConfig: {},
-    });
-    mocks.createChatModel.mockReturnValue(createWorkflowAgenticModelFixture());
-    mocks.updateWorkflow.mockImplementation(async (input) => ({
-      ...input,
-      latestVersion: 2,
-      version: 2,
-      status: "draft",
-    }));
   });
 
   it("lets the model repair a failed connection tool call and saves the corrected graph", async () => {
@@ -304,3 +230,4 @@ describe("workflow agentic route", () => {
     );
   });
 });
+

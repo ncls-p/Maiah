@@ -117,12 +117,8 @@ export function inheritRagConfigDefaults(
 ): RagConfig {
   return {
     ...config,
-    embedding: config.embedding.modelId
-      ? config.embedding
-      : defaults.embedding,
-    reranking: config.reranking.modelId
-      ? config.reranking
-      : defaults.reranking,
+    embedding: config.embedding.modelId ? config.embedding : defaults.embedding,
+    reranking: config.reranking.modelId ? config.reranking : defaults.reranking,
     extraction: {
       ...config.extraction,
       ocr: config.extraction.ocr.modelId

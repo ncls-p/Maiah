@@ -72,7 +72,7 @@ export async function ensureE2EUser() {
       [userId],
     );
     await client.query(
-      "insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
+      "insert into account (account_id, provider_id, issuer, user_id, password, created_at, updated_at) values ($1, 'credential', 'local:credential', $2, $3, now(), now())",
       [userId, userId, password],
     );
     await client.query(
@@ -249,13 +249,7 @@ export async function ensureE2EAssistantPair() {
            provider_id = excluded.provider_id,
            model_id = excluded.model_id
        returning id`,
-      [
-        randomUUID(),
-        alternateAgentId,
-        providerId,
-        alternateModelId,
-        userId,
-      ],
+      [randomUUID(), alternateAgentId, providerId, alternateModelId, userId],
     );
     await client.query(
       `update agents set active_version_id = $1, updated_at = now() where id = $2`,

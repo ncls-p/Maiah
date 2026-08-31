@@ -15,7 +15,12 @@ export function GithubIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 type GitHubRepositoryAccess =
-  "admin" | "maintain" | "write" | "triage" | "read" | "unknown";
+  | "admin"
+  | "maintain"
+  | "write"
+  | "triage"
+  | "read"
+  | "unknown";
 
 export type GitHubConnectionOption = {
   id: string;
@@ -96,7 +101,8 @@ export async function requestGitHubJson<T>(
 ) {
   const response = await fetch(url, init);
   const data = (await response.json().catch(() => null)) as
-    (T & { error?: string }) | null;
+    | (T & { error?: string })
+    | null;
   if (!response.ok) throw new Error(data?.error || fallbackError);
   return data as T | null;
 }

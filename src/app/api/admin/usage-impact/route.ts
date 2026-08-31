@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { logHandledError } from "@/lib/logger";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
@@ -15,9 +16,21 @@ const updateSchema = z.object({
 });
 
 export async function GET() {
-  const auth = await requireAdminApiSession();
-  if (!auth.ok) return auth.response;
-  return NextResponse.json(await getUsageImpactSetting());
+  try {
+    const auth = await requireAdminApiSession();
+    if (!auth.ok) return auth.response;
+    return NextResponse.json(await getUsageImpactSetting());
+  } catch (error) {
+    logHandledError(
+      "Failed to read usage impact setting",
+      {},
+      error instanceof Error ? error : undefined,
+    );
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(req: NextRequest) {

@@ -15,8 +15,14 @@ import {
   listMarketplaceItems,
   publishAgentDraft,
 } from "@/modules/marketplace/use-cases";
+import { marketplaceItemTypeEnum } from "@/server/infrastructure/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+// `type` filter values are validated against the pgEnum so that anything
+// reaching the SQL builder is a bound parameter, never raw user input.
+const marketplaceItemTypeSchema = z.enum(marketplaceItemTypeEnum.enumValues);
+const marketplaceTypeFilterSchema = z.array(marketplaceItemTypeSchema).min(1);
 
 const createSchema = z
   .object({
@@ -63,13 +69,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(await getSharedWithMe(session.user.id));
     }
     const search = searchParams.get("search") || undefined;
-    const type = searchParams.get("type")
-      ? searchParams.get("type")!.split(",")
-      : undefined;
+    const typeParam = searchParams.get("type");
+    let type: z.infer<typeof marketplaceTypeFilterSchema> | undefined;
+    if (typeParam) {
+      const parsedType = marketplaceTypeFilterSchema.safeParse(
+        typeParam.split(","),
+      );
+      if (!parsedType.success) {
+        return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+      }
+      type = parsedType.data;
+    }
     const featuredOnly =
       searchParams.get("featuredOnly") === "true" || undefined;
     const sortBy = searchParams.get("sortBy") as
-      "featured" | "newest" | "downloads" | "rating" | undefined;
+      | "featured"
+      | "newest"
+      | "downloads"
+      | "rating"
+      | undefined;
     const status = searchParams.get("status") || undefined;
     if (status && !(await isPlatformAdminSession(session))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

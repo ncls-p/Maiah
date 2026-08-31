@@ -5,6 +5,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { logHandledError } from "@/lib/logger";
 import {
   deleteCodeWorkspaceFile,
   getCodeWorkspace,
@@ -21,6 +22,65 @@ const writeFileSchema = z.object({
 const deleteFileSchema = z.object({
   path: z.string().trim().min(1).max(260),
 });
+
+// Fixed client-facing messages for known code-workspace domain errors.
+// The raw error message stays in the server log only.
+const FILE_NOT_FOUND_MESSAGES = [
+  "File not found in code workspace.",
+  "Code workspace not found.",
+];
+const FILE_UNAVAILABLE_MESSAGES = [
+  "Invalid code workspace id.",
+  "Invalid file path.",
+  "Absolute paths are not allowed.",
+  "Path traversal is not allowed.",
+  "File path is too long.",
+  "File path is too deep.",
+  "Binary files cannot be read as text.",
+];
+const WRITE_UNAVAILABLE_MESSAGES = [
+  "Only supported text web files can be written.",
+  "Only supported web files can be imported.",
+  "File content is too large.",
+  "Code workspace contents are too large. Maximum is 50 MB.",
+];
+const WRITE_UNAVAILABLE_PREFIXES = ["Too many files. Maximum is "];
+
+function codeWorkspaceFileExpectedError(
+  logLabel: string,
+  options: {
+    status: 400 | 404;
+    unavailableMessages?: string[];
+    unavailablePrefixes?: string[];
+  },
+) {
+  const unavailableMessages = [
+    ...FILE_UNAVAILABLE_MESSAGES,
+    ...(options.unavailableMessages ?? []),
+  ];
+  const unavailablePrefixes = options.unavailablePrefixes ?? [];
+  return (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const fixedMessage =
+      FILE_NOT_FOUND_MESSAGES.includes(message) ||
+      (options.status === 404 && message === "Code workspace not found.")
+        ? "File not found"
+        : unavailableMessages.includes(message) ||
+            unavailablePrefixes.some((prefix) => message.startsWith(prefix))
+          ? "File unavailable"
+          : null;
+    if (!fixedMessage) return null;
+    logHandledError(
+      logLabel,
+      { error: message },
+      error instanceof Error ? error : undefined,
+    );
+    return NextResponse.json(
+      { error: fixedMessage },
+      { status: options.status },
+    );
+  };
+}
 
 async function authorizeProject(projectId: string, userId: string) {
   const metadata = await getCodeWorkspace(projectId);
@@ -84,16 +144,10 @@ export async function GET(
     },
     {
       logLabel: "Failed to read code workspace file",
-      expectedError: (error) => {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/not found|path|binary/i.test(message)) {
-          return NextResponse.json({ error: message }, { status: 400 });
-        }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
-      },
+      expectedError: codeWorkspaceFileExpectedError(
+        "Failed to read code workspace file",
+        { status: 400 },
+      ),
     },
   );
 }
@@ -131,16 +185,14 @@ export async function PUT(
     },
     {
       logLabel: "Failed to write code workspace file",
-      expectedError: (error) => {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/file|path|too large|unsupported|workspace/i.test(message)) {
-          return NextResponse.json({ error: message }, { status: 400 });
-        }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
-      },
+      expectedError: codeWorkspaceFileExpectedError(
+        "Failed to write code workspace file",
+        {
+          status: 400,
+          unavailableMessages: WRITE_UNAVAILABLE_MESSAGES,
+          unavailablePrefixes: WRITE_UNAVAILABLE_PREFIXES,
+        },
+      ),
     },
   );
 }
@@ -177,16 +229,10 @@ export async function DELETE(
     },
     {
       logLabel: "Failed to delete code workspace file",
-      expectedError: (error) => {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/file|path|workspace/i.test(message)) {
-          return NextResponse.json({ error: message }, { status: 400 });
-        }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
-      },
+      expectedError: codeWorkspaceFileExpectedError(
+        "Failed to delete code workspace file",
+        { status: 400 },
+      ),
     },
   );
 }

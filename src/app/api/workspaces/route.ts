@@ -80,10 +80,7 @@ export async function PATCH(req: NextRequest) {
       );
       if (forbidden) return forbidden;
 
-      await setActiveWorkspaceForUser(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
+      await setActiveWorkspaceForUser(session.user.id, parsed.data.workspaceId);
       return new NextResponse(null, { status: 204 });
     },
     { logLabel: "Failed to save active workspace" },

@@ -3,10 +3,14 @@ import { db } from "@/server/infrastructure/db";
 import {
   marketplaceItems,
   marketplaceItemShares,
+  marketplaceItemTypeEnum,
 } from "@/server/infrastructure/db/schema";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ilike, or, sql } from "drizzle-orm";
 
 export type MarketplaceVisibility = "public" | "private";
+
+export type MarketplaceItemType =
+  (typeof marketplaceItemTypeEnum.enumValues)[number];
 
 export async function canManageMarketplaceItem(
   item: NonNullable<Awaited<ReturnType<typeof getMarketplaceItem>>>,
@@ -27,7 +31,7 @@ export async function canManageMarketplaceItem(
 export function listMarketplaceItems(input: {
   userId?: string;
   search?: string;
-  type?: string[];
+  type?: MarketplaceItemType[];
   tags?: string[];
   featuredOnly?: boolean;
   sortBy?: "featured" | "newest" | "downloads" | "rating";
@@ -67,9 +71,8 @@ export function listMarketplaceItems(input: {
   }
 
   if (input.type && input.type.length > 0) {
-    conditions.push(
-      sql`${marketplaceItems.type} IN (${input.type.map((t) => `'${t}'`).join(",")})`,
-    );
+    // Bound values via inArray — user input is never interpolated into SQL.
+    conditions.push(inArray(marketplaceItems.type, input.type));
   }
 
   if (input.featuredOnly) {

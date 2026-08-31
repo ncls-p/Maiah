@@ -3,7 +3,9 @@ import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payl
 export type AgentProgressModelHistoryKind = "visual-only" | "delegation-result";
 
 export type AgentProgressModelHistoryProjection =
-  { kind: "visual-only" } | { kind: "delegation-result"; text: string } | null;
+  | { kind: "visual-only" }
+  | { kind: "delegation-result"; text: string }
+  | null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

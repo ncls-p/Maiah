@@ -1,26 +1,16 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type QueuedChatMessage } from "@/components/chat/chat-composer";
-import {
-  assistantSelectionNeedsSetup,
-  isAssistantSelectionLoading,
-} from "@/components/chat/assistant-selection";
-import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
-import {
-  CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
-  DEFAULT_CHAT_WIDTH,
-  normalizeCodeWorkspaceChatWidth,
-} from "@/components/chat/code-workspace-layout";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, ComponentProps } from "react";
+import { type QueuedChatMessage, ChatComposer } from "@/components/chat/chat-composer";
+import { assistantSelectionNeedsSetup, isAssistantSelectionLoading } from "@/components/chat/assistant-selection";
+import { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
+import { CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY, DEFAULT_CHAT_WIDTH, normalizeCodeWorkspaceChatWidth, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from "@/components/chat/code-workspace-layout";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { canAdoptRouteConversation } from "@/lib/chat-navigation";
-import {
-  DEFAULT_EPHEMERAL_TTL_MINUTES,
-  isEphemeralTtlMinutes,
-} from "@/modules/chat/ephemeral-retention";
-import { CHAT_INTERFACE_MODE, type InterfaceMode } from "./chat-interface-mode";
-import { rotatePromptSuggestions } from "./chat-page-helpers";
+import { DEFAULT_EPHEMERAL_TTL_MINUTES, isEphemeralTtlMinutes } from "@/modules/chat/ephemeral-retention";
+import { CHAT_INTERFACE_MODE, type InterfaceMode, CODING_INTERFACE_MODE } from "./chat-interface-mode";
+import { rotatePromptSuggestions, ChatContextBar } from "./chat-page-helpers";
 import { useChatDirectory } from "./page.use-chat-directory";
 import { useConversationActions } from "./page.use-conversation-actions";
 import { useConversationHistoryLiveStatus } from "./page.use-conversation-live-status";
@@ -31,8 +21,14 @@ import { useTemporaryConversationPersistence } from "./page.use-temporary-conver
 import { useChatSession } from "./page.use-chat-session";
 import { useCodeWorkspaceArtifactEvent } from "./page.use-code-workspace-artifact-event";
 import { useReasoningEffort } from "./page.use-reasoning-effort";
-import { ChatPageView } from "./page.chat-page.view";
-import { ChatPageBoundary } from "./page.chat-page-boundary";
+import { ChatLayout } from "@/components/chat/chat-layout";
+import { ChatMessageList, CodeWorkspaceArtifactCard } from "@/components/chat/chat-message-list";
+import { CodeWorkspaceResizeHandle } from "@/components/chat/code-workspace-artifact-card";
+import { ConversationRetentionBanner } from "@/components/chat/temporary-conversation-banner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { CodeWorkspaceModeBar, EmptyConversationState, ChatPageLoading, NoAssistantsState } from "./chat-page-view";
+
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const pathname = usePathname();
@@ -529,3 +525,329 @@ export default function ChatPage(
   if (!("kind" in model)) return model;
   return <ChatPageView model={model} />;
 }
+
+
+type Model = Extract<
+  ReturnType<typeof useChatPageController>,
+  { kind: "ready" }
+>;
+export function ChatPageView({ model }: { model: Model }) {
+  const {
+    activeConversationId,
+    agents,
+    approveToolInvocation,
+    attachments,
+    bottomRef,
+    canChat,
+    needsSetup,
+    isLoading,
+    canCreateAgent,
+    canRunSetup,
+    cancelQueuedMessage,
+    chooseInterfaceMode,
+    codeWorkspaceArtifact,
+    codingChatWidth,
+    continueAssistantResponse,
+    forkConversation,
+    forkingMessageId,
+    conversationImpact,
+    conversationLoadError,
+    conversationIsOwner,
+    conversationReadOnly,
+    convertingTemporaryConversation,
+    effectiveEphemeral,
+    effectiveEphemeralTtlMinutes,
+    ephemeralExpiresAt,
+    extendTemporaryConversation,
+    extendingTemporaryConversation,
+    makeConversationPersistent,
+  } = model;
+  const {
+    deleteMessage,
+    editMessage,
+    emptyPromptSuggestions,
+    input,
+    interfaceMode,
+    latestTodoList,
+    maxInputCharacters,
+    loadingMessages,
+    messages,
+    organizationDefaultAgentId,
+    pendingApprovals,
+    reasoningEffort,
+    reasoningPresets,
+  } = model;
+  const {
+    queuedMessages,
+    quota,
+    rejectToolInvocation,
+    reloadActualLatestMessages,
+    retryConversationLoad,
+    reloadAgentContext,
+    regenerateAssistantResponse,
+    navigateConversationBranch,
+    selectAgent,
+    selectedAgent,
+    selectedAgentId,
+    sending,
+    setAttachments,
+  } = model;
+  const {
+    setInput,
+    setUserDefaultAgent,
+    setReasoningEffort,
+    stopGeneration,
+    submitMessage,
+    submitSuggestion,
+    t,
+    updateCodingChatWidth,
+    updateQueuedMessage,
+    uploadChatAttachment,
+    uploadCodeWorkspace,
+    userDefaultAgentId,
+    workspaceId,
+  } = model;
+  const ownerEditMessage = conversationIsOwner ? editMessage : undefined;
+  const ownerDeleteMessage = conversationIsOwner ? deleteMessage : undefined;
+  const ownerRegenerateResponse = conversationIsOwner
+    ? regenerateAssistantResponse
+    : undefined;
+  const ownerContinueResponse = conversationIsOwner
+    ? continueAssistantResponse
+    : undefined;
+  const availableForkConversation = conversationReadOnly
+    ? undefined
+    : forkConversation;
+  return (
+    <ChatLayout
+      agents={agents}
+      selectedAgent={selectedAgent}
+      selectedAgentId={selectedAgentId}
+      activeConversationId={activeConversationId}
+      conversationImpact={conversationImpact}
+      conversationIsOwner={conversationIsOwner}
+      organizationDefaultAgentId={organizationDefaultAgentId}
+      userDefaultAgentId={userDefaultAgentId}
+      isLoading={isLoading}
+      needsSetup={needsSetup}
+      canCreateAgent={canCreateAgent}
+      canRunSetup={canRunSetup}
+      onSelectAgent={selectAgent}
+      onSetUserDefaultAgent={(agentId: string | null) =>
+        void setUserDefaultAgent(agentId)
+      }
+      onSetupComplete={() => void reloadAgentContext()}
+      reasoningPresets={reasoningPresets}
+      reasoningEffort={reasoningEffort}
+      onReasoningEffortChange={setReasoningEffort}
+    >
+      <ChatContextBar quota={quota} />
+      {effectiveEphemeral ? (
+        <ConversationRetentionBanner
+          temporary
+          ttlMinutes={effectiveEphemeralTtlMinutes}
+          expiresAt={ephemeralExpiresAt}
+          hasConversation={Boolean(activeConversationId)}
+          canConvert={conversationIsOwner}
+          converting={convertingTemporaryConversation}
+          extending={extendingTemporaryConversation}
+          onConvert={() => void makeConversationPersistent()}
+          onExtend={(ttlMinutes) =>
+            void extendTemporaryConversation(ttlMinutes)
+          }
+        />
+      ) : null}
+      {conversationReadOnly ? (
+        <div className="border-b bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
+          {t("share.readOnlyNotice")}
+        </div>
+      ) : null}
+      {codeWorkspaceArtifact ? (
+        <CodeWorkspaceModeBar
+          artifact={codeWorkspaceArtifact}
+          interfaceMode={interfaceMode}
+          onModeChange={chooseInterfaceMode}
+        />
+      ) : null}
+      {conversationLoadError ? (
+        <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4">
+          <Alert variant="destructive">
+            <AlertTitle>{t("errors.loadConversationFailed")}</AlertTitle>
+            <AlertDescription className="mt-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={retryConversationLoad}
+              >
+                {t("errors.retryConversationLoad")}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      ) : interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
+        <section
+          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
+          style={
+            { "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties
+          }
+        >
+          <aside
+            className="flex min-h-0 flex-col bg-muted/10"
+            id="coding-chat-panel"
+          >
+            <div className="border-b border-border/50 px-3 py-2">
+              <p className="text-xs font-medium text-foreground">
+                {t("codingPanelTitle")}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("codingPanelDescription")}
+              </p>
+            </div>
+            <section className="min-h-0 flex-1 overflow-hidden">
+              <div className="size-full min-h-0">
+                <ChatMessageList
+                  key={activeConversationId ?? "new-conversation"}
+                  messages={messages}
+                  sending={sending}
+                  loading={loadingMessages}
+                  workspaceId={workspaceId ?? undefined}
+                  workspaceArtifactDisplay="summary"
+                  conversationId={activeConversationId}
+                  bottomRef={bottomRef}
+                  onEditMessage={ownerEditMessage}
+                  onDeleteMessage={ownerDeleteMessage}
+                  onRegenerateAssistant={ownerRegenerateResponse}
+                  onContinueAssistant={ownerContinueResponse}
+                  onForkMessage={availableForkConversation}
+                  onNavigateBranch={navigateConversationBranch}
+                  forkingMessageId={forkingMessageId}
+                  onJumpLatest={reloadActualLatestMessages}
+                  pendingApprovals={pendingApprovals}
+                  onApproveTool={approveToolInvocation}
+                  onRejectTool={rejectToolInvocation}
+                  onSuggestionClick={submitSuggestion}
+                />
+              </div>
+            </section>
+            <ChatComposer
+              input={input}
+              maxInputCharacters={maxInputCharacters}
+              canChat={canChat && !conversationLoadError}
+              needsSetup={needsSetup}
+              sending={sending}
+              queuedMessages={queuedMessages}
+              onInputChange={setInput}
+              onSubmit={submitMessage}
+              onStop={stopGeneration}
+              onQueuedMessageChange={updateQueuedMessage}
+              onQueuedMessageCancel={cancelQueuedMessage}
+              onUploadCodeWorkspace={uploadCodeWorkspace}
+              onUploadChatAttachment={uploadChatAttachment}
+              attachments={attachments}
+              todoList={latestTodoList}
+              onRemoveAttachment={(attachmentId) =>
+                setAttachments((current) =>
+                  current.filter(
+                    (attachment) => attachment.id !== attachmentId,
+                  ),
+                )
+              }
+            />
+          </aside>
+          <CodeWorkspaceResizeHandle
+            controls="coding-chat-panel"
+            label={t("resizeCodingChat")}
+            maximum={MAX_CHAT_WIDTH}
+            minimum={MIN_CHAT_WIDTH}
+            onResize={updateCodingChatWidth}
+            value={codingChatWidth}
+          />
+          <div className="min-h-0 overflow-hidden">
+            <CodeWorkspaceArtifactCard
+              artifact={codeWorkspaceArtifact}
+              workspaceId={workspaceId ?? undefined}
+              variant="workbench"
+            />
+          </div>
+        </section>
+      ) : (
+        <section className="min-h-0 flex-1 overflow-hidden">
+          {!loadingMessages && messages.length === 0 ? (
+            <EmptyConversationState needsSetup={needsSetup} t={t} />
+          ) : null}
+          <div className="size-full min-h-0">
+            <ChatMessageList
+              key={activeConversationId ?? "new-conversation"}
+              messages={messages}
+              sending={sending}
+              loading={loadingMessages}
+              workspaceId={workspaceId ?? undefined}
+              conversationId={activeConversationId}
+              bottomRef={bottomRef}
+              onEditMessage={ownerEditMessage}
+              onDeleteMessage={ownerDeleteMessage}
+              onRegenerateAssistant={ownerRegenerateResponse}
+              onContinueAssistant={ownerContinueResponse}
+              onForkMessage={availableForkConversation}
+              onNavigateBranch={navigateConversationBranch}
+              forkingMessageId={forkingMessageId}
+              onJumpLatest={reloadActualLatestMessages}
+              pendingApprovals={pendingApprovals}
+              onApproveTool={approveToolInvocation}
+              onRejectTool={rejectToolInvocation}
+              onSuggestionClick={submitSuggestion}
+            />
+          </div>
+        </section>
+      )}
+      {interfaceMode === CODING_INTERFACE_MODE &&
+      codeWorkspaceArtifact ? null : (
+        <ChatComposer
+          input={input}
+          maxInputCharacters={maxInputCharacters}
+          canChat={canChat && !conversationLoadError}
+          needsSetup={needsSetup}
+          sending={sending}
+          queuedMessages={queuedMessages}
+          onInputChange={setInput}
+          onSubmit={submitMessage}
+          onStop={stopGeneration}
+          onQueuedMessageChange={updateQueuedMessage}
+          onQueuedMessageCancel={cancelQueuedMessage}
+          onUploadCodeWorkspace={uploadCodeWorkspace}
+          onUploadChatAttachment={uploadChatAttachment}
+          attachments={attachments}
+          todoList={latestTodoList}
+          centered={!loadingMessages && messages.length === 0}
+          promptSuggestions={emptyPromptSuggestions}
+          onPromptSuggestionClick={submitSuggestion}
+          onRemoveAttachment={(attachmentId) =>
+            setAttachments((current) =>
+              current.filter((attachment) => attachment.id !== attachmentId),
+            )
+          }
+        />
+      )}
+    </ChatLayout>
+  );
+}
+
+
+type LayoutProps = Omit<ComponentProps<typeof ChatLayout>, "children">;
+
+export function ChatPageBoundary(props: {
+  state: "loading" | "empty";
+  layoutProps: LayoutProps;
+  emptyStateProps: ComponentProps<typeof NoAssistantsState>;
+  loadingStateProps: ComponentProps<typeof ChatPageLoading>;
+}) {
+  const child =
+    props.state === "loading" ? (
+      <ChatPageLoading {...props.loadingStateProps} />
+    ) : (
+      <NoAssistantsState {...props.emptyStateProps} />
+    );
+  return <ChatLayout {...props.layoutProps}>{child}</ChatLayout>;
+}
+

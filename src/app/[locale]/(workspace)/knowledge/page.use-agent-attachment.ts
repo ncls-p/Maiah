@@ -29,7 +29,8 @@ export function useKnowledgeAgentAttachment(input: {
       );
       if (!res.ok) throw new Error(t("errorLoadAgents"));
       const data = (await res.json()) as
-        { agents?: KnowledgeAgent[] } | KnowledgeAgent[];
+        | { agents?: KnowledgeAgent[] }
+        | KnowledgeAgent[];
       setAttachAgents(Array.isArray(data) ? data : (data.agents ?? []));
     } catch (error) {
       setAttachAgentsError(true);

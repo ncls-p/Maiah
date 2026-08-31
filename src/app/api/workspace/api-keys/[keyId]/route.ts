@@ -40,9 +40,15 @@ export async function DELETE(
     {
       logLabel: "Failed to revoke API key",
       expectedError: (error) => {
-        const message =
-          error instanceof Error ? error.message : "Internal server error";
-        return NextResponse.json({ error: message }, { status: 400 });
+        // Whitelist the single expected domain message; anything else (e.g.
+        // database errors) falls through to the generic 500 + server log.
+        if (error instanceof Error && error.message === "API key not found") {
+          return NextResponse.json(
+            { error: "API key not found" },
+            { status: 400 },
+          );
+        }
+        return null;
       },
     },
   );

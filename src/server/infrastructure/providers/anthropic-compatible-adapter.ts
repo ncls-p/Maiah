@@ -55,9 +55,7 @@ function createAnthropicFetch(config: ProviderRuntimeConfig) {
     for (const [key, value] of Object.entries(config.queryParams ?? {})) {
       url.searchParams.set(key, value);
     }
-    return request
-      ? fetch(new Request(url, request), init)
-      : fetch(url, init);
+    return request ? fetch(new Request(url, request), init) : fetch(url, init);
   };
 }
 

@@ -17,7 +17,9 @@ const steps = [
 
 export type StepId = (typeof steps)[number]["id"];
 export type ProviderKind =
-  "openai-compatible" | "dragonfly" | "vercel-ai-gateway";
+  | "openai-compatible"
+  | "dragonfly"
+  | "vercel-ai-gateway";
 type ProviderAuthType = "bearer" | "x-api-key" | "gateway";
 
 export type ProviderSummary = {

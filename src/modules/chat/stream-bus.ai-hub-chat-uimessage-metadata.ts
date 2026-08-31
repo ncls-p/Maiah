@@ -77,6 +77,26 @@ function safeStreamEvent(event: StreamEvent): StreamEvent {
 
 const LEGACY_GENERATION_ID = "legacy";
 
+/**
+ * Replay buffer cap per stream run. Events are projected (no secrets) but
+ * unbounded on long agentic runs; keeping only the most recent N bounds
+ * in-memory growth per process. Resume catch-up stays lossless in practice:
+ * the streaming message's parts are persisted to the DB progressively, and
+ * the resume route falls back to a DB reload (202/404/409) whenever the
+ * in-memory run is absent (other replica, restart, completed run). The only
+ * affected case is a same-process mid-run resume of a run that already
+ * produced more than MAX_RUN_EVENTS events: the SSE replay then starts from
+ * the retained tail instead of the full history.
+ */
+export const MAX_RUN_EVENTS = 500;
+
+function appendRunEvent(run: StreamRun, event: StreamEvent) {
+  run.events.push(event);
+  if (run.events.length > MAX_RUN_EVENTS) {
+    run.events.splice(0, run.events.length - MAX_RUN_EVENTS);
+  }
+}
+
 function retireReplacedRun(run: StreamRun) {
   run.done = true;
   run.abortController?.abort(
@@ -113,7 +133,7 @@ export function publishChatStreamEvent(
   if (existing && existing.generationId !== generationId) return;
   const run = getOrCreateRun(messageId, generationId);
   const safeEvent = safeStreamEvent(event);
-  run.events.push(safeEvent);
+  appendRunEvent(run, safeEvent);
   for (const subscriber of run.subscribers) {
     subscriber.enqueue(safeEvent);
   }

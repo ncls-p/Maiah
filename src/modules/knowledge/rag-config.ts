@@ -74,7 +74,8 @@ async function toRuntimeConfig(
     queryParams:
       (provider.queryParamsJson as Record<string, string> | null) ?? undefined,
     openaiCompatibleApiRoute: provider.openaiCompatibleApiRoute as
-      "responses" | "chat-completions",
+      | "responses"
+      | "chat-completions",
   };
 }
 

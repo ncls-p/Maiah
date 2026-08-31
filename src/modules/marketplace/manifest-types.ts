@@ -133,7 +133,11 @@ export type MarketplaceManifest =
   | McpPresetMarketplaceManifest;
 
 export type SourceResourceType =
-  "agent" | "skill" | "custom_tool" | "mcp_server" | "mcp_tool";
+  | "agent"
+  | "skill"
+  | "custom_tool"
+  | "mcp_server"
+  | "mcp_tool";
 
 export function skillFileStats(
   files: Array<{ path: string; content: string }>,

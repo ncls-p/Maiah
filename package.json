@@ -37,8 +37,9 @@
     "lockfile:check": "node scripts/check-lockfile.mjs",
     "quality:dead-code": "knip --include files,dependencies,devDependencies,unlisted,unresolved",
     "quality:duplicates": "jscpd src --min-lines 20 --min-tokens 100 --threshold 0.45 --ignore '**/generated-route-manifest.ts,**/migrations/**'",
-    "quality:file-length": "node scripts/check-file-length.mjs",
-    "quality": "npm run quality:file-length && npm run quality:dead-code && npm run quality:duplicates"
+    "quality:size": "node scripts/check-code-size.mjs",
+    "quality:size:update": "node scripts/check-code-size.mjs --update",
+    "quality": "npm run quality:size && npm run quality:dead-code && npm run quality:duplicates"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.38",
@@ -63,7 +64,7 @@
     "@upstash/redis": "^1.34.4",
     "@xyflow/react": "^12.11.2",
     "ai": "^7.0.63",
-    "better-auth": "^1.6.11",
+    "better-auth": "^1.7.2",
     "bullmq": "^5.73.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -75,7 +76,7 @@
     "katex": "^0.17.0",
     "lucide-react": "^0.545.0",
     "marked": "^18.0.4",
-    "next": "16.2.6",
+    "next": "^16.3.3",
     "next-intl": "^4.13.0",
     "pdf-parse": "^2.4.5",
     "radix-ui": "^1.6.7",
@@ -84,7 +85,7 @@
     "react-resizable-panels": "^4.12.2",
     "server-only": "^0.0.1",
     "shadcn": "^4.8.0",
-    "sharp": "0.34.5",
+    "sharp": "^0.35.4",
     "sonner": "^2.0.7",
     "streamdown": "^2.5.0",
     "swagger-ui-dist": "^5.32.8",
