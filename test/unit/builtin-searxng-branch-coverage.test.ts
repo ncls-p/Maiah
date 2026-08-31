@@ -91,10 +91,10 @@ describe("searxng web search branch coverage", () => {
 
 describe("pure primitive tools branch coverage", () => {
   it("generates random numbers and rejects bad ranges", () => {
-    expect(() => randomNumbers({ min: 5, max: 5, count: 1 })).toThrow(
+    expect(() => randomNumbers({ min: 5, max: 5, count: 1, integer: false })).toThrow(
       "max must be greater than min",
     );
-    const floats = randomNumbers({ min: 0, max: 1, count: 3 });
+    const floats = randomNumbers({ min: 0, max: 1, count: 3, integer: false });
     expect(floats.values).toHaveLength(3);
     expect(floats.value).toBe(floats.values[0]);
     const ints = randomNumbers({ min: 0.5, max: 4.9, count: 5, integer: true });
@@ -167,7 +167,7 @@ describe("pure primitive tools branch coverage", () => {
       keys: [],
       items: undefined,
     });
-    expect(jsonTool({ action: "pretty", json: '{"a":1}' })).toEqual({
+    expect(jsonTool({ action: "format", json: '{"a":1}' })).toEqual({
       result: '{\n  "a": 1\n}',
     });
     const invalid = jsonTool({ action: "validate", json: "{nope" });
