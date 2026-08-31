@@ -13,7 +13,7 @@ import {
   type WorkflowNodeCategory,
 } from "@/modules/workflows/catalog";
 
-import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder.view";
+import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder";
 import { workflowNodeIconByType } from "./workflow-canvas-node";
 export function useWorkflowPaletteRenderer(model: WorkflowBuilderViewModel) {
   const {

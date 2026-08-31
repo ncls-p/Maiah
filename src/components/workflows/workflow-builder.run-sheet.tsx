@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 
-import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder.view";
+import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder";
 
 export function WorkflowBuilderRunSheet({
   model,

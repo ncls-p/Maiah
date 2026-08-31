@@ -13,7 +13,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { workflowNodeCatalogItem } from "@/modules/workflows/catalog";
 
-import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder.view";
+import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder";
 import { JsonValueEditor, WorkflowNodeFields } from "./workflow-node-fields";
 export function useWorkflowConfigurationRenderer(
   model: WorkflowBuilderViewModel,

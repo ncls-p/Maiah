@@ -32,14 +32,7 @@
             "maxFunctionLines": 340
         },
         "src/app/[locale]/(workspace)/agents/page.agents-page.tsx": {
-            "lines": 390,
-            "maxFunctionLines": 362
-        },
-        "src/app/[locale]/(workspace)/agents/page.agents-page.view.section-1.tsx": {
-            "maxFunctionLines": 268
-        },
-        "src/app/[locale]/(workspace)/agents/page.agents-page.view.section-2.tsx": {
-            "lines": 442,
+            "lines": 1179,
             "maxFunctionLines": 409
         },
         "src/app/[locale]/(workspace)/chat/page.chat-page.tsx": {
@@ -319,12 +312,8 @@
             "maxFunctionLines": 407
         },
         "src/components/workflows/workflow-builder.workflow-builder.tsx": {
-            "lines": 392,
+            "lines": 989,
             "maxFunctionLines": 349
-        },
-        "src/components/workflows/workflow-builder.workflow-builder.view.tsx": {
-            "lines": 316,
-            "maxFunctionLines": 275
         },
         "src/components/workspace-api-keys.workspace-api-keys.tsx": {
             "lines": 447,

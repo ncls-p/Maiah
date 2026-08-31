@@ -13,7 +13,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 
 import { runBadgeVariant } from "./workflow-builder.node-types";
-import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder.view";
+import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder";
 export function useWorkflowRunsRenderer(model: WorkflowBuilderViewModel) {
   const {
     loadRunDetail,
