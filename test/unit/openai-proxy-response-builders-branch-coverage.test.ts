@@ -15,8 +15,12 @@ import type { ProxyGenerationResult } from "@/modules/openai-proxy/response-buil
 import { describe, expect, it } from "vitest";
 
 const bareUsage = {
-  inputTokenDetails: {},
-  outputTokenDetails: {},
+  inputTokenDetails: {
+    noCacheTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  },
+  outputTokenDetails: { textTokens: 0, reasoningTokens: 0 },
 } as never;
 
 function result(overrides: Partial<ProxyGenerationResult> = {}): ProxyGenerationResult {
@@ -28,8 +32,12 @@ function result(overrides: Partial<ProxyGenerationResult> = {}): ProxyGeneration
       inputTokens: 3,
       outputTokens: 4,
       totalTokens: 7,
-      inputTokenDetails: { cacheReadTokens: 1 },
-      outputTokenDetails: { reasoningTokens: 2 },
+      inputTokenDetails: {
+        noCacheTokens: 2,
+        cacheReadTokens: 1,
+        cacheWriteTokens: 0,
+      },
+      outputTokenDetails: { textTokens: 2, reasoningTokens: 2 },
     },
     ...overrides,
   };
@@ -69,8 +77,12 @@ describe("openai proxy response builders branch coverage", () => {
     const partial = {
       inputTokens: 5,
       outputTokens: 6,
-      inputTokenDetails: {},
-      outputTokenDetails: {},
+      inputTokenDetails: {
+        noCacheTokens: 5,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
+      outputTokenDetails: { textTokens: 6, reasoningTokens: 0 },
     } as never;
     expect(chatUsage(partial).total_tokens).toBe(11);
     expect(responsesUsage(partial).total_tokens).toBe(11);

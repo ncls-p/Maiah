@@ -31,7 +31,9 @@ describe("safe payload branch coverage", () => {
       webhookSecret: "s",
       connectionString: "c",
     });
-    for (const value of Object.values(payload as Record<string, unknown>)) {
+    for (const value of Object.values(
+      payload as Record<string, unknown>,
+    )) {
       expect(value).toBe(REDACTED_VALUE);
     }
   });
@@ -40,7 +42,7 @@ describe("safe payload branch coverage", () => {
     const payload = projectToolPayloadForDisplay({
       env: { PATH: "/bin" },
       environment: ["a", "b"],
-    });
+    }) as Record<string, unknown>;
     expect(payload.env).toEqual({ PATH: REDACTED_VALUE });
     expect(payload.environment).toEqual([REDACTED_VALUE, REDACTED_VALUE]);
   });
@@ -93,7 +95,9 @@ describe("safe payload branch coverage", () => {
   });
 
   it("truncates long strings, deep nesting, circular refs, arrays, and objects", () => {
-    const long = projectToolPayloadForDisplay({ text: "x".repeat(600) });
+    const long = projectToolPayloadForDisplay({
+      text: "x".repeat(600),
+    }) as { text: string };
     expect((long.text as string).length).toBeLessThan(600);
     expect(long.text).toContain("[TRUNCATED]");
 
@@ -113,17 +117,17 @@ describe("safe payload branch coverage", () => {
     const array = projectToolPayloadForDisplay(
       { items: Array.from({ length: 25 }, (_, i) => i) },
       { maxArrayItems: 20 },
-    );
+    ) as { items: unknown[] };
     expect((array.items as unknown[]).length).toBe(21);
     expect((array.items as unknown[])[20]).toBe("[TRUNCATED]");
 
     const manyKeys = projectToolPayloadForDisplay(
       Object.fromEntries(Array.from({ length: 50 }, (_, i) => [`k${i}`, i])),
       { maxObjectKeys: 40 },
-    );
+    ) as Record<string, unknown>;
     expect(manyKeys.__truncated__).toBe("10 additional fields");
 
-    expect(projectToolPayloadForDisplay({ big: 10n })).toEqual({
+    expect(projectToolPayloadForDisplay({ big: BigInt(10) })).toEqual({
       big: "10",
     });
   });
