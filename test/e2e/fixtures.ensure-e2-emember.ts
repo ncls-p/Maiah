@@ -52,7 +52,7 @@ export async function ensureE2EMember() {
       [userId],
     );
     await client.query(
-      "insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
+      "insert into account (account_id, provider_id, issuer, user_id, password, created_at, updated_at) values ($1, 'credential', 'local:credential', $2, $3, now(), now())",
       [userId, userId, password],
     );
     await client.query(
@@ -137,7 +137,7 @@ export async function ensureE2EPermissionUser(input: {
       [userId],
     );
     await client.query(
-      "insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
+      "insert into account (account_id, provider_id, issuer, user_id, password, created_at, updated_at) values ($1, 'credential', 'local:credential', $2, $3, now(), now())",
       [userId, userId, password],
     );
     await client.query(
