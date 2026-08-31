@@ -18,6 +18,11 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "next-env.d.ts",
+    // Agent workspaces and scratch areas (never part of the product code):
+    ".pi/**",
+    ".pi-lens/**",
+    ".work/**",
+    ".devtools/**",
   ]),
 ]);
 

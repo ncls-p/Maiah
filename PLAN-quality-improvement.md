@@ -1,6 +1,26 @@
 # Plan qualité — branches ≥ 95 % + tous les fichiers ≤ 300 lignes
 
-Objectifs (fixés par l'utilisateur) :
+> **Changement de cap (2026-08-31)** — décidé après audit :
+>
+> 1. **Le gate « ≤ 300 lignes par fichier » est remplacé** par
+>    `scripts/check-code-size.mjs` (+ ratchet `scripts/file-size-ratchet.json`) :
+>    ratchet anti-régression par fichier (les fichiers ratchetés peuvent
+>    rétrécir, pas grossir ; nouveaux fichiers ≤ 300 lignes) + complexité
+>    cyclomatique par fonction ≤ 30 + longueur de fonction ≤ 200 lignes,
+>    mesurées via l'API TypeScript. Scripts npm : `quality:size` /
+>    `quality:size:update`. L'ancien `scripts/check-file-length.mjs` (table
+>    LEGACY_LINE_LIMITS) est supprimé.
+> 2. **Consolidation des splits mécaniques** (`part-a/b/c`) : toutes les
+>    familles `part-*` de `src/` sont refondues en fichiers uniques
+>    (hooks use-chat-stream ×4, runtime-executor.execute-resolved-agent,
+>    routes chat ×4, conversations/route.get). Les splits `section-N` /
+>    `branch-N` / `suite-N` restent en place pour l'instant ; la suite du
+>    travail cible les chaînes les plus mécaniques de `src/` (pas `test/`).
+> 3. **L'objectif couverture branches ≥ 95 % est inchangé** et reste la
+>    priorité restante (seuil vitest `branches` : 79 → 95 une fois réels
+>    ≥ 95 %).
+
+## Objectifs d'origine (fixés par l'utilisateur)
 1. Couverture de **branches ≥ 95 %** (baseline mesurée : **83,98 %** = 5125/6103) + seuil vitest relevé à 95.
 2. **Tous les fichiers ≤ 300 lignes** (après Prettier) — éliminer les 98 fichiers en dépassement et la table de ratchets legacy de `scripts/check-file-length.mjs`.
 3. **Zéro erreur, zéro warning** sur tous les gates (lockfile, lint, typecheck, test:ci, coverage, file-length, jscpd, build).
