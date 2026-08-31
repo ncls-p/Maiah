@@ -10,6 +10,7 @@ import {
   runSkillsCli,
   verifySkillInstallPreviewToken,
 } from "@/modules/skills/use-cases.create-skill-install-preview-token";
+import * as _preview from "@/modules/skills/use-cases.create-skill-install-preview-token";
 import { checksumSkillPreview } from "@/modules/skills/use-cases.parse-skills-install-command";
 import { SkillPreviewConflictError } from "@/modules/skills/use-cases.exec-file-async";
 import * as _db from "@/server/infrastructure/db";
@@ -35,7 +36,7 @@ vi.mock("@/server/infrastructure/db", () => {
 vi.mock(
   "@/modules/skills/use-cases.create-skill-install-preview-token",
   async (importOriginal) => {
-    const actual = await importOriginal();
+    const actual = await importOriginal<typeof _preview>();
     return {
       ...actual,
       runSkillsCli: vi.fn(),
