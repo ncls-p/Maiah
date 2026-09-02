@@ -88,6 +88,7 @@ Chaque ressource distante doit distinguer :
 | Pièces jointes pendant streaming | Refus explicite sans perte de fichier                                                            | Code                                        |
 | Limite de huit fichiers          | Refus localisé avant upload                                                                      | Tests attachments + code                    |
 | ZIP et fichiers directs mélangés | Refus explicite                                                                                  | Tests attachments + code                    |
+| ZIP de code ou générique          | Routage par contenu vers l’espace de code ou une pièce jointe normale                              | Tests unitaires + navigateur                 |
 | Upload ou extraction en échec    | Erreur localisée, conversation conservée                                                         | Code + tests route                          |
 | Édition/suppression/régénération | Actions tactiles et clavier, échec non silencieux                                                | Tests chat + navigateur CI                  |
 | Copie message/lien               | Succès uniquement après presse-papiers, échec visible                                            | Code                                        |

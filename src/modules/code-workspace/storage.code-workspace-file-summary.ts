@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 
+import { sourceCodeExtensions } from "@/modules/files/source-code-extensions";
 import { assertSafeProjectId } from "./storage.assert-safe-project-id";
 
 export type CodeWorkspaceFileSummary = {
@@ -71,12 +72,9 @@ export const maxPathLength = 260;
 export const maxTextFileBytes = 1_000_000;
 
 export const textExtensions = new Set([
+  ...sourceCodeExtensions,
   ".html",
   ".htm",
-  ".css",
-  ".js",
-  ".mjs",
-  ".cjs",
   ".json",
   ".txt",
   ".md",
@@ -132,9 +130,7 @@ export const binaryExtensions = new Set([
   ".mov",
   ".mpeg",
   ".mpg",
-  ".mts",
   ".ogv",
-  ".ts",
   ".vob",
   ".webm",
   ".wmv",

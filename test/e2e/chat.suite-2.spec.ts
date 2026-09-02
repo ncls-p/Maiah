@@ -1,5 +1,6 @@
 import nextEnv from "@next/env";
 import { expect, test } from "@playwright/test";
+import JSZip from "jszip";
 import {
   activate,
   ensureE2EAssistant,
@@ -22,6 +23,80 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("chat page", () => {
+  test("routes code and generic ZIP files through their matching upload flows", async ({
+    page,
+  }) => {
+    await ensureE2EAssistant();
+    let codeUploads = 0;
+    let attachmentUploads = 0;
+    await page.route("**/api/workspace/code-projects/upload", async (route) => {
+      codeUploads += 1;
+      await route.fulfill({
+        status: 400,
+        json: { error: "Code ZIP detected" },
+      });
+    });
+    await page.route(
+      "**/api/workspace/chat-attachments/upload?*",
+      async (route) => {
+        attachmentUploads += 1;
+        const phase = new URL(route.request().url()).searchParams.get("phase");
+        if (phase === "chunk") {
+          await route.fulfill({ status: 202, json: { accepted: true } });
+          return;
+        }
+        await route.fulfill({
+          json: {
+            attachment: {
+              kind: "chat_file",
+              id: "20000000-0000-4000-8000-000000000099",
+              fileName: "documents.zip",
+              mimeType: "application/zip",
+              size: 128,
+              hash: "generic-zip-hash",
+              url: "/api/workspace/chat-attachments/generic-zip",
+              category: "file",
+              extractionStatus: "unreadable",
+              extractedTextChars: 0,
+            },
+          },
+        });
+      },
+    );
+
+    await page.goto("/en/chat");
+    const fileInput = page.locator('[data-slot="chat-composer-file-input"]');
+    const codeZip = new JSZip();
+    codeZip.file(
+      "entrypoints/content.tsx",
+      "export const Content = () => null;",
+    );
+    await fileInput.setInputFiles({
+      name: "code.zip",
+      mimeType: "application/zip",
+      buffer: await codeZip.generateAsync({ type: "nodebuffer" }),
+    });
+    await expect(
+      page.getByText("Code ZIP detected", { exact: true }),
+    ).toBeVisible();
+    expect(codeUploads).toBe(1);
+    expect(attachmentUploads).toBe(0);
+
+    const genericZip = new JSZip();
+    genericZip.file("documents/notes.txt", "Notes");
+    genericZip.file("documents/report.pdf", "%PDF-1.4");
+    await fileInput.setInputFiles({
+      name: "documents.zip",
+      mimeType: "application/zip",
+      buffer: await genericZip.generateAsync({ type: "nodebuffer" }),
+    });
+    await expect(
+      page.getByText("documents.zip", { exact: true }),
+    ).toBeVisible();
+    expect(codeUploads).toBe(1);
+    expect(attachmentUploads).toBeGreaterThanOrEqual(2);
+  });
+
   test("keeps chat history collapse available across workspace pages", async ({
     page,
   }) => {
