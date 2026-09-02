@@ -78,6 +78,19 @@ describe("runtime packaging guardrails", () => {
     expect(sandboxStage).toMatch(/^\s*ripgrep\s*\\$/m);
   });
 
+  it("ships and validates the Office macro analysis tools", () => {
+    const requirements = projectFile("sandbox-runner/python-requirements.txt");
+    const dockerfile = projectFile("Dockerfile");
+    const sandboxStage = dockerfile.slice(
+      dockerfile.indexOf("FROM node:22-bookworm-slim AS sandbox-runner"),
+      dockerfile.indexOf("FROM base AS deps"),
+    );
+
+    expect(requirements).toMatch(/^oletools\b/m);
+    expect(sandboxStage).toContain("from oletools.olevba import VBA_Parser");
+    expect(sandboxStage).toContain("command -v olevba");
+  });
+
   it("ships and validates every sandbox runner module", () => {
     const dockerfile = projectFile("Dockerfile");
     const sandboxStage = dockerfile.slice(

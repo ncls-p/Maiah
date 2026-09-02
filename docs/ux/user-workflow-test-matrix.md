@@ -60,21 +60,21 @@ Chaque ressource distante doit distinguer :
 
 ## Organisations, projets et accès
 
-| Scénario                            | Attendu                                                                                         | Couverture                            |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Plusieurs organisations             | Création indépendante, propriétaire initial et premier projet atomiques                         | Route + module + migration PostgreSQL |
-| Plusieurs projets                   | Sélecteur global groupé par organisation ; choix de compte retrouvé dans une nouvelle session privée | Vitest + Playwright + PostgreSQL       |
-| Héritage organisation → projet      | Rôles utilisateur et équipe fusionnés avec les attributions locales                             | Tests IAM + CI PostgreSQL             |
-| Attribution membre ou équipe        | Principal, rôle et portée recroisés côté serveur avec l’organisation active                     | Module + validation de route          |
-| Rôle personnalisé                   | Catalogue fermé, au moins un droit, portée organisation ou projet                               | Tests catalogue + code                |
-| Équipe vide                         | État explicite et ajout de membre actif uniquement                                              | Code                                  |
-| Dernier propriétaire                | Retrait refusé en conflit jusqu’à attribution d’un autre propriétaire                           | Module + CI PostgreSQL                |
-| Erreur initiale                     | Explication persistante et relance ; aucune mutation disponible                                 | Code                                  |
-| Erreur de rafraîchissement          | Dernier snapshot conservé avec avertissement et relance                                         | Code                                  |
-| Permission insuffisante             | Navigation masquée ; API fail-closed ; état lecture seule si la consultation reste autorisée    | Tests sidebar + route                 |
-| Double soumission                   | Action initiatrice occupée, saisie conservée après rejet                                        | Code                                  |
-| Suppression membre ou attribution   | Ressource nommée, confirmation explicite, cache invalidé, audit et dernier propriétaire protégé | Module + code UI                      |
-| Mobile, clavier et traduction FR/EN | Onglets défilables, dialogues titrés, labels associés, aucune copie visible codée en dur        | Typecheck + navigateur à compléter    |
+| Scénario                            | Attendu                                                                                              | Couverture                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Plusieurs organisations             | Création indépendante, propriétaire initial et premier projet atomiques                              | Route + module + migration PostgreSQL |
+| Plusieurs projets                   | Sélecteur global groupé par organisation ; choix de compte retrouvé dans une nouvelle session privée | Vitest + Playwright + PostgreSQL      |
+| Héritage organisation → projet      | Rôles utilisateur et équipe fusionnés avec les attributions locales                                  | Tests IAM + CI PostgreSQL             |
+| Attribution membre ou équipe        | Principal, rôle et portée recroisés côté serveur avec l’organisation active                          | Module + validation de route          |
+| Rôle personnalisé                   | Catalogue fermé, au moins un droit, portée organisation ou projet                                    | Tests catalogue + code                |
+| Équipe vide                         | État explicite et ajout de membre actif uniquement                                                   | Code                                  |
+| Dernier propriétaire                | Retrait refusé en conflit jusqu’à attribution d’un autre propriétaire                                | Module + CI PostgreSQL                |
+| Erreur initiale                     | Explication persistante et relance ; aucune mutation disponible                                      | Code                                  |
+| Erreur de rafraîchissement          | Dernier snapshot conservé avec avertissement et relance                                              | Code                                  |
+| Permission insuffisante             | Navigation masquée ; API fail-closed ; état lecture seule si la consultation reste autorisée         | Tests sidebar + route                 |
+| Double soumission                   | Action initiatrice occupée, saisie conservée après rejet                                             | Code                                  |
+| Suppression membre ou attribution   | Ressource nommée, confirmation explicite, cache invalidé, audit et dernier propriétaire protégé      | Module + code UI                      |
+| Mobile, clavier et traduction FR/EN | Onglets défilables, dialogues titrés, labels associés, aucune copie visible codée en dur             | Typecheck + navigateur à compléter    |
 
 ## Chat et conversations
 
@@ -104,21 +104,21 @@ Chaque ressource distante doit distinguer :
 
 ## Assistants
 
-| Scénario                  | Attendu                                                          | Couverture                       |
-| ------------------------- | ---------------------------------------------------------------- | -------------------------------- |
-| Liste en chargement       | Progression stable                                               | Code                             |
-| Erreur de liste           | Erreur relançable, jamais « aucun assistant »                    | Code                             |
-| Liste vide                | Un CTA de création                                               | Code                             |
-| Recherche vide            | Message de filtre, collection intacte                            | Code                             |
-| Création assistant        | Type, modèle et instructions simples                             | Tests routes + code              |
-| Création orchestrateur    | Type explicite, privé en V1, accès à l’onglet orchestration      | Playwright + tests routes        |
-| Lecture seule             | Explication organisation, clone possible, mutations masquées     | Tests permissions + code         |
-| Chargement partiel config | Éditeur bloqué avec relance                                      | Code                             |
-| Sauvegarde concurrente    | `baseVersionId`, erreur 409 exploitable                          | Tests versioning                 |
-| Sauvegarde dans l'éditeur | Version et droits actualisés sans masquer l'écran ni les onglets | Test d'état éditeur + code       |
-| Capacités                 | Une version atomique pour outils, connaissances et skills        | Tests versioning + CI PostgreSQL |
-| Configuration terminée    | Checklist masquée, test chat prioritaire                         | Code                             |
-| Suppression               | Confirmation d’impact et état occupé                             | Code + tests API                 |
+| Scénario                  | Attendu                                                                                     | Couverture                       |
+| ------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- |
+| Liste en chargement       | Progression stable                                                                          | Code                             |
+| Erreur de liste           | Erreur relançable, jamais « aucun assistant »                                               | Code                             |
+| Liste vide                | Un CTA de création                                                                          | Code                             |
+| Recherche vide            | Message de filtre, collection intacte                                                       | Code                             |
+| Création assistant        | Type, modèle et instructions simples                                                        | Tests routes + code              |
+| Création orchestrateur    | Type explicite, privé en V1, accès à l’onglet orchestration                                 | Playwright + tests routes        |
+| Lecture seule             | Explication organisation, clone possible, mutations masquées                                | Tests permissions + code         |
+| Chargement partiel config | Éditeur bloqué avec relance                                                                 | Code                             |
+| Sauvegarde concurrente    | `baseVersionId`, erreur 409 exploitable                                                     | Tests versioning                 |
+| Sauvegarde dans l'éditeur | Version et droits actualisés sans masquer l'écran ni les onglets                            | Test d'état éditeur + code       |
+| Capacités                 | Une version atomique pour outils, connaissances et skills                                   | Tests versioning + CI PostgreSQL |
+| Configuration terminée    | Checklist masquée, test chat prioritaire                                                    | Code                             |
+| Suppression               | Le propriétaire peut supprimer ; autrui reste refusé ; confirmation d’impact et état occupé | Code + tests API + navigateur CI |
 
 ## Orchestrateurs
 
@@ -141,23 +141,23 @@ Chaque ressource distante doit distinguer :
 
 ## Connaissances
 
-| Scénario                   | Attendu                                                                          | Couverture              |
-| -------------------------- | -------------------------------------------------------------------------------- | ----------------------- |
-| Erreur initiale            | Erreur relançable, aucune base factice                                           | Code                    |
-| Base vide                  | CTA de création selon permission                                                 | Code                    |
-| Documents en erreur        | Erreur limitée à la base sélectionnée, relance                                   | Code                    |
-| Aucun document             | État vide explicite                                                              | Code                    |
-| Ingestion                  | Bouton désactivé sans titre/contenu, statut d’indexation                         | Code + tests API        |
-| Attachement assistant      | GET bindings obligatoire avant PUT                                               | Tests versioning + code |
-| Liste assistants en erreur | Erreur distincte de « aucun assistant »                                          | Code                    |
-| Portée organisation/privée | Libellés localisés, permission fail-closed                                       | Code + tests IAM        |
-| Création simple            | Nom et description visibles ; valeurs administrateur héritées sans surcharge     | Navigateur local        |
-| Création avancée           | Chunking, candidats, résultats, score et reranking derrière un panneau replié    | Navigateur + tests RAG  |
-| Choix des modèles          | Catalogue issu de `/models`; modification refusée sans `models.manage`           | Module + navigateur     |
-| Plusieurs Data Sources     | L'agent choisit explicitement une ou plusieurs sources liées par nom/description | Tests runtime RAG       |
-| Reprise après restart      | Les documents `processing` sont réconciliés avec la queue persistante            | Tests queue + worker    |
-| Collection volumineuse     | Liste compacte, compteurs de statut, recherche, filtres et pagination par 12     | Navigateur local        |
-| Aperçu document            | Le contenu extrait complet est consultable par chunks sans quitter la collection | Navigateur local + API  |
+| Scénario                   | Attendu                                                                          | Couverture                       |
+| -------------------------- | -------------------------------------------------------------------------------- | -------------------------------- |
+| Erreur initiale            | Erreur relançable, aucune base factice                                           | Code                             |
+| Base vide                  | CTA de création selon permission                                                 | Code                             |
+| Documents en erreur        | Erreur limitée à la base sélectionnée, relance                                   | Code                             |
+| Aucun document             | État vide explicite                                                              | Code                             |
+| Ingestion                  | Documents et code source (`.js`, `.tsx`, etc.), statut d’indexation              | Code + tests API + navigateur CI |
+| Attachement assistant      | GET bindings obligatoire avant PUT                                               | Tests versioning + code          |
+| Liste assistants en erreur | Erreur distincte de « aucun assistant »                                          | Code                             |
+| Portée organisation/privée | Libellés localisés, permission fail-closed                                       | Code + tests IAM                 |
+| Création simple            | Nom et description visibles ; valeurs administrateur héritées sans surcharge     | Navigateur local                 |
+| Création avancée           | Chunking, candidats, résultats, score et reranking derrière un panneau replié    | Navigateur + tests RAG           |
+| Choix des modèles          | Catalogue issu de `/models`; modification refusée sans `models.manage`           | Module + navigateur              |
+| Plusieurs Data Sources     | L'agent choisit explicitement une ou plusieurs sources liées par nom/description | Tests runtime RAG                |
+| Reprise après restart      | Les documents `processing` sont réconciliés avec la queue persistante            | Tests queue + worker             |
+| Collection volumineuse     | Liste compacte, compteurs de statut, recherche, filtres et pagination par 12     | Navigateur local                 |
+| Aperçu document            | Le contenu extrait complet est consultable par chunks sans quitter la collection | Navigateur local + API           |
 
 ## Workflows no-code
 

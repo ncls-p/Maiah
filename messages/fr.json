@@ -1643,7 +1643,7 @@
     "statusFailed": "Échec",
     "dropHint": "Déposez des fichiers ici ou remplissez les champs ci-dessous",
     "dropTitle": "Déposez des documents",
-    "dropFormats": "PDF, Office, OpenDocument, CSV, EPUB, images, Markdown, texte, dossiers ou ZIP — envoi découpé et reprenable",
+    "dropFormats": "PDF, Office, code source, CSV, EPUB, images, Markdown, texte, dossiers ou ZIP — envoi découpé et reprenable",
     "browse": "Parcourir",
     "browseFiles": "Choisir des fichiers",
     "browseFolder": "Choisir un dossier",

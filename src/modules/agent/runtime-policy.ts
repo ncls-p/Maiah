@@ -13,8 +13,9 @@ export const agentRuntimePolicy = {
 } as const;
 
 const UNLIMITED_DEADLINE = new Date("9999-12-31T00:00:00.000Z");
-const UNLIMITED_REMAINING_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_NATIVE_TIMEOUT_MS = 2_147_483_647;
 const neverAborts = new AbortController().signal;
+const noop = () => undefined;
 
 function boundedInteger(value: number | null | undefined, fallback: number) {
   if (!Number.isFinite(value)) return fallback;
@@ -55,9 +56,38 @@ export function runtimeDeadlineAt(timeoutMs: number) {
 /** Remaining ms until deadline. 0 means unlimited (no AbortSignal.timeout).
  *  Negative means the deadline has already passed. */
 export function timeoutMsUntil(deadlineAt: Date) {
+  if (deadlineAt.getTime() === UNLIMITED_DEADLINE.getTime()) return 0;
   const remaining = deadlineAt.getTime() - Date.now();
-  if (remaining > UNLIMITED_REMAINING_MS) return 0;
   return remaining > 0 ? remaining : -1;
+}
+
+function createLongTimeout(timeoutMs: number) {
+  const controller = new AbortController();
+  const expiresAt = Date.now() + timeoutMs;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const schedule = () => {
+    const remaining = expiresAt - Date.now();
+    if (remaining <= 0) {
+      controller.abort(
+        new DOMException(
+          "The operation was aborted due to timeout",
+          "TimeoutError",
+        ),
+      );
+      return;
+    }
+    timer = setTimeout(schedule, Math.min(remaining, MAX_NATIVE_TIMEOUT_MS));
+    timer.unref?.();
+  };
+  schedule();
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      if (timer) clearTimeout(timer);
+    },
+  };
 }
 
 export function createRuntimeDeadline(
@@ -72,19 +102,26 @@ export function createRuntimeDeadline(
       signal: parentSignal
         ? AbortSignal.any([parentSignal, expired.signal])
         : expired.signal,
+      dispose: noop,
     };
   }
   if (isUnlimitedRuntimeTimeout(timeoutMs)) {
     return {
       timeoutSignal: neverAborts,
       signal: parentSignal ?? neverAborts,
+      dispose: noop,
     };
   }
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const timeout =
+    timeoutMs <= MAX_NATIVE_TIMEOUT_MS
+      ? { signal: AbortSignal.timeout(timeoutMs), dispose: noop }
+      : createLongTimeout(timeoutMs);
+  const timeoutSignal = timeout.signal;
   return {
     timeoutSignal,
     signal: parentSignal
       ? AbortSignal.any([parentSignal, timeoutSignal])
       : timeoutSignal,
+    dispose: timeout.dispose,
   };
 }

@@ -1,6 +1,8 @@
 import {
   handleRoute,
+  requireRequestPermissionScopeAsync,
   requireResourcePermissionAsync,
+  requireWorkspaceMemberAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
@@ -149,14 +151,17 @@ export async function DELETE(
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       const { agentId, workspaceId } = parsedRequest.data;
-      const forbidden = await requireResourcePermissionAsync(
+      const forbiddenScope = await requireRequestPermissionScopeAsync(
         session.user.id,
         workspaceId,
         "agents.delete",
-        "agent",
-        agentId,
       );
-      if (forbidden) return forbidden;
+      if (forbiddenScope) return forbiddenScope;
+      const forbiddenMembership = await requireWorkspaceMemberAsync(
+        session.user.id,
+        workspaceId,
+      );
+      if (forbiddenMembership) return forbiddenMembership;
       await archiveAgent(
         agentId,
         workspaceId,

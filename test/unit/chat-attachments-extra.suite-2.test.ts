@@ -208,4 +208,33 @@ describe("chat attachments", () => {
       }),
     ).resolves.toMatchObject({ text: '```json\n{"ok":true}\n```' });
   });
+
+  it("extracts TypeScript and JavaScript source files as readable code", async () => {
+    for (const [fileName, source, language] of [
+      ["component.tsx", "export const App = () => <main>Hello</main>;", "tsx"],
+      ["config.cjs", "module.exports = { enabled: true };", "javascript"],
+    ] as const) {
+      const attachment = await createChatAttachment({
+        workspaceId,
+        userId,
+        fileName,
+        mimeType: "application/octet-stream",
+        bytes: new TextEncoder().encode(source),
+      });
+
+      expect(attachment).toMatchObject({
+        category: "text",
+        extractionStatus: "readable",
+      });
+      await expect(
+        getChatAttachmentExtractedText({
+          attachmentId: attachment.id,
+          workspaceId,
+          userId,
+        }),
+      ).resolves.toMatchObject({
+        text: `\`\`\`${language}\n${source}\n\`\`\``,
+      });
+    }
+  });
 });

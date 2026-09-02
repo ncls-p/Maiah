@@ -99,12 +99,20 @@ test.describe("knowledge bases", () => {
         mimeType: "text/markdown",
         buffer: Buffer.from("# Notes\n\nKnowledge context"),
       },
+      {
+        name: "component.tsx",
+        mimeType: "text/typescript",
+        buffer: Buffer.from("export const Answer = () => <strong>42</strong>;"),
+      },
     ]);
 
     await expect(page.getByText("people.csv", { exact: true })).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText("notes.md", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText("component.tsx", { exact: true })).toBeVisible({
       timeout: 15_000,
     });
     await expect(
