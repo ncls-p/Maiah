@@ -53,8 +53,10 @@ treated as a safety boundary.
   user cancellation never takes this recovery path.
 - Each specialist receives an earlier local deadline than its parent,
   reserving up to 30 seconds for parent recovery and synthesis.
-- New orchestrators default to a two-minute tree deadline. Administrators may
-  configure up to five minutes for longer multi-specialist work.
+- New orchestrators default to no tree deadline. Administrators may configure
+  any positive duration in milliseconds, or keep `0` so execution continues
+  until completion or explicit cancellation. Finite deadlines still propagate
+  through the complete run tree.
 - A specialist that crosses the cumulative token budget fails immediately and
   prevents further delegated work. If the parent model has already produced
   its terminal recovery text, that text is retained instead of being discarded

@@ -5,6 +5,7 @@ import {
   appendAgentRunStep,
   consumeAgentRunDelegationBudget,
 } from "@/modules/agent/run-use-cases";
+import { isUnlimitedRuntimeTimeout } from "@/modules/agent/runtime-policy";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -189,7 +190,11 @@ export async function buildDelegationTools(input: {
               Math.floor(input.execution.budget.policy.timeoutMs / 4),
             ),
           );
-          const childDeadlineMs = parentDeadlineMs - synthesisReserveMs;
+          const childDeadlineMs = isUnlimitedRuntimeTimeout(
+            input.execution.budget.policy.timeoutMs,
+          )
+            ? parentDeadlineMs
+            : parentDeadlineMs - synthesisReserveMs;
           if (childDeadlineMs - Date.now() < minimumDelegationWindowMs) {
             throw new AgentExecutionError(
               "Not enough execution time remains to start a specialist safely",

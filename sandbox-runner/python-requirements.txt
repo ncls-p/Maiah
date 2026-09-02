@@ -25,6 +25,7 @@ plotly
 # Office documents and PDFs
 python-docx
 python-pptx
+oletools  # includes the oletools.olevba module and olevba CLI
 pypdf
 PyPDF2
 pymupdf

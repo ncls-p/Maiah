@@ -28,6 +28,15 @@ describe("orchestration policy", () => {
     ).toMatchObject({ maxParallel: 1, timeoutMs: 30_000 });
   });
 
+  it("accepts finite deadlines beyond the former five-minute ceiling", () => {
+    expect(
+      orchestrationPolicySchema.safeParse({
+        ...orchestrationPolicyDefaults,
+        timeoutMs: 86_400_000,
+      }).success,
+    ).toBe(true);
+  });
+
   it("upgrades legacy one-step specialists and rejects new unsafe policies", () => {
     expect(normalizeOrchestrationPolicy({ maxChildSteps: 1 })).toMatchObject({
       maxChildSteps: 2,

@@ -54,6 +54,7 @@ export async function executeResolvedAgent(
   let usageProvider:
     | Awaited<ReturnType<typeof resolveProviderForVersion>>
     | undefined;
+  let deadline: ReturnType<typeof createRuntimeDeadline> | undefined;
   const startedAt = Date.now();
   try {
     const provider = await resolveProviderForVersion(input.resolved.version);
@@ -164,8 +165,8 @@ export async function executeResolvedAgent(
     ]
       .filter(Boolean)
       .join("\n\n");
-    const contextPolicy =
-      input.resolved.version.memoryPolicyJson as ConversationContextPolicy | null;
+    const contextPolicy = input.resolved.version
+      .memoryPolicyJson as ConversationContextPolicy | null;
     const fittedContext = input.messages?.length
       ? fitModelHistoryToContext({
           messages: input.messages,
@@ -180,7 +181,7 @@ export async function executeResolvedAgent(
           systemPrompt: system,
         })
       : null;
-    const deadline = createRuntimeDeadline(
+    deadline = createRuntimeDeadline(
       timeoutMsUntil(input.deadlineAt),
       input.budget.controller.signal,
     );
@@ -528,6 +529,7 @@ export async function executeResolvedAgent(
           ),
         );
   } finally {
+    deadline?.dispose();
     clearInterval(heartbeat);
     activeRunControllers.delete(runId);
   }

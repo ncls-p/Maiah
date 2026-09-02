@@ -6,7 +6,9 @@ export const orchestrationPolicyCaps = {
   maxParallel: 4,
   maxChildSteps: 20,
   maxTotalTokens: 100_000,
-  timeoutMs: 300_000,
+  // The UI deliberately has no product-level maximum. This ceiling only keeps
+  // persisted deadlines inside JavaScript's representable Date range.
+  timeoutMs: 8_000_000_000_000_000,
   resultMaxChars: 20_000,
 } as const;
 

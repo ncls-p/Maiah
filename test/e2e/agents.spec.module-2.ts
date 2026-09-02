@@ -130,6 +130,18 @@ test.describe("agent CRUD", () => {
       page.getByRole("button", { name: /Change assistant logo/i }),
     ).toBeVisible();
 
+    await page.getByRole("tab", { name: /Orchestration/i }).click();
+    await page.getByRole("button", { name: /Execution limits/i }).click();
+    const timeoutInput = page.getByLabel(/Maximum duration/i);
+    await expect(timeoutInput).not.toHaveAttribute("max");
+    await timeoutInput.fill("86400000");
+    await page.getByRole("button", { name: /Save orchestration/i }).click();
+    await expect(page.getByText(/Orchestration saved/i)).toBeVisible();
+    await page.reload();
+    await page.getByRole("tab", { name: /Orchestration/i }).click();
+    await page.getByRole("button", { name: /Execution limits/i }).click();
+    await expect(page.getByLabel(/Maximum duration/i)).toHaveValue("86400000");
+
     await page.getByRole("button", { name: /Assistant actions/i }).click();
     await page.getByRole("menuitem", { name: /Delete assistant/i }).click();
     const deleteDialog = page.getByRole("alertdialog");

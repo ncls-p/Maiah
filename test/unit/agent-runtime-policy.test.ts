@@ -2,6 +2,8 @@ import {
   agentRuntimePolicy,
   createRuntimeDeadline,
   resolveAgentRuntimeLimits,
+  runtimeDeadlineAt,
+  timeoutMsUntil,
 } from "@/modules/agent/runtime-policy";
 import { describe, expect, it } from "vitest";
 
@@ -49,5 +51,16 @@ describe("agent runtime policy", () => {
     controller.abort("cancelled");
     expect(deadline.signal.aborted).toBe(true);
     expect(deadline.timeoutSignal.aborted).toBe(false);
+  });
+
+  it("preserves long finite deadlines without treating them as unlimited", () => {
+    const timeoutMs = 45 * 24 * 60 * 60 * 1000;
+    const deadlineAt = runtimeDeadlineAt(timeoutMs);
+    expect(timeoutMsUntil(deadlineAt)).toBeGreaterThan(timeoutMs - 1_000);
+
+    const deadline = createRuntimeDeadline(timeoutMsUntil(deadlineAt));
+    expect(deadline.signal.aborted).toBe(false);
+    expect(deadline.timeoutSignal.aborted).toBe(false);
+    deadline.dispose();
   });
 });

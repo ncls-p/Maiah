@@ -33,7 +33,7 @@ export function policyField(
   key: keyof OrchestrationPolicy,
   label: string,
   min: number,
-  max: number,
+  max: number | undefined,
   step = 1,
   description?: string,
 ) {
@@ -52,7 +52,12 @@ export function policyField(
         onChange={(event) =>
           setPolicy({
             ...policy,
-            [key]: Math.max(min, Math.min(max, Number(event.target.value))),
+            [key]: Math.max(
+              min,
+              max === undefined
+                ? Number(event.target.value)
+                : Math.min(max, Number(event.target.value)),
+            ),
           })
         }
       />

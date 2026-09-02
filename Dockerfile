@@ -110,6 +110,8 @@ RUN apt-get update \
 COPY sandbox-runner/python-requirements.txt /tmp/sandbox-python-requirements.txt
 RUN python3 -m pip install --break-system-packages --no-cache-dir --prefer-binary \
     -r /tmp/sandbox-python-requirements.txt \
+  && python3 -c "from oletools.olevba import VBA_Parser" \
+  && command -v olevba >/dev/null \
   && rm -f /tmp/sandbox-python-requirements.txt
 
 COPY sandbox-runner/node-packages.txt /tmp/sandbox-node-packages.txt
