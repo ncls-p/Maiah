@@ -7,7 +7,6 @@ import {
   ListIcon,
   PlugIcon,
   RefreshCwIcon,
-  SparklesIcon,
   WrenchIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -43,6 +42,7 @@ import {
   ChatCapabilityFooter,
   ChatCapabilitySearch,
   ChatCapabilitySidebar,
+  ChatCapabilityTriggerLabel,
   type ChatCapabilityCategory,
 } from "./chat-tools-menu.catalog-navigation";
 
@@ -347,11 +347,10 @@ export function ChatToolsMenu({
             total: displayedTotal,
           })}
         >
-          <SparklesIcon data-icon="inline-start" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("toolsMenu.trigger")}</span>
-          <span className="hidden font-mono text-[0.65rem] tabular-nums sm:inline">
-            {displayedActiveCount}
-          </span>
+          <ChatCapabilityTriggerLabel
+            label={t("toolsMenu.trigger")}
+            count={displayedActiveCount}
+          />
         </Button>
       </DropdownMenuTrigger>
 

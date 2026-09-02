@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useReleaseBodyPointerEvents } from "./use-release-body-pointer-events";
 
 type ShareRow = {
   userId: string;
@@ -80,6 +81,7 @@ export function ConversationShareDialog({
   useEffect(() => {
     if (open) queueMicrotask(() => void load());
   }, [open, load]);
+  useReleaseBodyPointerEvents(open);
 
   async function addShare() {
     if (!email.trim()) return;

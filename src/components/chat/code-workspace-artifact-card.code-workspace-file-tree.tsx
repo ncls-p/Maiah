@@ -3,7 +3,7 @@
 import { FileIcon, FolderIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type React from "react";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import { ToolStateIcon } from "@/components/chat/tool-state-icon";
@@ -13,10 +13,8 @@ import {
   CODE_WORKSPACE_ARTIFACT_EVENT,
   formatBytes,
 } from "./code-workspace-artifact-card.button-type";
-import {
-  CodeWorkspaceTreeNode,
-  highlightCode,
-} from "./code-workspace-artifact-card.highlight-code";
+import type { CodeWorkspaceTreeNode } from "./code-workspace-artifact-card.highlight-code";
+import { useCodeWorkspaceHighlight } from "./code-workspace-artifact-card.use-highlight";
 
 export function CodeWorkspaceFileTree({
   nodes,
@@ -94,10 +92,7 @@ export function CodeWorkspaceEditor({
 }) {
   const t = useTranslations("chat.artifacts");
   const highlightRef = useRef<HTMLPreElement | null>(null);
-  const highlighted = useMemo(
-    () => highlightCode(value, filePath),
-    [filePath, value],
-  );
+  const highlighted = useCodeWorkspaceHighlight(value, filePath);
 
   function syncScroll(event: React.UIEvent<HTMLTextAreaElement>) {
     if (!highlightRef.current) return;

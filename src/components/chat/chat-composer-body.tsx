@@ -116,7 +116,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
     return () => window.removeEventListener("resize", resize);
   }, [props.needsSetup, props.input, props.sending]);
   return (
-    <div className="relative mx-auto w-full min-w-0 max-w-4xl">
+    <div className="@container/composer relative mx-auto w-full min-w-0 max-w-4xl">
       {props.todoList ? (
         <div className="mb-2">
           <ChatTodoListDock todoList={props.todoList} />
@@ -195,7 +195,13 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             </p>
           ) : null}
         </div>
-        <div className="grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-1.5 border-t border-border/55 px-2 py-1 sm:items-center sm:gap-x-2 sm:px-3">
+        {/*
+          The action row adapts to the composer's own width (container query),
+          not the viewport: the composer can be narrow inside the code
+          workspace split view even on a large screen. Below @sm the assistant
+          controls wrap onto their own row so nothing overlaps the send button.
+        */}
+        <div className="grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-1.5 border-t border-border/55 px-2 py-1 @xl/composer:items-center @xl/composer:gap-x-2 @xl/composer:px-3">
           <div className="col-start-1 row-start-1">
             <ChatComposerMediaControls
               disabled={!props.canChat || props.needsSetup}
@@ -208,7 +214,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           </div>
           <div
             data-slot="chat-composer-primary-controls"
-            className="col-start-2 row-start-1 min-w-0"
+            className="col-span-3 col-start-1 row-start-2 min-w-0 pb-1 @sm/composer:col-span-1 @sm/composer:col-start-2 @sm/composer:row-start-1 @sm/composer:pb-0"
           >
             {props.controls.primary}
           </div>
@@ -254,7 +260,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
         {props.controls.secondary ? (
           <div
             data-slot="chat-composer-usage"
-            className="border-t border-border/55 px-2 py-1 sm:px-3"
+            className="flex min-w-0 border-t border-border/55 px-2 py-1 @xl/composer:px-3"
           >
             {props.controls.secondary}
           </div>

@@ -28,6 +28,10 @@ import {
   CodeWorkspaceEditor,
   CodeWorkspaceFileTree,
 } from "./code-workspace-artifact-card.code-workspace-file-tree";
+import {
+  CodeWorkspacePanesHidden,
+  CodeWorkspacePopoutButton,
+} from "./code-workspace-artifact-card.popout-button";
 export function CodeWorkspaceArtifactCardSection2({
   model,
 }: {
@@ -40,6 +44,7 @@ export function CodeWorkspaceArtifactCardSection2({
     fileTree,
     loadingFile,
     paneId,
+    popoutWindows,
     saveSelectedFile,
     savingFile,
     selectedFile,
@@ -137,6 +142,12 @@ export function CodeWorkspaceArtifactCardSection2({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
+              {popoutWindows.canOpenEditorWindow ? (
+                <CodeWorkspacePopoutButton
+                  label={t("openEditorWindow")}
+                  onClick={popoutWindows.openEditorWindow}
+                />
+              ) : null}
               <Button
                 type={BUTTON_TYPE}
                 variant={GHOST_VARIANT}
@@ -239,20 +250,28 @@ export function CodeWorkspaceArtifactCardSection2({
                 {currentArtifact.rootFile ?? t("noHtmlEntry")}
               </p>
             </div>
-            <Button
-              type={BUTTON_TYPE}
-              variant={GHOST_VARIANT}
-              size="sm"
-              className="h-7 px-2 text-[11px]"
-              disabled={!currentArtifact.rootFile}
-              onClick={() => setFullscreenPane("preview")}
-            >
-              <Maximize2Icon
-                className={COMPACT_ICON_CLASS}
-                aria-hidden="true"
+            <div className="flex shrink-0 items-center gap-1.5">
+              <CodeWorkspacePopoutButton
+                label={t("openPreviewWindow")}
+                disabled={!popoutWindows.canOpenPreviewWindow}
+                onClick={popoutWindows.openPreviewWindow}
               />
-              {t("fullscreen")}
-            </Button>
+              <Button
+                type={BUTTON_TYPE}
+                variant={GHOST_VARIANT}
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                disabled={!currentArtifact.rootFile}
+                onClick={() => setFullscreenPane("preview")}
+                aria-label={t("fullscreen")}
+              >
+                <Maximize2Icon
+                  className={COMPACT_ICON_CLASS}
+                  aria-hidden="true"
+                />
+                <span className="hidden xl:inline">{t("fullscreen")}</span>
+              </Button>
+            </div>
           </div>
           <CodeWorkspacePreviewFrame
             key={`${currentArtifact.projectId}:${currentArtifact.version}:${currentArtifact.rootFile ?? "no-root"}`}
@@ -261,30 +280,15 @@ export function CodeWorkspaceArtifactCardSection2({
         </div>
       ) : null}
       {variant === "workbench" && visiblePanes.length === 0 ? (
-        <div className="flex min-h-80 items-center justify-center p-6 text-center">
-          <div className="max-w-xs rounded-2xl border border-border/60 bg-muted/20 p-5 shadow-sm">
-            <p className="text-sm font-medium text-foreground">
-              {t("allWorkspacePanesHidden")}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {t("allWorkspacePanesHiddenDescription")}
-            </p>
-            <Button
-              className="mt-4 h-10 rounded-xl"
-              onClick={() =>
-                updateWorkspaceLayout((current) => ({
-                  ...current,
-                  visible: { files: true, code: true, preview: true },
-                }))
-              }
-              size="sm"
-              type={BUTTON_TYPE}
-              variant={OUTLINE_VARIANT}
-            >
-              {t("showAllWorkspacePanes")}
-            </Button>
-          </div>
-        </div>
+        <CodeWorkspacePanesHidden
+          onShowAll={() =>
+            updateWorkspaceLayout((current) => ({
+              ...current,
+              visible: { files: true, code: true, preview: true },
+            }))
+          }
+          t={t}
+        />
       ) : null}
     </div>
   );

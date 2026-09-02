@@ -178,17 +178,20 @@ export function ChatPageView({ model }: { model: Model }) {
           </Alert>
         </div>
       ) : interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
+        // Below `lg` the workbench fills the screen and the composer stays
+        // docked underneath it; the conversation itself lives in Chat mode.
         <section
-          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
+          data-slot="coding-workspace-layout"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background lg:grid lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
           style={
             { "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties
           }
         >
           <aside
-            className="flex min-h-0 flex-col bg-muted/10"
+            className="flex min-h-0 shrink-0 flex-col bg-muted/10 lg:min-h-0 lg:flex-1"
             id="coding-chat-panel"
           >
-            <div className="border-b border-border/50 px-3 py-2">
+            <div className="hidden border-b border-border/50 px-3 py-2 lg:block">
               <p className="text-xs font-medium text-foreground">
                 {t("codingPanelTitle")}
               </p>
@@ -196,7 +199,7 @@ export function ChatPageView({ model }: { model: Model }) {
                 {t("codingPanelDescription")}
               </p>
             </div>
-            <section className="min-h-0 flex-1 overflow-hidden">
+            <section className="hidden min-h-0 flex-1 overflow-hidden lg:block">
               <div className="size-full min-h-0">
                 <ChatMessageList
                   key={activeConversationId ?? "new-conversation"}
@@ -255,7 +258,7 @@ export function ChatPageView({ model }: { model: Model }) {
             onResize={updateCodingChatWidth}
             value={codingChatWidth}
           />
-          <div className="min-h-0 overflow-hidden">
+          <div className="order-first min-h-0 flex-1 overflow-hidden lg:order-none">
             <CodeWorkspaceArtifactCard
               artifact={codeWorkspaceArtifact}
               workspaceId={workspaceId ?? undefined}
