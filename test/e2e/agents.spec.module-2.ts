@@ -58,6 +58,15 @@ test.describe("agent CRUD", () => {
     await expect(
       page.getByRole("option", { name: "E2E model", exact: true }),
     ).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: /Assistant actions/i }).click();
+    await page.getByRole("menuitem", { name: /Delete assistant/i }).click();
+    const deleteDialog = page.getByRole("alertdialog");
+    await expect(deleteDialog.getByText(assistantName)).toBeVisible();
+    await deleteDialog.getByRole("button", { name: /^Delete$/i }).click();
+    await expect(page).toHaveURL(/\/en\/agents$/, { timeout: 15_000 });
+    await expect(page.getByText(assistantName)).not.toBeVisible();
   });
 
   test("keeps configured provider and model visible to a project viewer", async ({

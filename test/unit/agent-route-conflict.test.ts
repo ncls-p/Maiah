@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const routeMocks = vi.hoisted(() => ({
+  archiveAgent: vi.fn(),
   updateAgent: vi.fn(),
+  requireRequestPermissionScopeAsync: vi.fn().mockResolvedValue(null),
+  requireWorkspaceMemberAsync: vi.fn().mockResolvedValue(null),
   requireWorkspacePermissionAsync: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
   requireResourcePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
+  requireRequestPermissionScopeAsync:
+    routeMocks.requireRequestPermissionScopeAsync,
+  requireWorkspaceMemberAsync: routeMocks.requireWorkspaceMemberAsync,
   handleRoute: async (
     request: Request,
     handler: (context: unknown) => Promise<Response>,
@@ -35,10 +41,14 @@ vi.mock("@/modules/admin/auth", () => ({
 vi.mock("@/modules/agent/use-cases", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/modules/agent/use-cases")>();
-  return { ...actual, updateAgent: routeMocks.updateAgent };
+  return {
+    ...actual,
+    archiveAgent: routeMocks.archiveAgent,
+    updateAgent: routeMocks.updateAgent,
+  };
 });
 
-import { PATCH } from "@/app/api/workspace/agents/[agentId]/route";
+import { DELETE, PATCH } from "@/app/api/workspace/agents/[agentId]/route";
 import {
   AgentVersionConflictError,
   updateAgent,
@@ -57,10 +67,21 @@ function patchRequest(body: Record<string, unknown>) {
   });
 }
 
+function deleteRequest() {
+  const request = new Request(
+    `http://localhost/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`,
+    { method: "DELETE" },
+  );
+  Object.defineProperty(request, "nextUrl", { value: new URL(request.url) });
+  return request;
+}
+
 describe("agent configuration route conflicts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMocks.requireWorkspacePermissionAsync.mockResolvedValue(null);
+    routeMocks.requireRequestPermissionScopeAsync.mockResolvedValue(null);
+    routeMocks.requireWorkspaceMemberAsync.mockResolvedValue(null);
   });
 
   it("returns a machine-readable 409 for a stale base version", async () => {
@@ -89,6 +110,42 @@ describe("agent configuration route conflicts", () => {
 
     expect(response.status).toBe(400);
     expect(updateAgent).not.toHaveBeenCalled();
+  });
+
+  it("lets an active project member reach the owner-checked delete use case", async () => {
+    const response = await DELETE(deleteRequest() as never, {
+      params: Promise.resolve({ agentId }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.requireRequestPermissionScopeAsync).toHaveBeenCalledWith(
+      "11111111-1111-4111-8111-111111111111",
+      workspaceId,
+      "agents.delete",
+    );
+    expect(routeMocks.requireWorkspaceMemberAsync).toHaveBeenCalledWith(
+      "11111111-1111-4111-8111-111111111111",
+      workspaceId,
+    );
+    expect(routeMocks.archiveAgent).toHaveBeenCalledWith(
+      agentId,
+      workspaceId,
+      "11111111-1111-4111-8111-111111111111",
+      false,
+    );
+  });
+
+  it("keeps delete closed when the caller is no longer a project member", async () => {
+    routeMocks.requireWorkspaceMemberAsync.mockResolvedValueOnce(
+      Response.json({ error: "Forbidden" }, { status: 403 }) as never,
+    );
+
+    const response = await DELETE(deleteRequest() as never, {
+      params: Promise.resolve({ agentId }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(routeMocks.archiveAgent).not.toHaveBeenCalled();
   });
 
   it("accepts runtime budgets without an application-level upper cap", async () => {

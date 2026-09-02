@@ -1644,7 +1644,7 @@
     "statusFailed": "Failed",
     "dropHint": "Drop files here or complete the fields below",
     "dropTitle": "Drop documents here",
-    "dropFormats": "PDF, Office, OpenDocument, CSV, EPUB, images, Markdown, text, folders, or ZIP — files are uploaded in resumable chunks",
+    "dropFormats": "PDF, Office, source code, CSV, EPUB, images, Markdown, text, folders, or ZIP — files are uploaded in resumable chunks",
     "browse": "Browse",
     "browseFiles": "Choose files",
     "browseFolder": "Choose folder",

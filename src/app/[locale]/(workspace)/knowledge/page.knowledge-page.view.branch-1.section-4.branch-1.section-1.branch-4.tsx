@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { knowledgeFileAccept } from "@/modules/knowledge/upload-accept";
 import { Loader2, UploadIcon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeDocumentTableBranch4({
@@ -39,7 +40,7 @@ export function KnowledgeDocumentTableBranch4({
           ref={documentInputRef}
           type="file"
           multiple
-          accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.pdf,.doc,.docx,.docm,.ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.xlsx,.xls,.xlsm,.xlsb,.rtf,.odt,.ods,.odp,.epub,.html,.xml,.yaml,.yml,.png,.jpg,.jpeg,.webp,.gif,.zip,text/*,image/png,image/jpeg,image/webp,image/gif"
+          accept={knowledgeFileAccept}
           className="hidden"
           onChange={(event) => {
             ingestSelectedFiles(event.target.files);
