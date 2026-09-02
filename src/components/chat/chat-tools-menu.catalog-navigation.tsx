@@ -1,4 +1,4 @@
-import { SearchIcon, Settings2Icon } from "lucide-react";
+import { SearchIcon, Settings2Icon, SparklesIcon } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -10,6 +10,29 @@ import { cn } from "@/lib/utils";
 import type { Capability } from "./chat-tools-menu.enabled-tool-summary";
 
 export type ChatCapabilityCategory = "all" | Capability["category"];
+
+/**
+ * Trigger content of the capabilities menu. The text is shown only when the
+ * composer *container* is wide: the chat pane can be narrow inside the code
+ * workspace split view even on a large screen, so the icon alone remains.
+ */
+export function ChatCapabilityTriggerLabel({
+  label,
+  count,
+}: {
+  label: string;
+  count: number;
+}) {
+  return (
+    <>
+      <SparklesIcon data-icon="inline-start" aria-hidden="true" />
+      <span className="hidden @xl/composer:inline">{label}</span>
+      <span className="hidden font-mono text-[0.65rem] tabular-nums @xl/composer:inline">
+        {count}
+      </span>
+    </>
+  );
+}
 
 export function ChatCapabilitySearch({
   value,

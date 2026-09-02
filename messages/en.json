@@ -245,7 +245,11 @@
       "costLabel": "Estimated cost",
       "costDescription": "Cumulative estimated AI model cost for this conversation.",
       "energyLabel": "Estimated energy use",
-      "energyDescription": "Cumulative estimated electricity use for this conversation."
+      "energyDescription": "Cumulative estimated electricity use for this conversation.",
+      "inputTokensLabel": "Input tokens",
+      "outputTokensLabel": "Output tokens",
+      "co2Label": "Estimated emissions",
+      "co2Description": "Cumulative estimated CO₂ equivalent for this conversation."
     },
     "toolsMenu": {
       "trigger": "Capabilities",
@@ -669,7 +673,14 @@
       "loadingFile": "Loading file…",
       "livePreview": "Live preview",
       "noHtmlEntry": "No HTML entry",
-      "code": "Code"
+      "code": "Code",
+      "openPreviewWindow": "Open the preview in a new window",
+      "openEditorWindow": "Open the workspace in a new window",
+      "popoutTitle": "Code workspace",
+      "popoutLoading": "Loading the code workspace…",
+      "popoutLoadFailed": "Unable to load this code workspace.",
+      "popoutSignIn": "Sign in to open this code workspace.",
+      "popoutRetry": "Retry"
     },
     "github": {
       "title": "Publish to GitHub",

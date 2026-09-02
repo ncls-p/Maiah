@@ -113,6 +113,70 @@ export function isCodeWorkspaceArtifactOutput(
 }
 
 export const CODE_WORKSPACE_ARTIFACT_EVENT = "code-workspace-artifact-updated";
+const CODE_WORKSPACE_SYNC_CHANNEL = "maiah-code-workspace-sync";
+const CODE_WORKSPACE_WINDOW_FEATURES = "popup=yes,width=1280,height=860";
+
+type CodeWorkspaceSyncMessage = { artifact?: CodeWorkspaceArtifact };
+
+function codeWorkspaceSyncChannel() {
+  if (typeof BroadcastChannel === "undefined") return null;
+  return new BroadcastChannel(CODE_WORKSPACE_SYNC_CHANNEL);
+}
+
+/** Tells the other windows (pop-outs, main chat) that the project changed. */
+export function broadcastCodeWorkspaceArtifact(
+  artifact: CodeWorkspaceArtifact,
+) {
+  const channel = codeWorkspaceSyncChannel();
+  if (!channel) return;
+  channel.postMessage({ artifact } satisfies CodeWorkspaceSyncMessage);
+  channel.close();
+}
+
+export function subscribeToCodeWorkspaceArtifacts(
+  projectId: string,
+  onArtifact: (artifact: CodeWorkspaceArtifact) => void,
+) {
+  const channel = codeWorkspaceSyncChannel();
+  if (!channel) return () => {};
+  channel.onmessage = (event: MessageEvent<CodeWorkspaceSyncMessage>) => {
+    const artifact = event.data?.artifact;
+    if (!isCodeWorkspaceArtifactOutput(artifact)) return;
+    if (artifact.projectId !== projectId) return;
+    onArtifact(artifact);
+  };
+  return () => channel.close();
+}
+
+export type CodeWorkspaceWindowSurface = "workbench" | "preview";
+
+export function codeWorkspaceWindowUrl(
+  locale: string,
+  artifact: Pick<CodeWorkspaceArtifact, "projectId">,
+  options: {
+    surface?: CodeWorkspaceWindowSurface;
+    workspaceId?: string;
+    path?: string | null;
+  } = {},
+) {
+  const params = new URLSearchParams();
+  if (options.workspaceId) params.set("workspaceId", options.workspaceId);
+  if (options.path) params.set("path", options.path);
+  const query = params.toString();
+  const suffix = options.surface === "preview" ? "/preview" : "";
+  return `/${locale}/code-workspace/${artifact.projectId}${suffix}${query ? `?${query}` : ""}`;
+}
+
+/**
+ * Opens a workspace surface in its own browser window. Reusing the window
+ * name means clicking the button again focuses the existing pop-out instead of
+ * stacking new ones.
+ */
+export function openCodeWorkspaceWindow(url: string, name: string) {
+  const popup = window.open(url, name, CODE_WORKSPACE_WINDOW_FEATURES);
+  popup?.focus();
+  return popup;
+}
 
 type CodeWorkspaceFilePayload = {
   content?: string;
@@ -126,7 +190,8 @@ async function requestCodeWorkspaceJson<T>(
 ) {
   const response = await fetch(url, init);
   const data = (await response.json().catch(() => null)) as
-    (T & { error?: string }) | null;
+    | (T & { error?: string })
+    | null;
   if (!response.ok) throw new Error(data?.error || fallbackError);
   return data as T | null;
 }
@@ -170,6 +235,21 @@ export async function requestUpdatedCodeWorkspaceArtifact(
     );
   }
   return nextArtifact;
+}
+
+export function initialCodeWorkspacePath(
+  artifact: CodeWorkspaceArtifact,
+  preferredPath: string | null = null,
+) {
+  const preferred = artifact.files.find(
+    (file) => file.path === preferredPath && !file.binary,
+  );
+  return (
+    preferred?.path ??
+    artifact.rootFile ??
+    artifact.files.find((file) => !file.binary)?.path ??
+    null
+  );
 }
 
 export function formatBytes(bytes: number) {

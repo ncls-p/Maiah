@@ -131,7 +131,7 @@ export const ChatReasoningSlider = memo(function ChatReasoningSlider({
 
   return (
     <>
-      <div className="sm:hidden">
+      <div className="@xl/composer:hidden">
         <ReasoningMobilePicker
           presets={presets}
           value={value}
@@ -150,7 +150,7 @@ export const ChatReasoningSlider = memo(function ChatReasoningSlider({
         }}
       >
         <TooltipTrigger asChild>
-          <label className="hidden min-h-10 w-auto min-w-0 items-center gap-1.5 rounded-xl px-2 text-muted-foreground sm:flex">
+          <label className="hidden min-h-10 w-auto min-w-0 items-center gap-1.5 rounded-xl px-2 text-muted-foreground @xl/composer:flex">
             <BrainCircuitIcon className="size-4 shrink-0" aria-hidden="true" />
             <span className="sr-only">{t("reasoningLevel")}</span>
             <div
@@ -162,7 +162,7 @@ export const ChatReasoningSlider = memo(function ChatReasoningSlider({
               aria-valuemax={max}
               aria-valuenow={index}
               aria-valuetext={valueLabel}
-              className="relative h-10 w-[clamp(5.5rem,18vw,7.5rem)] max-w-[7.5rem] shrink-0 touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-[disabled=true]:opacity-50"
+              className="relative h-10 w-[clamp(5.5rem,18cqw,7.5rem)] max-w-[7.5rem] shrink-0 touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-[disabled=true]:opacity-50"
               data-disabled={disabled ? "true" : undefined}
               onPointerDown={(event) => {
                 if (disabled) return;

@@ -15,8 +15,11 @@ import {
 import {
   CODE_WORKSPACE_ARTIFACT_EVENT,
   CODE_WORKSPACE_LAYOUT_STORAGE_KEY,
+  broadcastCodeWorkspaceArtifact,
+  initialCodeWorkspacePath,
   loadCodeWorkspaceFileContent,
   requestUpdatedCodeWorkspaceArtifact,
+  subscribeToCodeWorkspaceArtifacts,
 } from "./code-workspace-artifact-card.button-type";
 import { CodeWorkspaceArtifactCardView } from "./code-workspace-artifact-card.code-workspace-artifact-card.view";
 import {
@@ -24,24 +27,28 @@ import {
   dispatchCodeWorkspaceArtifact,
 } from "./code-workspace-artifact-card.code-workspace-file-tree";
 import { buildCodeWorkspaceTree } from "./code-workspace-artifact-card.highlight-code";
+import { useCodeWorkspacePopoutWindows } from "./code-workspace-artifact-card.use-popout-windows";
 
 export function useCodeWorkspaceArtifactCardController({
   artifact,
   workspaceId,
   variant = "card",
   activateOnMount = false,
+  standalone = false,
+  initialPath = null,
 }: {
   artifact: CodeWorkspaceArtifact;
   workspaceId?: string;
   variant?: "card" | "workbench";
   activateOnMount?: boolean;
+  /** True when the card is the whole window (pop-out page). */
+  standalone?: boolean;
+  initialPath?: string | null;
 }) {
   const t = useTranslations("chat.artifacts");
   const [currentArtifact, setCurrentArtifact] = useState(artifact);
-  const [selectedPath, setSelectedPath] = useState<string | null>(
-    artifact.rootFile ??
-      artifact.files.find((file) => !file.binary)?.path ??
-      null,
+  const [selectedPath, setSelectedPath] = useState<string | null>(() =>
+    initialCodeWorkspacePath(artifact, initialPath),
   );
   const [content, setContent] = useState("");
   const [fileReloadKey, setFileReloadKey] = useState(0);
@@ -66,6 +73,12 @@ export function useCodeWorkspaceArtifactCardController({
   );
   const visiblePanes = visibleCodeWorkspacePanes(workspaceLayout);
   const workspaceGridTemplate = codeWorkspaceGridTemplate(workspaceLayout);
+  const popoutWindows = useCodeWorkspacePopoutWindows({
+    artifact: currentArtifact,
+    workspaceId,
+    selectedPath,
+    standalone,
+  });
 
   function paneId(pane: CodeWorkspacePane) {
     return `${paneIdPrefix}-${pane}`;
@@ -119,11 +132,19 @@ export function useCodeWorkspaceArtifactCardController({
       CODE_WORKSPACE_ARTIFACT_EVENT,
       handleWorkspaceUpdate,
     );
+    // Pop-out windows edit the same project: replay their updates as a local
+    // event so this card and the chat page stay in sync (unsaved drafts are
+    // left untouched).
+    const unsubscribe = subscribeToCodeWorkspaceArtifacts(
+      artifact.projectId,
+      (nextArtifact) => dispatchCodeWorkspaceArtifact(nextArtifact),
+    );
     return () => {
       window.removeEventListener(
         CODE_WORKSPACE_ARTIFACT_EVENT,
         handleWorkspaceUpdate,
       );
+      unsubscribe();
     };
   }, [artifact.projectId]);
 
@@ -135,11 +156,7 @@ export function useCodeWorkspaceArtifactCardController({
       return;
     }
     queueMicrotask(() => {
-      setSelectedPath(
-        currentArtifact.rootFile ??
-          currentArtifact.files.find((file) => !file.binary)?.path ??
-          null,
-      );
+      setSelectedPath(initialCodeWorkspacePath(currentArtifact));
     });
   }, [currentArtifact, selectedPath]);
 
@@ -197,6 +214,7 @@ export function useCodeWorkspaceArtifactCardController({
       );
       setCurrentArtifact(nextArtifact);
       dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
+      broadcastCodeWorkspaceArtifact(nextArtifact);
     } catch (saveError) {
       setError(
         saveError instanceof Error ? saveError.message : t("saveFileFailed"),
@@ -219,6 +237,7 @@ export function useCodeWorkspaceArtifactCardController({
       );
       setCurrentArtifact(nextArtifact);
       dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
+      broadcastCodeWorkspaceArtifact(nextArtifact);
       setDeletePath(null);
     } catch (deleteError) {
       setError(
@@ -242,6 +261,7 @@ export function useCodeWorkspaceArtifactCardController({
     fullscreenPane,
     loadingFile,
     paneId,
+    popoutWindows,
     publishOpen,
     saveSelectedFile,
     savingFile,

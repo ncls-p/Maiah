@@ -61,22 +61,24 @@ describe("chat composer layout", () => {
     expect(bodySource).toContain(
       "grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start",
     );
-    expect(bodySource).toContain("sm:items-center sm:gap-x-2 sm:px-3");
+    expect(bodySource).toContain(
+      "@xl/composer:items-center @xl/composer:gap-x-2 @xl/composer:px-3",
+    );
     expect(bodySource).toContain('data-slot="chat-composer-primary-action"');
     expect(bodySource).toContain("props.sending ? (");
     expect(bodySource).toContain('aria-label={t("stopGeneration")}');
     expect(bodySource).toContain('aria-label={t("sendMessage")}');
     expect(bodySource).not.toContain('t("sendHint")');
     expect(bodySource).not.toContain('t("queueHint")');
-    expect(selectorSource).toContain("grid-cols-[minmax(0,1fr)_auto_auto]");
-    expect(selectorSource).toContain("sm:flex-nowrap");
-    expect(selectorSource).toContain("overflow-hidden sm:flex sm:flex-nowrap");
+    expect(selectorSource).toContain(
+      "flex min-w-0 flex-1 flex-nowrap items-center gap-1 @xl/composer:gap-2",
+    );
     expect(selectorSource).toContain("block truncate");
     expect(selectorSource).toContain("props.needsSetup");
     expect(selectorSource).not.toContain("!props.canChat");
     expect(selectorSource).toContain("SelectedAssistantTrigger");
     expect(selectorSource).toContain(
-      "hidden size-3.5 shrink-0 text-muted-foreground sm:block",
+      "hidden size-3.5 shrink-0 text-muted-foreground @xl/composer:block",
     );
     expect(bodySource).toContain(
       "onPointerDownCapture={preserveComposerTextFocus}",
@@ -89,7 +91,57 @@ describe("chat composer layout", () => {
     expect(sliderSource).toContain('data-slot="chat-reasoning-picker"');
     expect(sliderSource).toContain('size="icon"');
     expect(sliderSource).toContain("size-10 rounded-xl");
-    expect(sliderSource).toContain("sm:hidden");
+    expect(sliderSource).toContain("@xl/composer:hidden");
+  });
+
+  it("adapts the action row to the composer width, not the viewport", () => {
+    const bodySource = fs.readFileSync(
+      path.join(process.cwd(), "src/components/chat/chat-composer-body.tsx"),
+      "utf8",
+    );
+    const impactSource = fs.readFileSync(
+      path.join(process.cwd(), "src/components/chat/chat-composer-impact.tsx"),
+      "utf8",
+    );
+    const menuSource = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/chat/chat-tools-menu.chat-tools-menu.tsx",
+      ),
+      "utf8",
+    );
+
+    // The composer is a container so the split coding view (narrow chat pane
+    // on a wide screen) gets the same compact controls as a phone.
+    expect(bodySource).toContain("@container/composer");
+    // Below @sm the assistant controls wrap to their own row instead of
+    // overlapping the send button.
+    expect(bodySource).toContain(
+      "col-span-3 col-start-1 row-start-2 min-w-0 pb-1 @sm/composer:col-span-1 @sm/composer:col-start-2 @sm/composer:row-start-1",
+    );
+    expect(bodySource).not.toMatch(/\bsm:(items-center|gap-x-2|px-3)\b/);
+    const menuNavigationSource = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/chat/chat-tools-menu.catalog-navigation.tsx",
+      ),
+      "utf8",
+    );
+    expect(menuNavigationSource).toContain(
+      'className="hidden @xl/composer:inline"',
+    );
+    expect(menuNavigationSource).toContain(
+      'className="hidden font-mono text-[0.65rem] tabular-nums @xl/composer:inline"',
+    );
+    expect(menuSource).toContain("<ChatCapabilityTriggerLabel");
+    expect(menuSource).not.toContain("sm:inline");
+    // The usage chip is a real button opening a popover (works on touch,
+    // unlike hover tooltips).
+    expect(impactSource).toContain('data-slot="chat-composer-impact-trigger"');
+    expect(impactSource).toContain("PopoverTrigger");
+    expect(impactSource).not.toContain("TooltipTrigger");
+    expect(impactSource).toContain('t("impact.inputTokensLabel")');
+    expect(impactSource).toContain('t("impact.outputTokensLabel")');
   });
 
   it("offers camera capture and dictation from the composer", () => {
@@ -150,8 +202,8 @@ describe("chat composer layout", () => {
       "utf8",
     );
 
-    expect(menuSource).toContain(
-      "hidden font-mono text-[0.65rem] tabular-nums sm:inline",
+    expect(navigationSource).toContain(
+      'className="hidden font-mono text-[0.65rem] tabular-nums @xl/composer:inline"',
     );
     expect(menuSource).toContain('data-slot="chat-capability-results"');
     expect(menuSource).toContain(

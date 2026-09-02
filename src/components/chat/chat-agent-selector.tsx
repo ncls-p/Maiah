@@ -88,7 +88,7 @@ function SelectedAssistantTrigger(props: {
         <Skeleton className="size-6 shrink-0 rounded-full" />
         <span className="min-w-0 flex-1 text-left leading-tight">
           <Skeleton className="h-3 w-28" />
-          <Skeleton className="mt-0.5 hidden h-2.5 w-20 sm:block" />
+          <Skeleton className="mt-0.5 hidden h-2.5 w-20 @xl/composer:block" />
         </span>
       </span>
     );
@@ -107,7 +107,7 @@ function SelectedAssistantTrigger(props: {
       <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
         <span className="block truncate">{props.selectedLabel}</span>
         {props.selectedAgent?.modelDisplayName ? (
-          <span className="mt-0.5 hidden truncate text-[11px] font-normal text-muted-foreground sm:block">
+          <span className="mt-0.5 hidden truncate text-[11px] font-normal text-muted-foreground @xl/composer:block">
             {props.selectedAgent.modelDisplayName}
           </span>
         ) : null}
@@ -159,14 +159,14 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
     ));
 
   return (
-    <div className="relative z-10 grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 overflow-hidden sm:flex sm:flex-nowrap sm:gap-2 sm:overflow-visible">
+    <div className="relative z-10 flex min-w-0 flex-1 flex-nowrap items-center gap-1 @xl/composer:gap-2">
       <DropdownMenu onOpenChange={(open) => !open && setSearch("")}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-10 w-full min-w-0 shrink justify-between gap-2 overflow-hidden rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-80 sm:flex-[0_1_20rem]"
+            className="h-10 min-w-0 flex-1 shrink justify-between gap-2 overflow-hidden rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] @xl/composer:max-w-80 @xl/composer:flex-[0_1_20rem]"
             aria-busy={props.isLoading && !props.selectedAgent}
             aria-label={t("currentAssistant")}
             title={props.selectedAgent ? selectedLabel : undefined}
@@ -178,7 +178,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
               selectedLabel={selectedLabel}
             />
             <ChevronDownIcon
-              className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+              className="hidden size-3.5 shrink-0 text-muted-foreground @xl/composer:block"
               aria-hidden="true"
             />
           </Button>
@@ -289,7 +289,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
       {props.needsSetup ? (
         <Badge
           variant="outline"
-          className="hidden min-h-8 shrink-0 items-center gap-1 rounded-lg border-transparent bg-warning/10 px-2 text-[11px] font-medium text-warning sm:inline-flex"
+          className="hidden min-h-8 shrink-0 items-center gap-1 rounded-lg border-transparent bg-warning/10 px-2 text-[11px] font-medium text-warning @xl/composer:inline-flex"
         >
           <Settings2Icon className="size-3" aria-hidden="true" />
           {t("statusNeedsSetup")}

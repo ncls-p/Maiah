@@ -15,6 +15,7 @@ import {
 } from "./code-workspace-artifact-card.button-type";
 import type { CodeWorkspaceArtifactCardViewModel } from "./code-workspace-artifact-card.code-workspace-artifact-card.view";
 import { CodeWorkspaceEditor } from "./code-workspace-artifact-card.code-workspace-file-tree";
+import { CodeWorkspacePopoutButton } from "./code-workspace-artifact-card.popout-button";
 export function CodeWorkspaceArtifactCardSection1({
   model,
 }: {
@@ -25,6 +26,7 @@ export function CodeWorkspaceArtifactCardSection1({
     currentArtifact,
     fullscreenPane,
     loadingFile,
+    popoutWindows,
     saveSelectedFile,
     savingFile,
     selectedFile,
@@ -50,18 +52,35 @@ export function CodeWorkspaceArtifactCardSection1({
               {currentArtifact.title} · v{currentArtifact.version}
             </DialogDescription>
           </div>
-          {fullscreenPane === "code" ? (
-            <Button
-              type={BUTTON_TYPE}
-              variant={OUTLINE_VARIANT}
-              size="sm"
-              disabled={!selectedPath || selectedFile?.binary || savingFile}
-              onClick={() => void saveSelectedFile()}
-            >
-              <SaveIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-              {t("save")}
-            </Button>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-1.5 pr-8">
+            {fullscreenPane === "preview" ? (
+              <CodeWorkspacePopoutButton
+                label={t("openPreviewWindow")}
+                disabled={!popoutWindows.canOpenPreviewWindow}
+                onClick={popoutWindows.openPreviewWindow}
+                size="regular"
+              />
+            ) : null}
+            {fullscreenPane === "code" && popoutWindows.canOpenEditorWindow ? (
+              <CodeWorkspacePopoutButton
+                label={t("openEditorWindow")}
+                onClick={popoutWindows.openEditorWindow}
+                size="regular"
+              />
+            ) : null}
+            {fullscreenPane === "code" ? (
+              <Button
+                type={BUTTON_TYPE}
+                variant={OUTLINE_VARIANT}
+                size="sm"
+                disabled={!selectedPath || selectedFile?.binary || savingFile}
+                onClick={() => void saveSelectedFile()}
+              >
+                <SaveIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+                {t("save")}
+              </Button>
+            ) : null}
+          </div>
         </div>
         {fullscreenPane === "preview" ? (
           <div className="flex min-h-0 flex-1 bg-white">

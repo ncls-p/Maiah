@@ -245,7 +245,11 @@
       "costLabel": "Coût estimé",
       "costDescription": "Coût cumulé estimé des modèles d’IA pour cette conversation.",
       "energyLabel": "Énergie estimée",
-      "energyDescription": "Consommation électrique cumulée estimée pour cette conversation."
+      "energyDescription": "Consommation électrique cumulée estimée pour cette conversation.",
+      "inputTokensLabel": "Tokens en entrée",
+      "outputTokensLabel": "Tokens en sortie",
+      "co2Label": "Émissions estimées",
+      "co2Description": "Équivalent CO₂ cumulé estimé pour cette conversation."
     },
     "toolsMenu": {
       "trigger": "Capacités",
@@ -669,6 +673,13 @@
       "loadingFile": "Chargement du fichier…",
       "livePreview": "Aperçu en direct",
       "noHtmlEntry": "Aucun point d’entrée HTML",
+      "openPreviewWindow": "Ouvrir l’aperçu dans une nouvelle fenêtre",
+      "openEditorWindow": "Ouvrir l’espace de code dans une nouvelle fenêtre",
+      "popoutTitle": "Espace de code",
+      "popoutLoading": "Chargement de l’espace de code…",
+      "popoutLoadFailed": "Impossible de charger cet espace de code.",
+      "popoutSignIn": "Connectez-vous pour ouvrir cet espace de code.",
+      "popoutRetry": "Réessayer",
       "code": "Code"
     },
     "github": {

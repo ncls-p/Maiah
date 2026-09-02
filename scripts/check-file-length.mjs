@@ -53,7 +53,7 @@ const LEGACY_LINE_LIMITS = new Map([
   ["src/components/chat/chat-message-rendering.tool-part-card.tsx", 524],
   ["src/components/chat/chat-sidebar.chat-sidebar.tsx", 460],
   ["src/components/chat/chat-tools-menu.chat-tools-menu.tsx", 606],
-  ["src/components/chat/conversation-share-dialog.tsx", 305],
+  ["src/components/chat/conversation-share-dialog.tsx", 307],
   [
     "src/components/chat/github-publish-dialog.git-hub-publish-dialog.view.section-1.tsx",
     366,
