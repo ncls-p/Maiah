@@ -1,3 +1,5 @@
+import { sourceCodeExtensions } from "@/modules/files/source-code-extensions";
+
 const documentExtensions = [
   ".txt",
   ".md",
@@ -38,42 +40,9 @@ const documentExtensions = [
   ".zip",
 ];
 
-const sourceExtensions = [
-  ".astro",
-  ".c",
-  ".cjs",
-  ".cpp",
-  ".cs",
-  ".css",
-  ".cts",
-  ".go",
-  ".gql",
-  ".graphql",
-  ".java",
-  ".js",
-  ".jsx",
-  ".kt",
-  ".less",
-  ".mjs",
-  ".mts",
-  ".php",
-  ".py",
-  ".rb",
-  ".rs",
-  ".sass",
-  ".scss",
-  ".sh",
-  ".sql",
-  ".svelte",
-  ".swift",
-  ".ts",
-  ".tsx",
-  ".vue",
-];
-
 export const knowledgeFileAccept = [
   ...documentExtensions,
-  ...sourceExtensions,
+  ...sourceCodeExtensions,
   "text/*",
   "image/png",
   "image/jpeg",

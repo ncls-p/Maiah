@@ -22,6 +22,7 @@ import {
   isDirectCodeFile,
   uploadedFilePath,
 } from "./chat-composer.queued-chat-message";
+import { zipContainsCodeWorkspace } from "./chat-composer.zip-upload-kind";
 
 function queuedPreview(content: string) {
   const normalized = content.replace(/\s+/g, " ").trim();
@@ -169,7 +170,13 @@ export function ChatComposer({
             toast.error(t("singleZip"));
             return;
           }
-          await onUploadCodeWorkspace?.(zipFiles);
+          if (await zipContainsCodeWorkspace(zipFiles[0])) {
+            await onUploadCodeWorkspace?.(zipFiles);
+          } else if (onUploadChatAttachment) {
+            await onUploadChatAttachment(zipFiles[0]);
+          } else {
+            toast.error(t("unavailable"));
+          }
           return;
         }
         if (

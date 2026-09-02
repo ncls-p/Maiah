@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import "pdf-parse/worker";
 
+import { sourceCodeExtensions } from "@/modules/files/source-code-extensions";
 import {
   AttachmentDetection,
   chatAttachmentStoragePrefix,
@@ -9,38 +10,7 @@ import {
 } from "./attachments.chat-image-attachment";
 import { mimeTypesByExtension } from "./attachments.mime-types-by-extension";
 
-export const codeTextExtensions = new Set([
-  ".astro",
-  ".c",
-  ".cjs",
-  ".cpp",
-  ".cs",
-  ".css",
-  ".cts",
-  ".go",
-  ".gql",
-  ".graphql",
-  ".java",
-  ".js",
-  ".jsx",
-  ".kt",
-  ".less",
-  ".mjs",
-  ".mts",
-  ".php",
-  ".py",
-  ".rb",
-  ".rs",
-  ".sass",
-  ".scss",
-  ".sh",
-  ".sql",
-  ".svelte",
-  ".swift",
-  ".tsx",
-  ".ts",
-  ".vue",
-]);
+export const codeTextExtensions = new Set<string>(sourceCodeExtensions);
 
 export function chatAttachmentObjectKey(attachmentId: string, segment: string) {
   assertSafeAttachmentId(attachmentId);

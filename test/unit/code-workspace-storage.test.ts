@@ -139,6 +139,11 @@ describe("code workspace storage", () => {
   it("creates workspaces from ZIPs, ignores junk entries, supports binary files, and rejects unsafe archives", async () => {
     const zip = new JSZip();
     zip.file("index.html", "<h1>Hello</h1>");
+    zip.file(
+      "entrypoints/content.tsx",
+      "export function Content() { return <main>Hello</main>; }",
+    );
+    zip.file("src/config.mts", "export const enabled: boolean = true;");
     zip.file("assets/logo.png", new Uint8Array([1, 2, 3]));
     zip.file("assets/theme.mp3", new Uint8Array([73, 68, 51, 4]));
     zip.file("assets/effect.wav", new Uint8Array([82, 73, 70, 70]));
@@ -183,6 +188,16 @@ describe("code workspace storage", () => {
           mimeType: "application/vnd.apple.mpegurl; charset=utf-8",
         }),
         expect.objectContaining({ path: "index.html", binary: false }),
+        expect.objectContaining({
+          path: "entrypoints/content.tsx",
+          binary: false,
+          mimeType: "text/tsx; charset=utf-8",
+        }),
+        expect.objectContaining({
+          path: "src/config.mts",
+          binary: false,
+          mimeType: "text/typescript; charset=utf-8",
+        }),
       ]),
     );
 
