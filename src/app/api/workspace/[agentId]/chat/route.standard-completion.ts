@@ -113,10 +113,13 @@ export async function completeStandardChat(input: {
         model: input.model,
         history: context.generationHistory,
         assistantText,
-        maxOutputTokens: Math.min(
-          memoryPolicy?.summaryMaxTokens ?? 1_200,
-          version.maxOutputTokens ?? 30_000,
-        ),
+        maxOutputTokens:
+          (version.maxOutputTokens ?? 0) > 0
+            ? Math.min(
+                memoryPolicy?.summaryMaxTokens ?? 1_200,
+                version.maxOutputTokens!,
+              )
+            : (memoryPolicy?.summaryMaxTokens ?? 1_200),
       });
     } catch (error) {
       logger.warn("Conversation summary generation failed", {

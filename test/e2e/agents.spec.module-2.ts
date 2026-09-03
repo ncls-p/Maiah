@@ -141,15 +141,27 @@ test.describe("agent CRUD", () => {
 
     await page.getByRole("tab", { name: /Orchestration/i }).click();
     await page.getByRole("button", { name: /Execution limits/i }).click();
-    const timeoutInput = page.getByLabel(/Maximum duration/i);
-    await expect(timeoutInput).not.toHaveAttribute("max");
-    await timeoutInput.fill("86400000");
+    const unlimitedLimitInputs = [
+      page.getByLabel(/Maximum depth/i),
+      page.getByLabel(/Maximum delegations/i),
+      page.getByLabel(/Parallel assistants/i),
+      page.getByLabel(/Steps per specialist/i),
+      page.getByLabel(/Total token budget/i),
+      page.getByLabel(/Maximum duration/i),
+      page.getByLabel(/Specialist result size/i),
+    ];
+    for (const input of unlimitedLimitInputs) {
+      await expect(input).not.toHaveAttribute("max");
+      await input.fill("0");
+    }
     await page.getByRole("button", { name: /Save orchestration/i }).click();
     await expect(page.getByText(/Orchestration saved/i)).toBeVisible();
     await page.reload();
     await page.getByRole("tab", { name: /Orchestration/i }).click();
     await page.getByRole("button", { name: /Execution limits/i }).click();
-    await expect(page.getByLabel(/Maximum duration/i)).toHaveValue("86400000");
+    for (const input of unlimitedLimitInputs) {
+      await expect(input).toHaveValue("0");
+    }
 
     await page.getByRole("button", { name: /Assistant actions/i }).click();
     await page.getByRole("menuitem", { name: /Delete assistant/i }).click();

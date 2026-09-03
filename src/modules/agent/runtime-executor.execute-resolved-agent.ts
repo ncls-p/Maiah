@@ -13,6 +13,7 @@ import { resolveProviderForVersion } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
 import {
   fitModelHistoryToContext,
+  resolveContextWindowTokens,
   type ConversationContextPolicy,
 } from "@/modules/chat/conversation-context-policy";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
@@ -78,6 +79,8 @@ export async function executeResolvedAgent(
     const runtimeLimits = resolveAgentRuntimeLimits({
       maxToolCalls: input.resolved.version.maxToolCalls,
       maxOutputTokens: input.resolved.version.maxOutputTokens,
+      providerMaxOutputTokens: provider.maxOutputTokens,
+      providerContextWindow: provider.contextWindow,
     });
     const remainingTokens =
       input.budget.policy.maxTotalTokens - input.budget.tokensUsed;
@@ -93,7 +96,7 @@ export async function executeResolvedAgent(
       Math.min(runtimeLimits.maxOutputTokens, remainingTokens),
     );
     const maxSteps =
-      input.depth > 0
+      input.depth > 0 && input.budget.policy.maxChildSteps > 0
         ? Math.min(runtimeLimits.maxSteps, input.budget.policy.maxChildSteps)
         : runtimeLimits.maxSteps;
     const allocateSequence = nextSequence();
@@ -170,13 +173,10 @@ export async function executeResolvedAgent(
     const fittedContext = input.messages?.length
       ? fitModelHistoryToContext({
           messages: input.messages,
-          contextWindowTokens:
-            contextPolicy?.contextWindowTokens && provider.contextWindow
-              ? Math.min(
-                  contextPolicy.contextWindowTokens,
-                  provider.contextWindow,
-                )
-              : (contextPolicy?.contextWindowTokens ?? provider.contextWindow),
+          contextWindowTokens: resolveContextWindowTokens(
+            contextPolicy?.contextWindowTokens,
+            provider.contextWindow,
+          ),
           requestedOutputTokens: maxOutputTokens,
           systemPrompt: system,
         })
@@ -356,14 +356,10 @@ export async function executeResolvedAgent(
             ].join("\n\n");
             const recoveryContext = fitModelHistoryToContext({
               messages: [{ role: "user", content: recoveryPrompt }],
-              contextWindowTokens:
-                contextPolicy?.contextWindowTokens && provider.contextWindow
-                  ? Math.min(
-                      contextPolicy.contextWindowTokens,
-                      provider.contextWindow,
-                    )
-                  : (contextPolicy?.contextWindowTokens ??
-                    provider.contextWindow),
+              contextWindowTokens: resolveContextWindowTokens(
+                contextPolicy?.contextWindowTokens,
+                provider.contextWindow,
+              ),
               requestedOutputTokens: Math.max(
                 1,
                 Math.min(

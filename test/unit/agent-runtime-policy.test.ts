@@ -21,10 +21,14 @@ describe("agent runtime policy", () => {
     });
   });
 
-  it("keeps a tool-free run to one model step", () => {
+  it("uses the provider output limit for an unlimited tool-free run", () => {
     expect(
-      resolveAgentRuntimeLimits({ maxToolCalls: 0, maxOutputTokens: 0 }),
-    ).toEqual({ maxToolCalls: 0, maxSteps: 1, maxOutputTokens: 1 });
+      resolveAgentRuntimeLimits({
+        maxToolCalls: 0,
+        maxOutputTokens: 0,
+        providerMaxOutputTokens: 131_072,
+      }),
+    ).toEqual({ maxToolCalls: 0, maxSteps: 1, maxOutputTokens: 131_072 });
   });
 
   it("combines a parent cancellation with a deadline", () => {

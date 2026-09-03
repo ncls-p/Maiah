@@ -173,7 +173,7 @@ export async function createAgent(input: CreateAgentInput) {
           modelId: modelId || null,
           temperature: temperature || null,
           topP: topP || null,
-          maxOutputTokens: maxOutputTokens ?? 30_000,
+          maxOutputTokens: maxOutputTokens ?? 0,
           maxToolCalls: maxToolCalls ?? 20,
           orchestrationPolicyJson: normalizedOrchestrationPolicy,
           createdById: userId,

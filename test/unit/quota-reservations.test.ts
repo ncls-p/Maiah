@@ -112,6 +112,25 @@ describe("workspace token reservations", () => {
     ).toMatchObject({ allowed: false });
   });
 
+  it("maps an unlimited run budget to the remaining workspace quota", () => {
+    expect(
+      evaluateQuotaReservation({
+        limit: 100_000,
+        used: 40_000,
+        reserved: 10_000,
+        requested: 0,
+      }),
+    ).toMatchObject({ allowed: true, requested: 50_000 });
+    expect(
+      evaluateQuotaReservation({
+        limit: null,
+        used: 40_000,
+        reserved: 10_000,
+        requested: 0,
+      }),
+    ).toMatchObject({ allowed: true, requested: 2_147_483_647 });
+  });
+
   it("normalizes the UTC accounting period", () => {
     expect(startOfQuotaMonth(new Date("2026-07-19T12:34:56Z"))).toEqual(
       new Date("2026-07-01T00:00:00Z"),
@@ -181,6 +200,26 @@ describe("workspace token reservations", () => {
     );
     expect(database.sets).toHaveBeenCalledWith(
       expect.objectContaining({ reservedTokens: 30 }),
+    );
+  });
+
+  it("persists the remaining quota for an unlimited reservation", async () => {
+    const reservation = { id: "reservation-1", reservedTokens: 40 };
+    database.selectResults.push([], [{ total: 40 }], [{ total: 20 }]);
+    database.insertResults.push([reservation]);
+    database.updateResults.push([]);
+
+    await expect(
+      reserveWorkspaceTokens({
+        workspaceId: "workspace-1",
+        runId: "run-1",
+        requestedTokens: 0,
+        expiresAt: new Date("2026-08-01T00:00:00Z"),
+      }),
+    ).resolves.toEqual(reservation);
+
+    expect(database.values).toHaveBeenCalledWith(
+      expect.objectContaining({ reservedTokens: 40 }),
     );
   });
 

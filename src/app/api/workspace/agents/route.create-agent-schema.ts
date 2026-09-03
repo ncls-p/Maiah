@@ -40,7 +40,7 @@ export const createAgentSchema = z
     modelId: z.uuid().optional(),
     temperature: z.string().optional(),
     topP: z.string().optional(),
-    maxOutputTokens: z.number().int().positive().optional(),
+    maxOutputTokens: z.number().int().min(0).optional(),
     maxToolCalls: z.number().int().min(0).optional(),
     sharingMode: z
       .enum(["personal", "marketplace", "specific_user"])

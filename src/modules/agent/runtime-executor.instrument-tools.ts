@@ -66,6 +66,7 @@ export function instrumentTools(
 }
 
 export function truncateDelegationResult(value: string, maxChars: number) {
+  if (maxChars === 0) return value;
   if (value.length <= maxChars) return value;
   return `${value.slice(0, maxChars)}\n\n[Delegated result truncated]`;
 }
@@ -74,13 +75,14 @@ export function toolResultRecoveryContext(
   toolResults: SuccessfulToolResult[],
   maxChars: number,
 ) {
+  const effectiveMaxChars = maxChars === 0 ? Number.MAX_SAFE_INTEGER : maxChars;
   const context = toolResults
     .map((toolResult, index) => {
       const projected = projectToolPayloadForDisplay(toolResult.output, {
         maxArrayItems: 200,
         maxDepth: 8,
         maxObjectKeys: 200,
-        maxStringLength: maxChars,
+        maxStringLength: effectiveMaxChars,
       });
       return [
         `Result ${index + 1} (${toolResult.toolName}):`,
@@ -88,7 +90,7 @@ export function toolResultRecoveryContext(
       ].join("\n");
     })
     .join("\n\n");
-  if (context.length <= maxChars) return context;
+  if (maxChars === 0 || context.length <= maxChars) return context;
   return `${context.slice(0, maxChars)}\n\n[Tool result context truncated]`;
 }
 
@@ -115,6 +117,7 @@ export function deterministicToolResultFallback(
   toolResults: SuccessfulToolResult[],
   maxChars: number,
 ) {
+  const effectiveMaxChars = maxChars === 0 ? Number.MAX_SAFE_INTEGER : maxChars;
   const text = toolResults
     .map((toolResult) =>
       projectedToolOutputText(
@@ -122,7 +125,7 @@ export function deterministicToolResultFallback(
           maxArrayItems: 200,
           maxDepth: 8,
           maxObjectKeys: 200,
-          maxStringLength: maxChars,
+          maxStringLength: effectiveMaxChars,
         }),
       ),
     )

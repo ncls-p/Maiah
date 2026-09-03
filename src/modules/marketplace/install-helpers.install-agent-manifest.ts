@@ -132,7 +132,7 @@ export async function installAgentManifest(
       modelId,
       temperature: input.manifest.agent.temperature ?? null,
       topP: input.manifest.agent.topP ?? null,
-      maxOutputTokens: input.manifest.agent.maxOutputTokens ?? 30_000,
+      maxOutputTokens: input.manifest.agent.maxOutputTokens ?? 0,
       maxToolCalls: input.manifest.agent.maxToolCalls ?? 20,
       toolChoice: input.manifest.agent.toolChoice ?? null,
       generationSettingsJson: input.manifest.agent.generationSettings ?? null,

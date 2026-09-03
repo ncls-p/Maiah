@@ -149,19 +149,20 @@ export async function consumeAgentRunDelegationBudget(input: {
   maxDelegations: number;
   now?: Date;
 }) {
+  const conditions = [
+    eq(agentRuns.id, input.rootRunId),
+    inArray(agentRuns.status, ["queued", "running"]),
+  ];
+  if (input.maxDelegations > 0) {
+    conditions.push(lt(agentRuns.delegationCount, input.maxDelegations));
+  }
   const [root] = await db
     .update(agentRuns)
     .set({
       delegationCount: sql`${agentRuns.delegationCount} + 1`,
       updatedAt: input.now ?? new Date(),
     })
-    .where(
-      and(
-        eq(agentRuns.id, input.rootRunId),
-        inArray(agentRuns.status, ["queued", "running"]),
-        lt(agentRuns.delegationCount, Math.max(1, input.maxDelegations)),
-      ),
-    )
+    .where(and(...conditions))
     .returning({ delegationCount: agentRuns.delegationCount });
   return root?.delegationCount ?? null;
 }

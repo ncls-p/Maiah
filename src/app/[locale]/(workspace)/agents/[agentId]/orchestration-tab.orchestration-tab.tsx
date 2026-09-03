@@ -201,43 +201,50 @@ export function OrchestrationTab({
               (policy) => setConfig({ ...config, policy }),
               "maxDepth",
               t("maxDepth"),
+              0,
+              undefined,
               1,
-              4,
+              t("zeroUnlimited"),
             )}
             {policyField(
               config.policy,
               (policy) => setConfig({ ...config, policy }),
               "maxDelegations",
               t("maxDelegations"),
+              0,
+              undefined,
               1,
-              12,
+              t("zeroUnlimited"),
             )}
             {policyField(
               config.policy,
               (policy) => setConfig({ ...config, policy }),
               "maxParallel",
               t("maxParallel"),
+              0,
+              undefined,
               1,
-              4,
+              t("zeroUnlimited"),
             )}
             {policyField(
               config.policy,
               (policy) => setConfig({ ...config, policy }),
               "maxChildSteps",
               t("maxChildSteps"),
-              2,
-              20,
+              0,
+              undefined,
               1,
-              t("maxChildStepsDescription"),
+              `${t("zeroUnlimited")} ${t("maxChildStepsDescription")}`,
             )}
             {policyField(
               config.policy,
               (policy) => setConfig({ ...config, policy }),
               "maxTotalTokens",
               t("maxTotalTokens"),
+              0,
+              undefined,
               1000,
-              100000,
-              1000,
+              t("zeroUnlimitedWithQuota"),
             )}
             {policyField(
               config.policy,
@@ -247,16 +254,17 @@ export function OrchestrationTab({
               0,
               undefined,
               1000,
-              t("timeoutMsDescription"),
+              `${t("zeroUnlimited")} ${t("timeoutMsDescription")}`,
             )}
             {policyField(
               config.policy,
               (policy) => setConfig({ ...config, policy }),
               "resultMaxChars",
               t("resultMaxChars"),
+              0,
+              undefined,
               1000,
-              20000,
-              1000,
+              t("zeroUnlimited"),
             )}
           </div>
         </AdvancedSection>

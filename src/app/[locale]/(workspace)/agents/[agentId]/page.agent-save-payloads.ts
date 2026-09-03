@@ -28,7 +28,8 @@ export function buildEssentialPayload(
       .filter(Boolean),
     temperature: form.temperature,
     topP: form.topP,
-    maxOutputTokens: Number(form.maxOutputTokens) || undefined,
+    maxOutputTokens:
+      form.maxOutputTokens === "" ? undefined : Number(form.maxOutputTokens),
     maxToolCalls: Number(form.maxToolCalls),
     toolChoice: form.toolChoice,
     generationSettings: {
@@ -62,7 +63,9 @@ export function buildEssentialPayload(
         Number(form.memoryPolicy.summaryThresholdTokens) || 24_000,
       summaryMaxTokens: Number(form.memoryPolicy.summaryMaxTokens) || 1_200,
       contextWindowTokens:
-        Number(form.memoryPolicy.contextWindowTokens) || undefined,
+        form.memoryPolicy.contextWindowTokens === ""
+          ? undefined
+          : Number(form.memoryPolicy.contextWindowTokens),
       maxMessages: Number(form.memoryPolicy.maxMessages) || undefined,
       maxInputCharacters:
         Number(form.memoryPolicy.maxInputCharacters) || 32_000,

@@ -5,10 +5,18 @@ import {
   DEFAULT_MAX_INPUT_CHARACTERS,
   fitModelHistoryToContext,
   limitModelHistory,
+  resolveContextWindowTokens,
   resolveMaxInputCharacters,
 } from "@/modules/chat/conversation-context-policy";
 
 describe("conversation context policy", () => {
+  it("uses the full provider context for zero or an empty override", () => {
+    expect(resolveContextWindowTokens(0, 131_072)).toBe(131_072);
+    expect(resolveContextWindowTokens(undefined, 131_072)).toBe(131_072);
+    expect(resolveContextWindowTokens(200_000, 131_072)).toBe(131_072);
+    expect(resolveContextWindowTokens(64_000, 131_072)).toBe(64_000);
+  });
+
   it("uses the safe message limit by default and honors assistant overrides", () => {
     expect(resolveMaxInputCharacters(null)).toBe(DEFAULT_MAX_INPUT_CHARACTERS);
     expect(resolveMaxInputCharacters({ maxInputCharacters: 64_000 })).toBe(

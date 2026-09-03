@@ -33,7 +33,7 @@ export function ModelAdvancedMainSection15({
           <Input
             id="agent-context-window"
             type="number"
-            min={2000}
+            min={0}
             step={1000}
             placeholder={
               selectedModel?.contextWindow

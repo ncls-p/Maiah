@@ -79,7 +79,10 @@ successful durable run into a failure.
 
 ## Admission and execution guarantees
 
-Root runs reserve their maximum token budget before execution. Monthly quota
+Root runs with a finite tree budget reserve that maximum before execution. An
+unlimited (`0`) tree budget reserves the workspace's remaining monthly quota;
+when the workspace itself has no token quota, it receives the largest durable
+integer reservation and behaves as unbounded in practice. Monthly quota
 admission is serialized per workspace and includes both settled usage and every
 active reservation, so concurrent runs cannot individually pass a stale quota
 check. Child runs consume the root reservation instead of reserving the same

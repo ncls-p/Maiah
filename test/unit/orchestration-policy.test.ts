@@ -13,11 +13,11 @@ describe("orchestration policy", () => {
     );
   });
 
-  it("rejects values above hard runtime caps", () => {
+  it("rejects finite values above the persisted integer range", () => {
     expect(
       orchestrationPolicySchema.safeParse({
         ...orchestrationPolicyDefaults,
-        maxDepth: orchestrationPolicyCaps.maxDepth + 1,
+        maxDepth: orchestrationPolicyCaps.finiteInteger + 1,
       }).success,
     ).toBe(false);
   });
@@ -26,6 +26,21 @@ describe("orchestration policy", () => {
     expect(
       normalizeOrchestrationPolicy({ maxParallel: 1, timeoutMs: 30_000 }),
     ).toMatchObject({ maxParallel: 1, timeoutMs: 30_000 });
+  });
+
+  it("accepts zero as unlimited for every configurable run budget", () => {
+    expect(
+      orchestrationPolicySchema.safeParse({
+        ...orchestrationPolicyDefaults,
+        maxDepth: 0,
+        maxDelegations: 0,
+        maxParallel: 0,
+        maxChildSteps: 0,
+        maxTotalTokens: 0,
+        timeoutMs: 0,
+        resultMaxChars: 0,
+      }).success,
+    ).toBe(true);
   });
 
   it("accepts finite deadlines beyond the former five-minute ceiling", () => {
