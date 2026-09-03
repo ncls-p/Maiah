@@ -1,12 +1,13 @@
 # Agent runtime bounds
 
-Every model execution has explicit cumulative limits. Provider defaults are not
-treated as a safety boundary.
+Every model execution remains bounded by the selected model, workspace quota,
+authorization and explicit cancellation. Agent-level limits may be set to `0`
+when the owner wants the runtime to use those external bounds directly.
 
 ## Interactive chat
 
-- Tool calls are clamped to `0..50` per user message.
-- Model output is clamped to `1..100000` tokens.
+- `0` output tokens means the model's advertised maximum; a positive value is
+  an agent-specific ceiling. The context window can still reduce it.
 - The loop stops after one step without tools, or after at most
   `maxToolCalls + 2` steps with tools. The extra steps allow tool results to be
   synthesized into a final answer.
@@ -33,6 +34,10 @@ treated as a safety boundary.
 - Configuring specialists is not capped by `maxDelegations`: every visible
   specialist may be pinned to an orchestrator version. `maxDelegations` only
   limits delegation calls consumed during one root run.
+- `0` means unlimited for depth, delegation calls, parallel specialists,
+  specialist steps, tree tokens, deadline and returned specialist text. It
+  removes the agent-specific ceiling; cycle detection, provider constraints,
+  workspace quota, permissions and explicit cancellation remain active.
 - `maxChildSteps` bounds the complete specialist loop. On its last permitted
   step, tools and delegation are disabled so the model must answer from the
   results already collected.
@@ -63,5 +68,5 @@ treated as a safety boundary.
   after the tokens have already been consumed.
 
 The shared policy lives in `src/modules/agent/runtime-policy.ts`. API validation
-and the agent editor expose the same maxima so a saved configuration never
-silently promises more than the runtime will execute.
+and the agent editor share the same `0` semantics so saved configurations and
+runtime behavior stay aligned.

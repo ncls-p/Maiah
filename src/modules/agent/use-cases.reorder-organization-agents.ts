@@ -126,7 +126,7 @@ export async function cloneAgent(input: CloneAgentInput) {
         modelId: sourceVersion?.modelId ?? null,
         temperature: sourceVersion?.temperature ?? null,
         topP: sourceVersion?.topP ?? null,
-        maxOutputTokens: sourceVersion?.maxOutputTokens ?? 30_000,
+        maxOutputTokens: sourceVersion?.maxOutputTokens ?? 0,
         maxToolCalls: sourceVersion?.maxToolCalls ?? 20,
         toolChoice: sourceVersion?.toolChoice ?? null,
         generationSettingsJson: sourceVersion?.generationSettingsJson ?? null,

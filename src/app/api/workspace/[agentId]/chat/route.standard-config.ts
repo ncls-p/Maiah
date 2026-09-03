@@ -15,7 +15,6 @@ import { cookies } from "next/headers";
 import {
   buildBoundTools,
   codeWorkspaceCreateToolNames,
-  defaultMaxOutputTokens,
   defaultMaxToolCalls,
   KNOWLEDGE_CONTEXT_TOOL_NAME,
   KNOWLEDGE_SEARCH_TOOL_NAME,
@@ -48,7 +47,9 @@ export async function prepareStandardChatConfig(input: {
   const { maxToolCalls, maxOutputTokens, maxSteps } = resolveAgentRuntimeLimits(
     {
       maxToolCalls: version.maxToolCalls ?? defaultMaxToolCalls,
-      maxOutputTokens: version.maxOutputTokens ?? defaultMaxOutputTokens,
+      maxOutputTokens: version.maxOutputTokens,
+      providerMaxOutputTokens: context.providerConfig.maxOutputTokens,
+      providerContextWindow: context.providerConfig.contextWindow,
     },
   );
   const shouldUseToolCalling = maxToolCalls > 0;

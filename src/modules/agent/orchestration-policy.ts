@@ -1,15 +1,12 @@
 import { z } from "zod";
 
 export const orchestrationPolicyCaps = {
-  maxDepth: 4,
-  maxDelegations: 12,
-  maxParallel: 4,
-  maxChildSteps: 20,
-  maxTotalTokens: 100_000,
+  // Persisted counters use PostgreSQL INTEGER columns. Zero is reserved for
+  // "unlimited", so finite values may use the complete positive range.
+  finiteInteger: 2_147_483_647,
   // The UI deliberately has no product-level maximum. This ceiling only keeps
   // persisted deadlines inside JavaScript's representable Date range.
   timeoutMs: 8_000_000_000_000_000,
-  resultMaxChars: 20_000,
 } as const;
 
 export const orchestrationPolicyDefaults = {
@@ -23,29 +20,32 @@ export const orchestrationPolicyDefaults = {
 } as const;
 
 export const orchestrationPolicySchema = z.object({
-  maxDepth: z.number().int().min(1).max(orchestrationPolicyCaps.maxDepth),
+  maxDepth: z.number().int().min(0).max(orchestrationPolicyCaps.finiteInteger),
   maxDelegations: z
     .number()
     .int()
-    .min(1)
-    .max(orchestrationPolicyCaps.maxDelegations),
-  maxParallel: z.number().int().min(1).max(orchestrationPolicyCaps.maxParallel),
-  maxChildSteps: z
+    .min(0)
+    .max(orchestrationPolicyCaps.finiteInteger),
+  maxParallel: z
     .number()
     .int()
-    .min(2)
-    .max(orchestrationPolicyCaps.maxChildSteps),
+    .min(0)
+    .max(orchestrationPolicyCaps.finiteInteger),
+  maxChildSteps: z.union([
+    z.literal(0),
+    z.number().int().min(2).max(orchestrationPolicyCaps.finiteInteger),
+  ]),
   maxTotalTokens: z
     .number()
     .int()
-    .min(1_000)
-    .max(orchestrationPolicyCaps.maxTotalTokens),
+    .min(0)
+    .max(orchestrationPolicyCaps.finiteInteger),
   timeoutMs: z.number().int().min(0).max(orchestrationPolicyCaps.timeoutMs),
   resultMaxChars: z
     .number()
     .int()
-    .min(1_000)
-    .max(orchestrationPolicyCaps.resultMaxChars),
+    .min(0)
+    .max(orchestrationPolicyCaps.finiteInteger),
 });
 
 export type OrchestrationPolicy = z.infer<typeof orchestrationPolicySchema>;
@@ -65,7 +65,7 @@ export function normalizeOrchestrationPolicy(
     // model steps. Older configurations allowed one step, which could never
     // both use a tool and return a specialist answer.
     ...(typeof legacyChildSteps === "number"
-      ? { maxChildSteps: Math.max(2, legacyChildSteps) }
+      ? { maxChildSteps: legacyChildSteps === 1 ? 2 : legacyChildSteps }
       : {}),
   });
 }

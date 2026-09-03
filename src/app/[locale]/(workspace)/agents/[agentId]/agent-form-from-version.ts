@@ -102,10 +102,7 @@ function buildModelSettings(activeVersion: AgentVersionPayload | null) {
       defaultGenParams.temperature,
     ),
     topP: coerceNumericField(activeVersion?.topP, defaultGenParams.topP),
-    maxOutputTokens: coerceNumericField(
-      activeVersion?.maxOutputTokens,
-      defaultGenParams.maxOutputTokens,
-    ),
+    maxOutputTokens: optionalNumericField(activeVersion?.maxOutputTokens),
     maxToolCalls: coerceNumericField(
       activeVersion?.maxToolCalls,
       defaultGenParams.maxToolCalls,

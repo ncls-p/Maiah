@@ -9,9 +9,16 @@ import { agentRuns } from "@/server/infrastructure/db/schema";
 import { and, eq, gt, isNull } from "drizzle-orm";
 
 export type AgentRunTrigger =
-  "chat" | "scheduled" | "api" | "delegation" | "dry_run";
+  | "chat"
+  | "scheduled"
+  | "api"
+  | "delegation"
+  | "dry_run";
 export type AgentRunTerminalStatus =
-  "success" | "failed" | "cancelled" | "timed_out";
+  | "success"
+  | "failed"
+  | "cancelled"
+  | "timed_out";
 
 export type AgentRunUsageEvent = {
   workspaceId: string;
@@ -116,13 +123,13 @@ export async function createAgentRun(input: {
 
   if (!input.parentRunId) {
     try {
-      await reserveWorkspaceTokens({
+      const reservation = await reserveWorkspaceTokens({
         workspaceId: input.workspaceId,
         runId: run.id,
         requestedTokens: input.requestedTokens,
         expiresAt: input.deadlineAt,
       });
-      run = { ...run, reservedTokens: Math.max(1, input.requestedTokens) };
+      run = { ...run, reservedTokens: reservation.reservedTokens };
     } catch (error) {
       await db
         .update(agentRuns)

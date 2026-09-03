@@ -96,6 +96,8 @@ export function ModelAdvancedFieldsSection1({
               <Input
                 id="agent-max-output"
                 type="number"
+                min={0}
+                placeholder="0"
                 value={form.maxOutputTokens}
                 onChange={(e) =>
                   setForm((prev) => ({

@@ -34,6 +34,7 @@ import { after } from "next/server";
 import { reasoningCallSettings } from "@/modules/agent/reasoning-presets";
 import {
   fitModelHistoryToContext,
+  resolveContextWindowTokens,
   type ConversationContextPolicy,
 } from "@/modules/chat/conversation-context-policy";
 import {
@@ -108,13 +109,10 @@ export async function runStandardChat(input: {
     version.memoryPolicyJson as ConversationContextPolicy | null;
   const fittedContext = fitModelHistoryToContext({
     messages: generationHistory,
-    contextWindowTokens:
-      contextPolicy?.contextWindowTokens && providerConfig.contextWindow
-        ? Math.min(
-            contextPolicy.contextWindowTokens,
-            providerConfig.contextWindow,
-          )
-        : (contextPolicy?.contextWindowTokens ?? providerConfig.contextWindow),
+    contextWindowTokens: resolveContextWindowTokens(
+      contextPolicy?.contextWindowTokens,
+      providerConfig.contextWindow,
+    ),
     requestedOutputTokens: maxOutputTokens,
     systemPrompt,
   });

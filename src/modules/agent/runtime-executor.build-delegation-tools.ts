@@ -139,8 +139,8 @@ export async function buildDelegationTools(input: {
             );
           }
           if (
-            input.execution.depth + 1 >
-            input.execution.budget.policy.maxDepth
+            input.execution.budget.policy.maxDepth > 0 &&
+            input.execution.depth + 1 > input.execution.budget.policy.maxDepth
           ) {
             throw new AgentExecutionError(
               "Delegation depth limit reached",
@@ -154,8 +154,9 @@ export async function buildDelegationTools(input: {
             );
           }
           if (
+            input.execution.budget.policy.maxParallel > 0 &&
             input.execution.budget.activeDelegations >=
-            input.execution.budget.policy.maxParallel
+              input.execution.budget.policy.maxParallel
           ) {
             throw new AgentExecutionError(
               "Parallel delegation limit reached",

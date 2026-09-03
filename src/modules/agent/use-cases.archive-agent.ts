@@ -99,6 +99,7 @@ export interface ResolvedProviderConfig {
   modelId: string;
   modelRecordId?: string;
   contextWindow?: number;
+  maxOutputTokens?: number;
   providerKind: ProviderKind;
   providerId: string;
 }
@@ -141,6 +142,7 @@ export async function resolveProviderForVersion(
   let runtimeModelId = "";
   let modelRecordId: string | undefined;
   let contextWindow: number | undefined;
+  let maxOutputTokens: number | undefined;
   if (version.modelId) {
     const [model] = await db
       .select()
@@ -158,6 +160,7 @@ export async function resolveProviderForVersion(
       runtimeModelId = model.modelId;
       modelRecordId = model.id;
       contextWindow = model.contextWindow ?? undefined;
+      maxOutputTokens = model.maxOutputTokens ?? undefined;
     }
   }
 
@@ -179,6 +182,7 @@ export async function resolveProviderForVersion(
     modelId: runtimeModelId,
     modelRecordId,
     contextWindow,
+    maxOutputTokens,
     providerKind: provider.kind as ProviderKind,
     providerId: provider.id,
   };

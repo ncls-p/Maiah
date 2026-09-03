@@ -78,6 +78,11 @@ export async function executeAgent(
     throw new AgentRunStateError(created.run.id, created.run.status);
   }
 
+  const effectivePolicy =
+    policy.maxTotalTokens === 0
+      ? { ...policy, maxTotalTokens: created.run.reservedTokens }
+      : policy;
+
   const controller = new AbortController();
   if (input.abortSignal) {
     if (input.abortSignal.aborted) {
@@ -100,7 +105,7 @@ export async function executeAgent(
     availableAttachments: input.availableAttachments,
     trigger: input.trigger,
     budget: {
-      policy,
+      policy: effectivePolicy,
       rootRunId: created.run.id,
       deadlineAt,
       controller,

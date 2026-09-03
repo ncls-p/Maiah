@@ -25,15 +25,21 @@ function boundedInteger(value: number | null | undefined, fallback: number) {
 export function resolveAgentRuntimeLimits(input: {
   maxToolCalls?: number | null;
   maxOutputTokens?: number | null;
+  providerMaxOutputTokens?: number | null;
+  providerContextWindow?: number | null;
 }) {
   const maxToolCalls = boundedInteger(input.maxToolCalls, 20);
-  const maxOutputTokens = Math.max(
-    1,
-    boundedInteger(
-      input.maxOutputTokens,
-      agentRuntimePolicy.defaultMaxOutputTokens,
-    ),
-  );
+  const configuredMaxOutputTokens = boundedInteger(input.maxOutputTokens, 0);
+  const maxOutputTokens =
+    configuredMaxOutputTokens > 0
+      ? configuredMaxOutputTokens
+      : Math.max(
+          1,
+          boundedInteger(
+            input.providerMaxOutputTokens ?? input.providerContextWindow,
+            agentRuntimePolicy.defaultMaxOutputTokens,
+          ),
+        );
   return {
     maxToolCalls,
     maxOutputTokens,

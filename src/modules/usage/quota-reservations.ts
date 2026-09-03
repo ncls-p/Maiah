@@ -36,7 +36,17 @@ export function evaluateQuotaReservation(input: {
   reserved: number;
   requested: number;
 }) {
-  const requested = Math.max(1, Math.floor(input.requested));
+  const available =
+    input.limit === null
+      ? 2_147_483_647
+      : Math.min(
+          2_147_483_647,
+          Math.max(0, input.limit - input.used - input.reserved),
+        );
+  const requested =
+    input.requested === 0
+      ? Math.max(1, available)
+      : Math.max(1, Math.floor(input.requested));
   const allowed =
     input.limit === null ||
     input.used + input.reserved + requested <= input.limit;
@@ -71,7 +81,6 @@ export async function reserveWorkspaceTokens(input: {
 }) {
   const now = input.now ?? new Date();
   const periodStart = startOfQuotaMonth(now);
-  const requestedTokens = Math.max(1, Math.floor(input.requestedTokens));
   const limit = getWorkspaceMonthlyTokenLimit();
 
   return db.transaction(async (tx) => {
@@ -117,13 +126,13 @@ export async function reserveWorkspaceTokens(input: {
       limit,
       used,
       reserved,
-      requested: requestedTokens,
+      requested: input.requestedTokens,
     });
     if (!admission.allowed && limit !== null) {
       throw new WorkspaceQuotaReservationError(
         used,
         reserved,
-        requestedTokens,
+        admission.requested,
         limit,
       );
     }
@@ -134,13 +143,13 @@ export async function reserveWorkspaceTokens(input: {
         workspaceId: input.workspaceId,
         runId: input.runId,
         periodStart,
-        reservedTokens: requestedTokens,
+        reservedTokens: admission.requested,
         expiresAt: input.expiresAt,
       })
       .returning();
     await tx
       .update(agentRuns)
-      .set({ reservedTokens: requestedTokens, updatedAt: now })
+      .set({ reservedTokens: admission.requested, updatedAt: now })
       .where(eq(agentRuns.id, input.runId));
     return reservation;
   });

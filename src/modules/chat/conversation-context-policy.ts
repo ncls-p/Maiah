@@ -15,6 +15,17 @@ export interface ConversationContextPolicy {
   maxInputCharacters?: number;
 }
 
+export function resolveContextWindowTokens(
+  configured: number | null | undefined,
+  providerLimit: number | null | undefined,
+) {
+  if (!Number.isFinite(configured) || (configured ?? 0) <= 0) {
+    return providerLimit ?? undefined;
+  }
+  const requested = Math.floor(configured as number);
+  return providerLimit ? Math.min(requested, providerLimit) : requested;
+}
+
 export function resolveMaxInputCharacters(
   policy: ConversationContextPolicy | null | undefined,
 ) {

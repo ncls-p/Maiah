@@ -75,7 +75,7 @@ export const updateAgentSchema = z.object({
   modelId: z.uuid().optional(),
   temperature: z.string().optional(),
   topP: z.string().optional(),
-  maxOutputTokens: z.number().int().positive().optional(),
+  maxOutputTokens: z.number().int().min(0).optional(),
   maxToolCalls: z.number().int().min(0).optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
@@ -110,20 +110,12 @@ export const updateAgentSchema = z.object({
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      summaryThresholdTokens: z
-        .number()
-        .int()
-        .min(1_000)
-        .max(2_000_000)
-        .optional(),
-      summaryMaxTokens: z.number().int().min(128).max(16_000).optional(),
+      summaryThresholdTokens: z.number().int().min(1_000).optional(),
+      summaryMaxTokens: z.number().int().min(128).optional(),
       contextWindowTokens: z
-        .number()
-        .int()
-        .min(2_000)
-        .max(2_000_000)
+        .union([z.literal(0), z.number().int().min(2_000)])
         .optional(),
-      maxMessages: z.number().int().min(2).max(10_000).optional(),
+      maxMessages: z.number().int().min(2).optional(),
       maxInputCharacters: z.number().int().min(1).max(200_000).optional(),
     })
     .optional(),
