@@ -24,6 +24,7 @@ export const chatRequestSchema = z.object({
   regenerateAssistantMessageId: z.uuid().nullable().optional(),
   continueFromMessageId: z.uuid().nullable().optional(),
   codeWorkspaceId: z.uuid().optional(),
+  codeWorkspaceMode: z.boolean().optional(),
   attachmentIds: z.array(z.uuid()).optional(),
   imageAttachmentIds: z.array(z.uuid()).optional(),
   reasoningEffort: reasoningPresetSchema.optional(),

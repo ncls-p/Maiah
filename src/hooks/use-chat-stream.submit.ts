@@ -280,6 +280,7 @@ export function useChatSubmitHandler(input: {
           continueFromMessageId: options.continueFromMessageId,
           codeWorkspaceId:
             options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
+          codeWorkspaceMode: options.codeWorkspaceMode,
           attachmentIds: attachmentsToSend.flatMap((attachment) =>
             attachment.kind === "chat_file" ? [attachment.id] : [],
           ),

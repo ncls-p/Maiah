@@ -18,6 +18,7 @@ import {
   maxPathLength,
   maxPathSegments,
   metadataObjectKey,
+  textFileNames,
   textExtensions,
 } from "./storage.code-workspace-file-summary";
 
@@ -145,7 +146,12 @@ export function isIgnoredPath(projectPath: string) {
 
 export function isAllowedPath(projectPath: string) {
   const extension = path.posix.extname(projectPath).toLowerCase();
-  return textExtensions.has(extension) || binaryExtensions.has(extension);
+  const fileName = path.posix.basename(projectPath).toLowerCase();
+  return (
+    textExtensions.has(extension) ||
+    binaryExtensions.has(extension) ||
+    textFileNames.has(fileName)
+  );
 }
 
 export function declaredZipUncompressedSize(entry: JSZip.JSZipObject) {
@@ -161,5 +167,8 @@ export function totalWorkspaceBytes(files: CodeWorkspaceFileSummary[]) {
 }
 
 export function isTextWorkspacePath(projectPath: string) {
-  return textExtensions.has(path.posix.extname(projectPath).toLowerCase());
+  return (
+    textExtensions.has(path.posix.extname(projectPath).toLowerCase()) ||
+    textFileNames.has(path.posix.basename(projectPath).toLowerCase())
+  );
 }

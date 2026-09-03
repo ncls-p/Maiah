@@ -198,10 +198,9 @@ export function createWorkflowAgenticModelFixture() {
             {
               type: "tool-call",
               toolCallId: "tool-sandbox",
-              toolName: "run_code_sandbox",
+              toolName: "bash",
               input: JSON.stringify({
-                language: "node",
-                code: "console.log('tests passed')",
+                command: "node -e \"console.log('tests passed')\"",
               }),
             },
             {

@@ -492,9 +492,13 @@ export async function runStandardChat(input: {
       }
     } finally {
       try {
-        await stopLeaseHeartbeat();
+        await boundToolConfig.dispose();
       } finally {
-        completeChatStream(assistantMessage.id, streamGenerationId);
+        try {
+          await stopLeaseHeartbeat();
+        } finally {
+          completeChatStream(assistantMessage.id, streamGenerationId);
+        }
       }
     }
   })();

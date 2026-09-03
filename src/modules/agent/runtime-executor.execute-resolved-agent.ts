@@ -55,6 +55,7 @@ export async function executeResolvedAgent(
     | Awaited<ReturnType<typeof resolveProviderForVersion>>
     | undefined;
   let deadline: ReturnType<typeof createRuntimeDeadline> | undefined;
+  let disposeTools: () => Promise<void> = async () => {};
   const startedAt = Date.now();
   try {
     const provider = await resolveProviderForVersion(input.resolved.version);
@@ -119,8 +120,12 @@ export async function executeResolvedAgent(
             enableDocumentExplorer:
               (input.availableAttachments?.length ?? 0) > 0,
             nonInteractive: true,
+            codeWorkspaceId: input.codeWorkspaceId,
+            availableAttachments: input.availableAttachments,
           })
-        : { tools: {}, toolApproval: undefined };
+        : { tools: {}, toolApproval: undefined, dispose: async () => {} };
+    disposeTools =
+      typeof bound.dispose === "function" ? bound.dispose : async () => {};
     const delegationTools = await buildDelegationTools({
       runId,
       resolved: input.resolved,
@@ -529,6 +534,7 @@ export async function executeResolvedAgent(
           ),
         );
   } finally {
+    await disposeTools();
     deadline?.dispose();
     clearInterval(heartbeat);
     activeRunControllers.delete(runId);

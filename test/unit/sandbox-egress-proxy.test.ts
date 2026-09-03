@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 process.env.SANDBOX_EGRESS_PROXY_VALIDATE_ONLY = "true";
 
-const { isBlockedPackageHost, isPublicAddress, resolvePublicTarget } =
+const { isPublicAddress, resolvePublicTarget } =
   await import("../../scripts/sandbox-runner-egress-proxy.mjs");
 
 describe("sandbox egress proxy policy", () => {
@@ -27,11 +27,8 @@ describe("sandbox egress proxy policy", () => {
     );
   });
 
-  it("allows public addresses but blocks package registries", () => {
+  it("allows public addresses used by approved workspace commands", () => {
     expect(isPublicAddress("1.1.1.1")).toBe(true);
     expect(isPublicAddress("2606:4700:4700::1111")).toBe(true);
-    expect(isBlockedPackageHost("registry.npmjs.org")).toBe(true);
-    expect(isBlockedPackageHost("files.pythonhosted.org")).toBe(true);
-    expect(isBlockedPackageHost("example.com")).toBe(false);
   });
 });

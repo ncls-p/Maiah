@@ -13,33 +13,11 @@ const requestTimeoutMs = Number(
   process.env.SANDBOX_EGRESS_REQUEST_TIMEOUT_MS ?? 20_000,
 );
 
-const blockedHostSuffixes = [
-  "registry.npmjs.org",
-  "registry.yarnpkg.com",
-  "pypi.org",
-  "files.pythonhosted.org",
-  "repo.maven.apache.org",
-  "repo1.maven.org",
-  "rubygems.org",
-  "crates.io",
-  "static.crates.io",
-  "packagist.org",
-  "api.nuget.org",
-  "proxy.golang.org",
-];
-
 function normalizedHost(hostname) {
   return hostname
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
     .replace(/\.$/, "");
-}
-
-export function isBlockedPackageHost(hostname) {
-  const host = normalizedHost(hostname);
-  return blockedHostSuffixes.some(
-    (suffix) => host === suffix || host.endsWith(`.${suffix}`),
-  );
 }
 
 function isPrivateIpv4(address) {
@@ -89,9 +67,6 @@ export async function resolvePublicTarget(hostname) {
   const host = normalizedHost(hostname);
   if (!host || host === "localhost" || host.endsWith(".localhost")) {
     throw new Error("Local network destinations are blocked.");
-  }
-  if (isBlockedPackageHost(host)) {
-    throw new Error("Package registry downloads are blocked.");
   }
   const literalVersion = isIP(host);
   const addresses = literalVersion

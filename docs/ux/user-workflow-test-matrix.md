@@ -88,7 +88,7 @@ Chaque ressource distante doit distinguer :
 | Pièces jointes pendant streaming | Refus explicite sans perte de fichier                                                            | Code                                        |
 | Limite de huit fichiers          | Refus localisé avant upload                                                                      | Tests attachments + code                    |
 | ZIP et fichiers directs mélangés | Refus explicite                                                                                  | Tests attachments + code                    |
-| ZIP de code ou générique          | Routage par contenu vers l’espace de code ou une pièce jointe normale                              | Tests unitaires + navigateur                 |
+| ZIP de code ou générique         | Routage par contenu vers l’espace de code ou une pièce jointe normale                            | Tests unitaires + navigateur                |
 | Upload ou extraction en échec    | Erreur localisée, conversation conservée                                                         | Code + tests route                          |
 | Édition/suppression/régénération | Actions tactiles et clavier, échec non silencieux                                                | Tests chat + navigateur CI                  |
 | Copie message/lien               | Succès uniquement après presse-papiers, échec visible                                            | Code                                        |
@@ -162,25 +162,26 @@ Chaque ressource distante doit distinguer :
 
 ## Workflows no-code
 
-| Scénario                        | Attendu                                                                      | Couverture                        |
-| ------------------------------- | ---------------------------------------------------------------------------- | --------------------------------- |
-| Première automatisation         | Déclencheur présent, ajout d’étape guidé et connexion automatique sûre       | Code + navigateur                 |
-| Catalogue et recherche          | 21 nœuds réels, dont un nœud debug, catégories, filtre vide explicite        | Tests runtime + navigateur        |
-| Configuration no-code           | Formulaires adaptés au nœud ; JSON brut derrière les réglages experts        | Code + tests de dictionnaires     |
-| Échappatoire code               | JavaScript/Python isolé, limites de temps et sortie JSON                     | Tests sandbox + runtime           |
-| Graphe invalide                 | Cycle, second déclencheur et sortie après terminal refusés côté serveur      | Tests contrats/runtime            |
-| Exécution initiale en erreur    | Erreur persistante et relance ; jamais de faux historique vide               | Code                              |
-| Actualisation en erreur         | Dernier historique valide conservé, avertissement visible                    | Code                              |
-| Détail d’exécution              | Entrée, sortie, statut et erreur de chaque étape consultables                | API + code + navigateur           |
-| Mode agentique                  | Recherche web, plan, checklist, construction, validation et dry-run ordonnés | Tests route + fournisseur réel    |
-| Run demandé par l’agent         | Version exacte, entrée chiffrée, aperçu expurgé, validation humaine atomique | Tests domaine + navigateur        |
-| Nœud debug                      | Capture pass-through visible dans le détail sans modifier les données        | Tests runtime                     |
-| Panneaux desktop                | Bibliothèque et inspecteur redimensionnables au clavier                      | Composant accessible + navigateur |
-| Mobile 390 px                   | Canevas sans débordement ; bibliothèque/inspecteur en panneaux latéraux      | Navigateur                        |
-| Plein écran                     | Entrée/sortie explicites ; Échap restaure la page                            | Navigateur                        |
-| BullMQ sur Dragonfly            | Ajout de job sans erreur de clé Lua non déclarée                             | Smoke Docker Dragonfly réel       |
-| Publication et test concurrents | Boutons occupés, double soumission empêchée, saisie conservée                | Code + tests API                  |
-| API externe                     | Version publiée stable, scope `workflows.execute`, idempotence               | Tests routes + OpenAPI            |
+| Scénario                        | Attendu                                                                               | Couverture                           |
+| ------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| Première automatisation         | Déclencheur présent, ajout d’étape guidé et connexion automatique sûre                | Code + navigateur                    |
+| Catalogue et recherche          | 21 nœuds réels, dont un nœud debug, catégories, filtre vide explicite                 | Tests runtime + navigateur           |
+| Configuration no-code           | Formulaires adaptés au nœud ; JSON brut derrière les réglages experts                 | Code + tests de dictionnaires        |
+| Échappatoire code               | JavaScript/Python isolé, limites de temps et sortie JSON                              | Tests sandbox + runtime              |
+| Workspace de code unifié        | Seulement `read/edit/write/bash`, checkpoint après mutation, suppression synchronisée | Tests runtime + sandbox + Playwright |
+| Graphe invalide                 | Cycle, second déclencheur et sortie après terminal refusés côté serveur               | Tests contrats/runtime               |
+| Exécution initiale en erreur    | Erreur persistante et relance ; jamais de faux historique vide                        | Code                                 |
+| Actualisation en erreur         | Dernier historique valide conservé, avertissement visible                             | Code                                 |
+| Détail d’exécution              | Entrée, sortie, statut et erreur de chaque étape consultables                         | API + code + navigateur              |
+| Mode agentique                  | Recherche web, plan, checklist, construction, validation et dry-run ordonnés          | Tests route + fournisseur réel       |
+| Run demandé par l’agent         | Version exacte, entrée chiffrée, aperçu expurgé, validation humaine atomique          | Tests domaine + navigateur           |
+| Nœud debug                      | Capture pass-through visible dans le détail sans modifier les données                 | Tests runtime                        |
+| Panneaux desktop                | Bibliothèque et inspecteur redimensionnables au clavier                               | Composant accessible + navigateur    |
+| Mobile 390 px                   | Canevas sans débordement ; bibliothèque/inspecteur en panneaux latéraux               | Navigateur                           |
+| Plein écran                     | Entrée/sortie explicites ; Échap restaure la page                                     | Navigateur                           |
+| BullMQ sur Dragonfly            | Ajout de job sans erreur de clé Lua non déclarée                                      | Smoke Docker Dragonfly réel          |
+| Publication et test concurrents | Boutons occupés, double soumission empêchée, saisie conservée                         | Code + tests API                     |
+| API externe                     | Version publiée stable, scope `workflows.execute`, idempotence                        | Tests routes + OpenAPI               |
 
 ## Outils, MCP, skills et approbations
 

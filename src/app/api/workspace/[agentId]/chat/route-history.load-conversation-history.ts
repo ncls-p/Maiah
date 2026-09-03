@@ -240,7 +240,7 @@ export async function loadConversationHistory(
                 ? `Embedding-free document explorer: ${sandboxAttachmentExplorerPathHint(fileAttachment.fileName)}`
                 : null,
               fileAttachment.extractedTextChars > 0
-                ? `The stored Markdown extraction contains ${fileAttachment.extractedTextChars} characters. Pass this Attachment ID to run_code_sandbox, read the explorer manifest, then navigate with rg/sed/Python instead of asking for the whole document at once.`
+                ? `The stored Markdown extraction contains ${fileAttachment.extractedTextChars} characters. Use read or bash on the mounted explorer manifest, then navigate with rg or Python instead of asking for the whole document at once.`
                 : (fileAttachment.extractionMessage ??
                   "No readable text was extracted."),
               fileAttachment.extractionStatus === "truncated"

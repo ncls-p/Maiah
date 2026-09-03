@@ -43,6 +43,7 @@ export type ChatExecutionContext = {
   useAiSdkUIStream: boolean;
   shouldRegenerateConversationTitle: boolean;
   reasoningEffort?: ReasoningPreset;
+  codeWorkspaceId?: string;
   capabilityOverrides?: {
     disabledTools: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
     disabledSkillIds: string[];

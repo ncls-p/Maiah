@@ -191,7 +191,11 @@ export function createWorkflowAgentStream<
           encodeEvent({ type: "error", message: errorMessage(error) }),
         );
       } finally {
-        controller.close();
+        try {
+          await state.dispose();
+        } finally {
+          controller.close();
+        }
       }
     },
     cancel() {},

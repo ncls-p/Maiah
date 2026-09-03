@@ -88,6 +88,7 @@ RUN apt-get update \
     coreutils \
     curl \
     file \
+    git \
     libgl1 \
     libglib2.0-0 \
     libgomp1 \
@@ -98,6 +99,7 @@ RUN apt-get update \
     python3 \
     python3-pip \
     python3-setuptools \
+    python3-venv \
     python3-wheel \
     ripgrep \
     util-linux \
@@ -123,12 +125,7 @@ RUN npm init -y \
 
 COPY scripts/sandbox-runner*.mjs /opt/sandbox/
 
-RUN rm -rf /usr/lib/python3/dist-packages/pip* /usr/local/lib/python3.*/site-packages/pip* \
-    /usr/bin/pip /usr/bin/pip3 /usr/local/bin/pip* \
-    /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
-    /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
-    /usr/local/bin/pnpm /usr/local/bin/pnpx \
-  && chmod 0755 /opt/sandbox/sandbox-runner*.mjs \
+RUN chmod 0755 /opt/sandbox/sandbox-runner*.mjs \
   && SANDBOX_RUNNER_VALIDATE_ONLY=true node /opt/sandbox/sandbox-runner.mjs \
   && SANDBOX_EGRESS_PROXY_VALIDATE_ONLY=true node /opt/sandbox/sandbox-runner-egress-proxy.mjs \
   && mkdir -p /run/sandbox /sandbox-runs \

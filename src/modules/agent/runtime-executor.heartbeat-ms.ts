@@ -129,6 +129,7 @@ export type InternalExecutionInput = {
   dryRun?: boolean;
   onProgress?: AgentToolProgressCallback;
   reasoningEffort?: ReasoningPreset;
+  codeWorkspaceId?: string;
 };
 
 export type ExecuteAgentInput = {
@@ -148,6 +149,7 @@ export type ExecuteAgentInput = {
   abortSignal?: AbortSignal;
   onProgress?: AgentToolProgressCallback;
   reasoningEffort?: ReasoningPreset;
+  codeWorkspaceId?: string;
 };
 
 export type AgentExecutionResult = {

@@ -292,6 +292,7 @@ export function useChatSession(c: SessionContext) {
           interfaceMode === CODING_INTERFACE_MODE
             ? codeWorkspaceArtifact?.projectId
             : undefined,
+        codeWorkspaceMode: interfaceMode === CODING_INTERFACE_MODE,
         ephemeral: !activeConversationId && ephemeral,
         reasoningEffort: next.reasoningEffort,
       }).finally(() => {

@@ -6,10 +6,12 @@ import path from "node:path";
 import type { Readable } from "node:stream";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { registerWorkspaceSessionCases } from "./code-sandbox-runner.workspace-session-cases";
 
 type SandboxResponse = {
   ok?: boolean;
   error?: string;
+  sessionId?: string;
   stdout?: string;
   stderr?: string;
   exitCode?: number | null;
@@ -19,6 +21,7 @@ type SandboxResponse = {
     path: string;
     textPreview?: string;
     modified?: boolean;
+    deleted?: boolean;
     size?: number;
   }>;
 };
@@ -46,19 +49,22 @@ function waitForSocket() {
   });
 }
 
-function requestRun(payload: unknown) {
+function requestRunner(pathname: string, payload?: unknown, method = "POST") {
   return new Promise<{ status: number | undefined; body: SandboxResponse }>(
     (resolve, reject) => {
-      const body = JSON.stringify(payload);
+      const body = payload === undefined ? "" : JSON.stringify(payload);
       const request = http.request(
         {
           socketPath,
-          path: "/run",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(body),
-          },
+          path: pathname,
+          method,
+          headers:
+            body.length > 0
+              ? {
+                  "Content-Type": "application/json",
+                  "Content-Length": Buffer.byteLength(body),
+                }
+              : undefined,
         },
         (response) => {
           let responseBody = "";
@@ -79,7 +85,17 @@ function requestRun(payload: unknown) {
   );
 }
 
+function requestRun(payload: unknown) {
+  return requestRunner("/run", payload);
+}
+
 describe("sandbox-runner", () => {
+  registerWorkspaceSessionCases({
+    requestRun,
+    requestRunner,
+    runRoot: () => runRoot,
+  });
+
   beforeAll(async () => {
     runRoot = mkdtempSync(path.join(os.tmpdir(), "ai-hub-sandbox-runs-"));
     socketDir = mkdtempSync(path.join(os.tmpdir(), "ai-hub-sandbox-socket-"));
@@ -223,7 +239,6 @@ describe("sandbox-runner", () => {
       language: "node",
       code: "console.log('x'.repeat(1_600_000))",
     });
-
     expect(result.status).toBe(200);
     expect(result.body.ok).toBe(false);
     expect(result.body.truncated).toBe(true);
@@ -239,7 +254,6 @@ describe("sandbox-runner", () => {
       code: "console.log('unreachable')",
       stdin: "x".repeat(100_001),
     });
-
     expect(result.status).toBe(400);
     expect(result.body.ok).toBe(false);
     expect(result.body.error).toContain("use stdinFileBase64");
@@ -266,7 +280,6 @@ describe("sandbox-runner", () => {
       code: "console.log('nope')",
       files: [{ path: "../outside.txt", content: "secret" }],
     });
-
     expect(result.status).toBe(400);
     expect(result.body.ok).toBe(false);
     expect(result.body.error).toMatch(/Path traversal/i);
@@ -278,7 +291,6 @@ describe("sandbox-runner", () => {
       timeoutMs: 250,
       code: "while (true) {}",
     });
-
     expect(result.status).toBe(200);
     expect(result.body.ok).toBe(false);
     expect(result.body.timedOut).toBe(true);

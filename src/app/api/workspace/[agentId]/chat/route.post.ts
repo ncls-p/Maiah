@@ -17,6 +17,7 @@ import {
 import { publishChatStreamEvent } from "@/modules/chat/stream-bus";
 import { getConversationAccess } from "@/modules/chat/conversation-sharing";
 import {
+  createEmptyCodeWorkspace,
   codeWorkspaceArtifact,
   getCodeWorkspace,
 } from "@/modules/code-workspace/storage";
@@ -90,6 +91,7 @@ export async function POST(
       regenerateAssistantMessageId,
       continueFromMessageId,
       codeWorkspaceId,
+      codeWorkspaceMode = false,
       attachmentIds = [],
       imageAttachmentIds = [],
       capabilityOverrides,
@@ -118,6 +120,7 @@ export async function POST(
     if (
       continueFromMessageId &&
       (codeWorkspaceId ||
+        codeWorkspaceMode ||
         attachmentIds.length > 0 ||
         imageAttachmentIds.length > 0)
     ) {
@@ -249,6 +252,11 @@ export async function POST(
         metadata,
         "Uploaded ZIP workspace.",
       );
+    } else if (codeWorkspaceMode) {
+      codeWorkspaceAttachment = await createEmptyCodeWorkspace({
+        workspaceId: agent.workspaceId,
+        userId: actorUserId,
+      });
     }
     const requestedAttachmentIds = Array.from(
       new Set([...attachmentIds, ...imageAttachmentIds]),
@@ -366,6 +374,7 @@ export async function POST(
       shouldRegenerateConversationTitle,
       capabilityOverrides,
       reasoningEffort,
+      codeWorkspaceId: codeWorkspaceAttachment?.projectId,
     };
     if (agent.kind === "orchestrator")
       return runOrchestratorChat(executionContext);

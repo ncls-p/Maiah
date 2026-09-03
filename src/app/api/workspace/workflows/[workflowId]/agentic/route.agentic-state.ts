@@ -2,6 +2,10 @@ import {
   validateWorkflowAgentDraft,
   type WorkflowAgenticDraft,
 } from "@/modules/workflows/agentic";
+import {
+  createCodeWorkspaceRuntime,
+  type CodeWorkspaceRuntime,
+} from "@/modules/code-workspace/runtime";
 import { workflowDefinitionSchema } from "@/modules/workflows/contracts";
 
 export type PendingWorkflowRunRequest = {
@@ -22,6 +26,7 @@ export class WorkflowAgenticState {
   dryRunCompleted = false;
   runRequestCreated = false;
   pendingRunRequest?: PendingWorkflowRunRequest;
+  private codeRuntime?: CodeWorkspaceRuntime;
 
   constructor(
     draft: WorkflowAgenticDraft,
@@ -49,6 +54,15 @@ export class WorkflowAgenticState {
     this.actionCount += 1;
     if (this.actionCount > 8)
       throw new Error("The workflow editing action limit was reached.");
+  }
+
+  getCodeRuntime(input: { workspaceId: string; userId: string }) {
+    this.codeRuntime ??= createCodeWorkspaceRuntime(input);
+    return this.codeRuntime;
+  }
+
+  async dispose() {
+    await this.codeRuntime?.dispose();
   }
 
   validateDefinition(definition: unknown) {

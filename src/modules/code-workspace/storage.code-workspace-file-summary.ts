@@ -53,6 +53,10 @@ export type CodeWorkspaceCreateFileInput = {
   content?: string;
 };
 
+export type CodeWorkspaceFileChange =
+  | { path: string; bytes: Uint8Array }
+  | { path: string; delete: true };
+
 const codeWorkspaceStoragePrefix =
   process.env.CODE_WORKSPACE_STORAGE_PREFIX ?? "code-workspaces";
 export const legacyCodeWorkspaceRoots = Array.from(
@@ -76,6 +80,8 @@ export const textExtensions = new Set([
   ".html",
   ".htm",
   ".json",
+  ".lock",
+  ".map",
   ".txt",
   ".md",
   ".svg",
@@ -85,6 +91,25 @@ export const textExtensions = new Set([
   ".m3u8",
   ".mpd",
   ".vtt",
+]);
+
+export const textFileNames = new Set([
+  ".dockerignore",
+  ".editorconfig",
+  ".env.example",
+  ".eslintignore",
+  ".eslintrc",
+  ".gitignore",
+  ".npmrc",
+  ".nvmrc",
+  ".prettierignore",
+  ".prettierrc",
+  "dockerfile",
+  "gemfile",
+  "makefile",
+  "license",
+  "readme",
+  "procfile",
 ]);
 
 export const binaryExtensions = new Set([

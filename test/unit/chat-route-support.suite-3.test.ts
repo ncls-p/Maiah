@@ -166,7 +166,7 @@ describe("chat route tool gating", () => {
     });
   });
 
-  it("exposes a code workspace tool only when the builtin tool is bound", async () => {
+  it("collapses a legacy workspace binding into four composable tools", async () => {
     const { buildBoundTools, getBuiltInToolByName } = await loadModules();
     const createProjectTool = getBuiltInToolByName(
       "code_workspace_create_project",
@@ -186,8 +186,8 @@ describe("chat route tool gating", () => {
 
     const { tools } = await buildBoundTools(buildInput());
 
-    expect(Object.keys(tools)).toContain("code_workspace_create_project");
-    expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
+    expect(Object.keys(tools)).toEqual(["read", "edit", "write", "bash"]);
+    expect(Object.keys(tools)).not.toContain("code_workspace_create_project");
   });
 
   it("removes a tool disabled for the current conversation", async () => {
@@ -214,6 +214,19 @@ describe("chat route tool gating", () => {
     });
 
     expect(Object.keys(tools)).not.toContain("code_workspace_create_project");
+    expect(Object.keys(tools)).not.toContain("read");
+  });
+
+  it("exposes only the four workspace tools for an attached code workspace", async () => {
+    const { buildBoundTools } = await loadModules();
+
+    const { tools } = await buildBoundTools({
+      ...buildInput(),
+      codeWorkspaceId: "12345678-1234-4234-9234-123456789abc",
+      hasSkills: true,
+    });
+
+    expect(Object.keys(tools)).toEqual(["read", "edit", "write", "bash"]);
   });
 
   it("aliases long custom tool keys to OpenAI-compatible names", async () => {

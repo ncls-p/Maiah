@@ -66,7 +66,7 @@ Une route ne doit pas réimplémenter une règle déjà portée par un module. U
 | Administration       | pages et composants `admin`                                  | routes `admin`, `src/modules/admin`                                                                 |
 | Organisations et IAM | page `members`, composant `iam/access-console`               | route `workspace/iam`, `src/modules/iam`, service `domain/services/authorization.ts`                |
 | Navigation           | shell workspace et réglage admin                             | `src/modules/navigation`                                                                            |
-| Workspace de code    | panneaux chat et page dédiée                                 | routes `code-projects`, `src/modules/code-workspace`                                                |
+| Workspace de code    | panneaux chat et page dédiée                                 | routes `code-projects`, `src/modules/code-workspace`, runtime unifié `read/edit/write/bash`         |
 
 ## Modules métier
 
@@ -187,7 +187,7 @@ La couverture détaillée est dans [la matrice des parcours](../ux/user-workflow
 
 ## Worker et services externes
 
-`src/server/infrastructure/worker/index.ts` traite les tâches planifiées. Les adaptateurs fournisseur sont dans `infrastructure/providers`. Le cache Dragonfly et le stockage S3 sont encapsulés dans leurs répertoires respectifs. Le sandbox de code communique par socket Unix avec le runner construit par `npm run sandbox:build`.
+`src/server/infrastructure/worker/index.ts` traite les tâches planifiées. Les adaptateurs fournisseur sont dans `infrastructure/providers`. Le cache Dragonfly et le stockage S3 sont encapsulés dans leurs répertoires respectifs. Toute lecture, mutation ou exécution pilotée par un modèle dans un workspace de code passe par `CodeWorkspaceRuntime`; le runtime communique par socket Unix avec le runner construit par `npm run sandbox:build`.
 
 Le démarrage développement exécute les migrations avant Next.js. Si PostgreSQL n’est pas disponible, lancer Next directement peut servir à inspecter les pages publiques, mais ne valide ni les routes authentifiées ni les migrations.
 
@@ -224,6 +224,7 @@ Les tests d’un changement doivent cibler le niveau où vit l’invariant. Un t
 - [Versioning des agents](agent-configuration-versioning.md)
 - [Bornes runtime](agent-runtime-bounds.md)
 - [Cycle d’approbation](tool-approval-lifecycle.md)
+- [Runtime unifié des workspaces de code](code-workspace-runtime.md)
 - [Hiérarchie IAM](iam-resource-hierarchy.md)
 - [Credentials Marketplace](../security/marketplace-credentials.md)
 - [Installation des skills](../security/skill-installation.md)
