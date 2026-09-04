@@ -2,12 +2,11 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { chatTodoListInputSchema } from "@/modules/chat/todo-list";
+import { workspaceBashInputSchema } from "@/modules/code-workspace/runtime.schemas";
 import {
-  codeSandboxInputSchema,
   searchWebWithSearxng,
   webSearchInputSchema,
 } from "@/modules/tool/builtin-tool-primitives";
-import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
 import {
   createWorkflowAgentInputRequest,
   workflowAgentInputFieldSchema,
@@ -68,15 +67,15 @@ export function createWorkflowBaseTools({
         });
       },
     }),
-    run_code_sandbox: tool({
+    bash: tool({
       description:
-        "Run a small Python, Node.js, or Bash test in the isolated sandbox. Use synthetic data only; never include secrets, private URLs, opaque secret references, or customer data.",
-      inputSchema: codeSandboxInputSchema,
+        "Run a Bash command in the isolated workspace for tests, file operations, Node.js, or Python. Use synthetic data only; never include secrets, private URLs, opaque secret references, or customer data.",
+      inputSchema: workspaceBashInputSchema,
       execute: async (input) => {
         state.sandboxCount += 1;
         if (state.sandboxCount > 4)
           throw new Error("The sandbox test limit was reached.");
-        return executeCodeSandbox(input, { workspaceId, userId });
+        return state.getCodeRuntime({ workspaceId, userId }).bash(input);
       },
     }),
     request_user_input: tool({

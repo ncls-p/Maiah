@@ -21,6 +21,6 @@ export function buildConversationAttachmentContext(
     "Files attached earlier in this conversation remain available on follow-up and regenerated turns.",
     "Accessible conversation attachments:",
     ...inventory,
-    "When the user refers to one of these files, treat it as attached and available. Use its Attachment ID with an appropriate tool such as run_code_sandbox when its contents must be inspected; do not claim that no file was attached and do not ask the user to upload it again.",
+    "When the user refers to one of these files, treat it as attached and available under attachments/<file name> in the workspace. Use read or bash to inspect it; do not claim that no file was attached and do not ask the user to upload it again.",
   ].join("\n");
 }

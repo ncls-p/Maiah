@@ -70,9 +70,10 @@ export async function persistSandboxFiles(
   };
 }
 
-export async function runSandboxRunner(
+async function runSandboxRequest(
   input: PreparedSandboxRunnerInput,
   executionId: string,
+  requestPath: string,
 ): Promise<CodeSandboxResult> {
   const body = serializeSandboxRunnerRequest(input);
   const socketPath = resolveSandboxRunnerSocket();
@@ -80,7 +81,7 @@ export async function runSandboxRunner(
     const request = http.request(
       {
         socketPath,
-        path: "/run",
+        path: requestPath,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -159,5 +160,93 @@ export async function runSandboxRunner(
     });
 
     request.end(body);
+  });
+}
+
+export function runSandboxRunner(
+  input: PreparedSandboxRunnerInput,
+  executionId: string,
+) {
+  return runSandboxRequest(input, executionId, "/run");
+}
+
+export async function openSandboxSession(
+  input: PreparedSandboxRunnerInput,
+  executionId: string,
+) {
+  const body = serializeSandboxRunnerRequest(input);
+  const socketPath = resolveSandboxRunnerSocket();
+  return new Promise<string>((resolve, reject) => {
+    const request = http.request(
+      {
+        socketPath,
+        path: "/sessions",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          "X-Sandbox-Execution-Id": executionId,
+        },
+        timeout: requestTimeoutMs(input),
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
+          const payload = parseJsonResponse(
+            Buffer.concat(chunks).toString("utf8"),
+          ) as { sessionId?: unknown; error?: unknown } | null;
+          if (
+            response.statusCode !== 201 ||
+            typeof payload?.sessionId !== "string"
+          ) {
+            reject(
+              new Error(
+                typeof payload?.error === "string"
+                  ? payload.error
+                  : "Failed to open sandbox session.",
+              ),
+            );
+            return;
+          }
+          resolve(payload.sessionId);
+        });
+      },
+    );
+    request.on("timeout", () =>
+      request.destroy(new Error("Sandbox session request timed out.")),
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
+export function runSandboxSession(
+  sessionId: string,
+  input: PreparedSandboxRunnerInput,
+  executionId: string,
+) {
+  return runSandboxRequest(
+    input,
+    executionId,
+    `/sessions/${encodeURIComponent(sessionId)}/run`,
+  );
+}
+
+export async function closeSandboxSession(sessionId: string) {
+  const socketPath = resolveSandboxRunnerSocket();
+  await new Promise<void>((resolve) => {
+    const request = http.request(
+      {
+        socketPath,
+        path: `/sessions/${encodeURIComponent(sessionId)}`,
+        method: "DELETE",
+        timeout: 5_000,
+      },
+      () => resolve(),
+    );
+    request.on("timeout", () => request.destroy());
+    request.on("error", () => resolve());
+    request.end();
   });
 }

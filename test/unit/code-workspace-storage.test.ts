@@ -45,6 +45,7 @@ vi.mock("@/lib/logger", () => ({
 import {
   createCodeWorkspaceFromFiles,
   createCodeWorkspaceFromZip,
+  createEmptyCodeWorkspace,
   getCodeWorkspace,
   isTextWorkspacePath,
   normalizeWorkspacePath,
@@ -102,6 +103,23 @@ describe("code workspace storage", () => {
     expect(await getCodeWorkspace(artifact.projectId)).toMatchObject({
       id: artifact.projectId,
       version: 1,
+    });
+  });
+
+  it("creates an empty durable workspace for coding mode", async () => {
+    const artifact = await createEmptyCodeWorkspace({ workspaceId, userId });
+
+    expect(artifact).toMatchObject({
+      kind: "code_workspace_artifact",
+      rootFile: null,
+      version: 1,
+      files: [],
+      previewUrl: null,
+    });
+    expect(await getCodeWorkspace(artifact.projectId)).toMatchObject({
+      workspaceId,
+      createdByUserId: userId,
+      files: [],
     });
   });
 

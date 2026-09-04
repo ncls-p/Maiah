@@ -16,6 +16,10 @@ when the owner wants the runtime to use those external bounds directly.
 - A run has a 120-second deadline combined with the user's cancellation signal.
   A user cancellation completes the partial message; a deadline is reported as
   a failed run with a retryable, user-facing explanation.
+- An attached code workspace replaces general chat capabilities with the
+  bounded `read`, `edit`, `write`, and `bash` surface. Bash keeps the sandbox
+  command timeout and restricted-tool approval boundary inside the cumulative
+  chat limits.
 
 ## Supporting model calls
 

@@ -25,6 +25,7 @@ export type CodeSandboxOutputFile = {
   truncated?: boolean;
   fromInput?: boolean;
   modified?: boolean;
+  deleted?: boolean;
   skipped?: "too_large";
   contentBase64?: string;
   contentOmitted?: "too_large" | "total_limit";
@@ -77,15 +78,15 @@ type NormalizeSandboxResponseOptions = {
 };
 
 const requestTimeoutBufferMs = 30_000;
-export const maxResponseBytes = 8_000_000;
+export const maxResponseBytes = 72_000_000;
 export const defaultSocketPath = "/run/sandbox/sandbox.sock";
 export const localDevSocketPath = path.resolve(
   /*turbopackIgnore: true*/ process.cwd(),
   ".data/sandbox-runner/sandbox.sock",
 );
-export const maxSandboxInputFiles = 40;
+export const maxSandboxInputFiles = 500;
 export const maxSandboxInputFileBytes = 1_500_000;
-export const maxSandboxInputTotalBytes = 5_000_000;
+export const maxSandboxInputTotalBytes = 50_000_000;
 export const maxSandboxInlineStdinChars = 100_000;
 export const maxSandboxCodeChars = 100_000;
 const defaultSandboxTimeoutMs = 15_000;

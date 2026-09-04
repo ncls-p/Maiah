@@ -145,7 +145,7 @@ function codeSandboxContextFromValue(value: unknown) {
 
   const lines = [
     `Previous code sandbox result (${typeof record.language === "string" ? record.language : "unknown"}, ${record.ok === false ? "failed" : "ok"}).`,
-    "If the user asks to inspect or modify one of these generated files, call run_code_sandbox with its Attachment ID in the attachments array; do not ask the user to re-upload it.",
+    "If the user asks to inspect or modify one of these generated files, use its mounted attachments/<file name> path with read or bash; do not ask the user to re-upload it.",
     sandboxTextContext("stdout", record.stdout),
     sandboxTextContext("stderr", record.stderr),
     ...codeSandboxFilesContext(record.files),

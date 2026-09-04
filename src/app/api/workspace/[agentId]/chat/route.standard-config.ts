@@ -100,6 +100,8 @@ export async function prepareStandardChatConfig(input: {
               "Embedding-free document explorer:",
             ),
           ),
+        codeWorkspaceId: context.codeWorkspaceId,
+        availableAttachments,
         approvalPolicy,
         emitEvent: input.enqueueEvent,
         onApprovalRequired: (event) =>
@@ -110,7 +112,7 @@ export async function prepareStandardChatConfig(input: {
             input: event.input,
           }),
       })
-    : { tools: {}, toolApproval: undefined };
+    : { tools: {}, toolApproval: undefined, dispose: async () => {} };
   const tools: ToolSet = boundToolConfig.tools;
   const availableToolNames = Object.keys(tools);
   logger.info("Chat request accepted", {
@@ -159,6 +161,9 @@ export async function prepareStandardChatConfig(input: {
   const hasCodeWorkspaceTools = codeWorkspaceCreateToolNames.some((name) =>
     availableToolNames.includes(name),
   );
+  const hasUnifiedCodeTools = ["read", "edit", "write", "bash"].some((name) =>
+    availableToolNames.includes(name),
+  );
   const toolGuidance =
     availableToolNames.length > 0
       ? [
@@ -187,6 +192,9 @@ export async function prepareStandardChatConfig(input: {
             : null,
           hasCodeWorkspaceTools
             ? "For static HTML/CSS/JS apps, keep the whole workflow in chat. If the user asks you to build a small website/app/demo from scratch, first use code_workspace_create_project with only short starter files or just file paths such as index.html, styles.css, and script.js, then fill or revise files one at a time with code_workspace_write_file or code_workspace_replace_text. Avoid one huge create_project call containing all final code. To include an uploaded image, font, media file, or other supported asset, call code_workspace_write_file with its Attachment ID in attachmentId and the desired workspace path; this copies the original bytes, so never recreate binary content as text. If the user uploaded a ZIP/code workspace, use code_workspace_list_files to inspect it, code_workspace_read_file before editing, code_workspace_replace_text for targeted edits, and code_workspace_write_file only when full-file replacement is safer. These tools return a live code workspace artifact with preview and ZIP download; do not paste full files unless asked. If the user wants to publish to GitHub, use github_get_publish_status to check the current user's connected repositories or get the connect URL. For GitHub publishing, the user must choose the repository, target branch, and mode: pull_request or direct_push. Use github_publish_code_workspace only after the user explicitly confirms those choices; direct_push requires confirmDirectPush=true and can target main only if the user explicitly selected main."
+            : null,
+          hasUnifiedCodeTools
+            ? "You are working in one isolated code workspace that persists for this execution turn. Paths are relative to its root. Use read to inspect files, edit for precise unique replacements, write for new files or complete rewrites, and bash for search, file operations, dependency installation, Git inspection, tests, builds, Node.js, or Python. Prefer read over cat or sed. Conversation files are mounted under attachments/; readable documents also have a sibling .document directory whose README.md and manifest.json index the extracted content. Inspect relevant files before editing, use one edit call for multiple disjoint changes in a file, and run the narrowest relevant verification before answering. The server checkpoints workspace changes after every mutation. Do not invent project IDs or ask for sandbox paths."
             : null,
           `Use at most ${maxToolCalls} tool calls.`,
           "When that limit is reached, do not call another tool; answer the user from the tool results and context already available. If the information is incomplete, say what is known and what remains uncertain.",

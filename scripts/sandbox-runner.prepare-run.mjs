@@ -31,7 +31,7 @@ import {
   textExtensions,
 } from "./sandbox-runner.socket-path.mjs";
 
-export async function prepareRun(input) {
+export async function prepareWorkspace(files) {
   await mkdir(runRoot, { recursive: true });
   if (canSwitchUser) {
     await chown(runRoot, sandboxUid, sandboxGid).catch(() => undefined);
@@ -40,7 +40,14 @@ export async function prepareRun(input) {
   const runId = randomUUID();
   const workdir = await mkdtemp(path.join(runRoot, `run-${runId}-`));
   await chmod(workdir, 0o700);
-  const inputHashes = await writeInputFiles(workdir, input.files);
+  const inputHashes = await writeInputFiles(workdir, files);
+  await mkdir(path.join(workdir, "tmp"), { recursive: true });
+  await mkdir(path.join(workdir, "home"), { recursive: true });
+  await chownRecursive(workdir);
+  return { runId, workdir, inputHashes };
+}
+
+export async function writeRunEntry(input, workdir) {
   if (input.stdinFile) {
     const stdinPath = path.join(workdir, ".stdin");
     await writeFile(stdinPath, input.stdinFile);
@@ -57,20 +64,18 @@ export async function prepareRun(input) {
         : `${input.code}\n`;
   await writeFile(path.join(workdir, entryFile), source, "utf8");
   if (input.language === "node") {
-    await writeFile(
-      path.join(workdir, "package.json"),
-      '{"type":"module"}\n',
-      "utf8",
-    );
     await symlink(
       "/opt/sandbox/node_modules",
       path.join(workdir, "node_modules"),
     ).catch(() => undefined);
   }
-  await mkdir(path.join(workdir, "tmp"), { recursive: true });
-  await mkdir(path.join(workdir, "home"), { recursive: true });
   await chownRecursive(workdir);
-  return { runId, workdir, inputHashes };
+}
+
+export async function prepareRun(input) {
+  const prepared = await prepareWorkspace(input.files);
+  await writeRunEntry(input, prepared.workdir);
+  return prepared;
 }
 
 export function executeProcess(input, workdir) {

@@ -127,6 +127,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
           progress.queue(event);
         },
         reasoningEffort: context.reasoningEffort,
+        codeWorkspaceId: context.codeWorkspaceId,
       });
       completedRun = result;
       const timings = generationClock.snapshot();

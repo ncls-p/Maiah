@@ -179,8 +179,8 @@ describe("runtime packaging guardrails", () => {
       expect(egressProxy).toContain("curl");
       expect(egressProxy).not.toContain("fetch(");
     }
-    expect(dockerfile).toContain("/usr/bin/pip /usr/bin/pip3");
-    expect(dockerfile).toContain("/usr/local/lib/node_modules/npm");
+    expect(dockerfile).toContain("python3-pip");
+    expect(dockerfile).toContain('npm install --global "npm@${NPM_VERSION}"');
   });
 
   it("does not configure Dynatrace in application deployments", () => {

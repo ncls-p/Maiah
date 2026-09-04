@@ -87,6 +87,7 @@ export function useComposerActions(c: ComposerActionsContext) {
         c.interfaceMode === CODING_INTERFACE_MODE
           ? c.codeWorkspaceArtifact?.projectId
           : undefined,
+      codeWorkspaceMode: c.interfaceMode === CODING_INTERFACE_MODE,
       attachments,
       ephemeral: !c.activeConversationId && c.ephemeral,
       ephemeralTtlMinutes: c.ephemeral ? c.ephemeralTtlMinutes : undefined,

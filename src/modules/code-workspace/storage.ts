@@ -13,7 +13,10 @@ export {
   codeWorkspaceArtifact,
   getCodeWorkspace,
 } from "./storage.content-type-for-path";
-export { createCodeWorkspaceFromFiles } from "./storage.create-code-workspace-from-files";
+export {
+  createCodeWorkspaceFromFiles,
+  createEmptyCodeWorkspace,
+} from "./storage.create-code-workspace-from-files";
 export {
   createCodeWorkspaceFromZip,
   listCodeWorkspaceFiles,

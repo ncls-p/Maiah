@@ -118,3 +118,26 @@ export async function createCodeWorkspaceFromFiles(input: {
     throw error;
   }
 }
+
+export async function createEmptyCodeWorkspace(input: {
+  workspaceId: string;
+  userId: string;
+  title?: string;
+}) {
+  const projectId = randomUUID();
+  const now = new Date().toISOString();
+  const metadata: CodeWorkspaceMetadata = {
+    id: projectId,
+    workspaceId: input.workspaceId,
+    createdByUserId: input.userId,
+    title: input.title?.trim().slice(0, 120) || "Code workspace",
+    rootFile: null,
+    version: 1,
+    previewToken: randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+    files: [],
+  };
+  await saveMetadata(metadata);
+  return codeWorkspaceArtifact(metadata, "Created empty code workspace.");
+}

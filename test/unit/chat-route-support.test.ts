@@ -120,6 +120,22 @@ describe("chat route tool gating", () => {
     ).toBe(false);
   });
 
+  it("accepts code workspace mode only as an explicit boolean", async () => {
+    const { chatRequestSchema } = await loadModules();
+    expect(
+      chatRequestSchema.parse({
+        content: "Build the app",
+        codeWorkspaceMode: true,
+      }),
+    ).toMatchObject({ codeWorkspaceMode: true });
+    expect(
+      chatRequestSchema.safeParse({
+        content: "Build the app",
+        codeWorkspaceMode: "yes",
+      }).success,
+    ).toBe(false);
+  });
+
   it("does not auto-enable code workspace tools without explicit bindings", async () => {
     const { buildBoundTools } = await loadModules();
 
@@ -275,7 +291,7 @@ describe("chat route tool gating", () => {
     expect(Object.keys(tools)).not.toContain("read_knowledge_context");
   });
 
-  it("auto-enables the governed sandbox for readable document exploration", async () => {
+  it("auto-enables the unified workspace tools for document exploration", async () => {
     const { buildBoundTools } = await loadModules();
 
     const { tools } = await buildBoundTools({
@@ -283,6 +299,9 @@ describe("chat route tool gating", () => {
       enableDocumentExplorer: true,
     });
 
-    expect(Object.keys(tools)).toContain("run_code_sandbox");
+    expect(Object.keys(tools)).toEqual(
+      expect.arrayContaining(["read", "edit", "write", "bash"]),
+    );
+    expect(Object.keys(tools)).not.toContain("run_code_sandbox");
   });
 });

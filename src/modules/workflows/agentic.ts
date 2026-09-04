@@ -116,7 +116,7 @@ export const workflowAgentToolLabels: Record<string, string> = {
   web_search: "Researching the web",
   set_workflow_plan: "Planning the workflow",
   update_todo_list: "Updating the to-do list",
-  run_code_sandbox: "Testing in the sandbox",
+  bash: "Testing in the workspace",
   dry_run_workflow: "Dry-running the workflow",
   request_workflow_run: "Requesting workflow execution",
   request_user_input: "Requesting information",

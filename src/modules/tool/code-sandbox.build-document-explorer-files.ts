@@ -103,7 +103,7 @@ export function buildDocumentExplorerFiles(input: {
     "2. Search all chunks with `rg -n -i 'term|synonym' .`.",
     "3. Open only relevant ranges with `sed -n 'START,ENDp' <path>` or a short Python script.",
     "4. Follow adjacent page or section files when more context is needed.",
-    "5. Combine discovery, search, and relevant reads in one run whenever practical; the sandbox is wiped after every run.",
+    "5. Combine discovery, search, and relevant reads efficiently; this workspace persists for the current execution turn.",
     "",
     complete
       ? "The complete stored Markdown extraction is present."

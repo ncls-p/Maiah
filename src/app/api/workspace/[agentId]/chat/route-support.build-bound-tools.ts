@@ -2,18 +2,11 @@ import {
   chatTodoListInputSchema,
   createChatTodoList,
 } from "@/modules/chat/todo-list";
+import type { ChatAttachment } from "@/modules/chat/attachments";
 import { getKnowledgeBindingsForVersion } from "@/modules/knowledge/use-cases";
 import { loadBoundSkillContent } from "@/modules/skills/use-cases";
-import {
-  decideToolApproval,
-  type AiHubToolApprovalPolicy,
-} from "@/modules/tool/approval-policy";
-import {
-  getBuiltInTool,
-  getBuiltInToolByName,
-  requiresApproval,
-} from "@/modules/tool/builtin-tools";
-import { evaluateOpaToolApprovalPolicy } from "@/modules/tool/opa-approval-policy";
+import { type AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
+import { getBuiltInTool, requiresApproval } from "@/modules/tool/builtin-tools";
 import { getOrganizationBuiltInToolPolicyMap } from "@/modules/tool/organization-builtin-tool-policies";
 import {
   canExecuteRestrictedTool,
@@ -23,12 +16,13 @@ import {
   getMcpBindingContext,
   getToolBindingsForVersion,
 } from "@/modules/tool/use-cases";
-import { jsonSchema, type ToolApprovalConfiguration, type ToolSet } from "ai";
+import { jsonSchema, type ToolSet } from "ai";
 import { z } from "zod";
 import {
   buildExternalToolKey,
   createCustomToolExecute,
 } from "./route-support.build-external-tool-key";
+import { createBoundToolApproval } from "./route-support.bound-tool-approval";
 import {
   BUILTIN_TOOL_SOURCE,
   BoundToolApprovalMetadata,
@@ -36,6 +30,10 @@ import {
 } from "./route-support.chat-request-schema";
 import { createBuiltinToolExecute } from "./route-support.create-builtin-tool-execute";
 import { createMcpToolExecute } from "./route-support.create-mcp-tool-execute";
+import {
+  legacyWorkspaceToolNames,
+  registerGovernedUnifiedCodeWorkspaceTools,
+} from "./route-support.unified-code-tools";
 import { registerKnowledgeTools } from "./route-support.knowledge-tools";
 import { createToolExecutionContext } from "./route-support.tool-execution-context";
 
@@ -55,6 +53,8 @@ export type BuildBoundToolsInput = {
   enabledSkillIds?: ReadonlySet<string>;
   enabledKnowledgeIds?: string[];
   enableDocumentExplorer?: boolean;
+  codeWorkspaceId?: string;
+  availableAttachments?: ChatAttachment[];
   emitEvent?: (event: Record<string, unknown>) => void;
   onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
 };
@@ -93,6 +93,23 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
   const toolApprovalMetadata = new Map<string, BoundToolApprovalMetadata>();
   const { reserveToolCall, toolLimitReachedResult, gateToolExecution } =
     createToolExecutionContext(input);
+  const legacyWorkspaceBindings = runtimeBindings.flatMap((binding) => {
+    if (binding.toolSource !== BUILTIN_TOOL_SOURCE) return [];
+    if (
+      input.disabledToolKeys?.has(`${binding.toolSource}:${binding.toolId}`)
+    ) {
+      return [];
+    }
+    const definition = getBuiltInTool(binding.toolId);
+    return definition && legacyWorkspaceToolNames.has(definition.name)
+      ? [{ binding, definition }]
+      : [];
+  });
+  const useUnifiedCodeRuntime =
+    Boolean(input.codeWorkspaceId) ||
+    legacyWorkspaceBindings.length > 0 ||
+    Boolean(input.enableDocumentExplorer);
+  let dispose: () => Promise<void> = async () => {};
 
   function registerToolApprovalMetadata(
     toolKey: string,
@@ -101,17 +118,19 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     toolApprovalMetadata.set(toolKey, metadata);
   }
 
-  registerKnowledgeTools({
-    input,
-    knowledgeBindings,
-    tools,
-    usedToolKeys,
-    registerToolApprovalMetadata,
-    reserveToolCall,
-    toolLimitReachedResult,
-    gateToolExecution,
-  });
-  if (input.hasSkills) {
+  if (!input.codeWorkspaceId) {
+    registerKnowledgeTools({
+      input,
+      knowledgeBindings,
+      tools,
+      usedToolKeys,
+      registerToolApprovalMetadata,
+      reserveToolCall,
+      toolLimitReachedResult,
+      gateToolExecution,
+    });
+  }
+  if (input.hasSkills && !input.codeWorkspaceId) {
     registerToolApprovalMetadata("load_skill", {
       toolSource: BUILTIN_TOOL_SOURCE,
       toolName: "load_skill",
@@ -153,6 +172,7 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
   }
 
   for (const binding of runtimeBindings) {
+    if (input.codeWorkspaceId) continue;
     if (
       input.disabledToolKeys?.has(`${binding.toolSource}:${binding.toolId}`)
     ) {
@@ -273,6 +293,12 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     if (binding.toolSource !== BUILTIN_TOOL_SOURCE) continue;
     const definition = getBuiltInTool(binding.toolId);
     if (!definition) continue;
+    if (
+      useUnifiedCodeRuntime &&
+      legacyWorkspaceToolNames.has(definition.name)
+    ) {
+      continue;
+    }
     const organizationPolicy = builtInPolicies.get(definition.name);
     if (organizationPolicy?.enabled === false) continue;
     const effectiveBinding = {
@@ -305,78 +331,44 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     };
   }
 
-  if (input.enableDocumentExplorer && !tools.run_code_sandbox) {
-    const definition = getBuiltInToolByName("run_code_sandbox");
-    const organizationPolicy = builtInPolicies.get("run_code_sandbox");
-    if (
-      definition &&
-      organizationPolicy?.enabled !== false &&
-      !input.disabledToolKeys?.has(`${BUILTIN_TOOL_SOURCE}:${definition.id}`)
-    ) {
-      const requireApproval =
-        organizationPolicy?.requireApproval ??
-        requiresApproval(definition.riskLevel);
-      registerToolApprovalMetadata(definition.name, {
-        toolSource: BUILTIN_TOOL_SOURCE,
-        toolName: definition.name,
-        riskLevel: definition.riskLevel,
-        bindingRequiresApproval: requireApproval,
-        skipDefaultRiskApproval: true,
-      });
-      usedToolKeys.add(definition.name);
-      tools[definition.name] = {
-        description: `${definition.description} Automatically enabled for embedding-free document exploration. Risk level: ${definition.riskLevel}.`,
-        inputSchema: definition.inputSchema,
-        execute: createBuiltinToolExecute(
-          input,
-          definition,
-          { riskLevel: definition.riskLevel, requireApproval },
-          reserveToolCall,
-          toolLimitReachedResult,
-          gateToolExecution,
-          canExecuteRestrictedTool,
-        ),
-      };
-    }
+  if (!useUnifiedCodeRuntime) {
+    tools.update_todo_list = {
+      description:
+        "Create or replace the visible to-do list for this task. Use stable item IDs and call this tool again whenever an item starts or completes so the user can follow progress live.",
+      inputSchema: chatTodoListInputSchema,
+      execute: async (toolInput: unknown) => {
+        if (!reserveToolCall()) return toolLimitReachedResult();
+        return createChatTodoList(toolInput);
+      },
+    };
   }
 
-  tools.update_todo_list = {
-    description:
-      "Create or replace the visible to-do list for this task. Use stable item IDs and call this tool again whenever an item starts or completes so the user can follow progress live.",
-    inputSchema: chatTodoListInputSchema,
-    execute: async (toolInput: unknown) => {
-      if (!reserveToolCall()) return toolLimitReachedResult();
-      return createChatTodoList(toolInput);
-    },
-  };
+  if (useUnifiedCodeRuntime) {
+    dispose = registerGovernedUnifiedCodeWorkspaceTools({
+      tools,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      conversationId: input.conversationId,
+      messageId: input.messageId,
+      projectId: input.codeWorkspaceId,
+      attachments: input.availableAttachments,
+      durable:
+        Boolean(input.codeWorkspaceId) ||
+        legacyWorkspaceBindings.some(({ definition }) =>
+          definition.name.startsWith("code_workspace_"),
+        ),
+      nonInteractive: input.nonInteractive,
+      legacyBindings: legacyWorkspaceBindings,
+      builtInPolicies,
+      disabledToolKeys: input.disabledToolKeys,
+      emitEvent: input.emitEvent,
+      reserveToolCall,
+      toolLimitReachedResult,
+      gateToolExecution,
+    });
+  }
 
-  const toolApproval: ToolApprovalConfiguration<
-    ToolSet,
-    Record<string, unknown>
-  > = async ({ toolCall }) => {
-    const metadata = toolApprovalMetadata.get(toolCall.toolName);
-    if (!metadata) return undefined;
-    const decision =
-      (await evaluateOpaToolApprovalPolicy({
-        toolName: metadata.toolName,
-        toolSource: metadata.toolSource,
-        riskLevel: metadata.riskLevel,
-        toolInput: toolCall.input,
-        workspaceId: input.workspaceId,
-        conversationId: input.conversationId,
-        messageId: input.messageId,
-        userId: input.userId,
-        agentVersionId: input.agentVersionId,
-      })) ??
-      decideToolApproval({
-        policy: input.approvalPolicy,
-        ...metadata,
-      });
-    // Keep human approvals in Maiah's existing DB-audited, streaming approval
-    // flow. Native AI SDK approval is used here for hard policy denials so the
-    // model receives a standard denied tool output before execution can start.
-    return decision.status === "deny" ? decision.aiSdkStatus : undefined;
-  };
+  const toolApproval = createBoundToolApproval(input, toolApprovalMetadata);
 
-  return { tools, toolApproval };
+  return { tools, toolApproval, dispose };
 }

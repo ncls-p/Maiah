@@ -53,6 +53,7 @@ export type SubmitOptions = {
   continueFromMessageId?: string;
   codeWorkspaceArtifact?: CodeWorkspaceArtifact;
   codeWorkspaceId?: string;
+  codeWorkspaceMode?: boolean;
   attachments?: ChatAttachment[];
   reasoningEffort?: ReasoningPreset;
 };

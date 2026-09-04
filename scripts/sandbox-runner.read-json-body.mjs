@@ -2,10 +2,31 @@
 import { createHash } from "node:crypto";
 import { chown, lstat, mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { bytesFromBase64, canSwitchUser, canUsePrlimit, clampTimeout, isPlainObject, maxCodeChars, maxCpuSeconds, maxInlineStdinChars, maxInputFileBytes, maxInputFileChars, maxInputFiles, maxInputTotalBytes, maxOutputFileSizeBytes, maxProcesses, maxRequestBytes, pythonCommand, safeRelativePath, sandboxGid, sandboxUid } from "./sandbox-runner.socket-path.mjs";
+import {
+  bytesFromBase64,
+  canSwitchUser,
+  canUsePrlimit,
+  clampTimeout,
+  isPlainObject,
+  maxCodeChars,
+  maxCpuSeconds,
+  maxInlineStdinChars,
+  maxInputFileBytes,
+  maxInputFileChars,
+  maxInputFiles,
+  maxInputTotalBytes,
+  maxOutputFileSizeBytes,
+  maxProcesses,
+  maxRequestBytes,
+  pythonCommand,
+  safeRelativePath,
+  sandboxGid,
+  sandboxUid,
+} from "./sandbox-runner.socket-path.mjs";
 
 function validateRunPayload(payload) {
-  if (!isPlainObject(payload)) throw new Error("Request body must be an object.");
+  if (!isPlainObject(payload))
+    throw new Error("Request body must be an object.");
   const language = payload.language;
   if (language !== "python" && language !== "node" && language !== "bash") {
     throw new Error("language must be 'python', 'node', or 'bash'.");
@@ -14,18 +35,29 @@ function validateRunPayload(payload) {
     throw new Error("code is required.");
   }
   if (payload.code.length > maxCodeChars) {
-    throw new Error(`code is too large. Maximum is ${maxCodeChars} characters.`);
+    throw new Error(
+      `code is too large. Maximum is ${maxCodeChars} characters.`,
+    );
   }
   const stdin = typeof payload.stdin === "string" ? payload.stdin : "";
   if (stdin.length > maxInlineStdinChars) {
-    throw new Error(`Inline standard input is too large. Maximum is ${maxInlineStdinChars} characters; use stdinFileBase64 instead.`);
+    throw new Error(
+      `Inline standard input is too large. Maximum is ${maxInlineStdinChars} characters; use stdinFileBase64 instead.`,
+    );
   }
-  const stdinFile = typeof payload.stdinFileBase64 === "string" ? bytesFromBase64(payload.stdinFileBase64, ".stdin") : null;
+  const stdinFile =
+    typeof payload.stdinFileBase64 === "string"
+      ? bytesFromBase64(payload.stdinFileBase64, ".stdin")
+      : null;
   if (stdin && stdinFile) {
-    throw new Error("Use either inline standard input or a standard input file.");
+    throw new Error(
+      "Use either inline standard input or a standard input file.",
+    );
   }
   if (stdinFile && stdinFile.byteLength > maxInputFileBytes) {
-    throw new Error(`Standard input file is too large. Maximum is ${maxInputFileBytes} bytes.`);
+    throw new Error(
+      `Standard input file is too large. Maximum is ${maxInputFileBytes} bytes.`,
+    );
   }
   const files = Array.isArray(payload.files) ? payload.files : [];
   if (files.length > maxInputFiles) {
@@ -40,13 +72,17 @@ function validateRunPayload(payload) {
     if (!hasBase64 && textContent.length > maxInputFileChars) {
       throw new Error(`Input text file is too large: ${filePath}`);
     }
-    const bytes = hasBase64 ? bytesFromBase64(file.contentBase64, filePath) : Buffer.from(textContent, "utf8");
+    const bytes = hasBase64
+      ? bytesFromBase64(file.contentBase64, filePath)
+      : Buffer.from(textContent, "utf8");
     if (bytes.byteLength > maxInputFileBytes) {
       throw new Error(`Input file is too large: ${filePath}`);
     }
     totalInputBytes += bytes.byteLength;
     if (totalInputBytes > maxInputTotalBytes) {
-      throw new Error(`Input files are too large. Maximum total is ${maxInputTotalBytes} bytes.`);
+      throw new Error(
+        `Input files are too large. Maximum total is ${maxInputTotalBytes} bytes.`,
+      );
     }
     return { path: filePath, bytes };
   });
@@ -66,7 +102,9 @@ export async function readJsonBody(request) {
   for await (const chunk of request) {
     totalBytes += chunk.byteLength;
     if (totalBytes > maxRequestBytes) {
-      throw new Error(`Request body is too large. Maximum is ${maxRequestBytes} bytes.`);
+      throw new Error(
+        `Request body is too large. Maximum is ${maxRequestBytes} bytes.`,
+      );
     }
     chunks.push(chunk);
   }
@@ -102,13 +140,16 @@ export async function chownRecursive(target) {
   await chown(target, sandboxUid, sandboxGid).catch(() => undefined);
   if (!stats.isDirectory()) return;
   const entries = await readdir(target, { withFileTypes: true });
-  await Promise.all(entries.map((entry) => chownRecursive(path.join(target, entry.name))));
+  await Promise.all(
+    entries.map((entry) => chownRecursive(path.join(target, entry.name))),
+  );
 }
 
 export function appendLimited(current, chunk, limit) {
   if (current.buffer.length >= limit) return { ...current, truncated: true };
   const remaining = limit - current.buffer.length;
-  const nextChunk = chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
+  const nextChunk =
+    chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
   return {
     buffer: Buffer.concat([current.buffer, nextChunk]),
     truncated: current.truncated || chunk.byteLength > remaining,
@@ -126,7 +167,10 @@ export function appendTailLimited(current, chunk, limit) {
   const headBytes = Math.floor(limit / 2);
   const tailBytes = limit - headBytes;
   return {
-    buffer: Buffer.concat([combined.subarray(0, headBytes), combined.subarray(combined.byteLength - tailBytes)]),
+    buffer: Buffer.concat([
+      combined.subarray(0, headBytes),
+      combined.subarray(combined.byteLength - tailBytes),
+    ]),
     truncated: true,
   };
 }
@@ -135,21 +179,29 @@ export function commandForLanguage(language) {
   if (language === "python") {
     return {
       command: pythonCommand,
-      args: ["-I", "main.py"],
-      entryFile: "main.py",
+      args: ["-I", ".maiah-entry.py"],
+      entryFile: ".maiah-entry.py",
     };
   }
   if (language === "bash") {
     return {
       command: "bash",
-      args: ["--noprofile", "--norc", "-e", "-u", "-o", "pipefail", "main.sh"],
-      entryFile: "main.sh",
+      args: [
+        "--noprofile",
+        "--norc",
+        "-e",
+        "-u",
+        "-o",
+        "pipefail",
+        ".maiah-entry.sh",
+      ],
+      entryFile: ".maiah-entry.sh",
     };
   }
   return {
     command: process.execPath,
-    args: ["--no-warnings", "main.mjs"],
-    entryFile: "main.mjs",
+    args: ["--no-warnings", ".maiah-entry.mjs"],
+    entryFile: ".maiah-entry.mjs",
   };
 }
 
@@ -172,5 +224,16 @@ export function executionCommandForLanguage(language) {
 }
 
 export function nodePrelude() {
-  return ["import { createRequire } from 'node:module';", "import { fileURLToPath } from 'node:url';", "import path from 'node:path';", "const require = createRequire(import.meta.url);", "const __filename = fileURLToPath(import.meta.url);", "const __dirname = path.dirname(__filename);", "globalThis.require = require;", "globalThis.__filename = __filename;", "globalThis.__dirname = __dirname;", ""].join("\n");
+  return [
+    "import { createRequire } from 'node:module';",
+    "import { fileURLToPath } from 'node:url';",
+    "import path from 'node:path';",
+    "const require = createRequire(import.meta.url);",
+    "const __filename = fileURLToPath(import.meta.url);",
+    "const __dirname = path.dirname(__filename);",
+    "globalThis.require = require;",
+    "globalThis.__filename = __filename;",
+    "globalThis.__dirname = __dirname;",
+    "",
+  ].join("\n");
 }
