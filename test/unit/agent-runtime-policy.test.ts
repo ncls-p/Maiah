@@ -5,10 +5,11 @@ import {
   runtimeDeadlineAt,
   timeoutMsUntil,
 } from "@/modules/agent/runtime-policy";
+import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 import { describe, expect, it } from "vitest";
 
 describe("agent runtime policy", () => {
-  it("keeps configured tool calls and output tokens without application caps", () => {
+  it("keeps tool calls configurable and caps output tokens", () => {
     expect(
       resolveAgentRuntimeLimits({
         maxToolCalls: 9_999,
@@ -17,18 +18,22 @@ describe("agent runtime policy", () => {
     ).toEqual({
       maxToolCalls: 9_999,
       maxSteps: 9_999 + agentRuntimePolicy.stepOverhead,
-      maxOutputTokens: 9_999_999,
+      maxOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
     });
   });
 
-  it("uses the provider output limit for an unlimited tool-free run", () => {
+  it("caps the provider output limit for an automatic tool-free run", () => {
     expect(
       resolveAgentRuntimeLimits({
         maxToolCalls: 0,
         maxOutputTokens: 0,
         providerMaxOutputTokens: 131_072,
       }),
-    ).toEqual({ maxToolCalls: 0, maxSteps: 1, maxOutputTokens: 131_072 });
+    ).toEqual({
+      maxToolCalls: 0,
+      maxSteps: 1,
+      maxOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+    });
   });
 
   it("combines a parent cancellation with a deadline", () => {

@@ -11,6 +11,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 import { ToolPolicyPicker } from "./model-advanced-fields.tool-policy-picker";
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
@@ -98,6 +99,11 @@ export function ModelAdvancedFieldsSection1({
                 type="number"
                 min={0}
                 placeholder="0"
+                max={Math.min(
+                  selectedModel?.maxOutputTokens ??
+                    MAX_GENERATION_OUTPUT_TOKENS,
+                  MAX_GENERATION_OUTPUT_TOKENS,
+                )}
                 value={form.maxOutputTokens}
                 onChange={(e) =>
                   setForm((prev) => ({

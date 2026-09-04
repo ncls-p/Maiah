@@ -113,6 +113,7 @@ export async function runStandardChat(input: {
       contextPolicy?.contextWindowTokens,
       providerConfig.contextWindow,
     ),
+    modelMaxOutputTokens: providerConfig.maxOutputTokens,
     requestedOutputTokens: maxOutputTokens,
     systemPrompt,
   });
@@ -224,18 +225,40 @@ export async function runStandardChat(input: {
     stopWhen: isStepCount(maxSteps),
     prepareStep:
       availableToolNames.length > 0
-        ? ({ steps }) => {
+        ? ({ instructions, messages, steps }) => {
             const usedToolCalls = steps.reduce(
               (total, step) => total + step.toolCalls.length,
               0,
             );
-            if (usedToolCalls < maxToolCalls) return undefined;
+            const reachedToolCallLimit = usedToolCalls >= maxToolCalls;
+            const stepInstructions = reachedToolCallLimit
+              ? `${systemPrompt}\n\nTool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.`
+              : typeof instructions === "string"
+                ? instructions
+                : systemPrompt;
+            const stepContext = fitModelHistoryToContext({
+              messages,
+              contextWindowTokens: resolveContextWindowTokens(
+                contextPolicy?.contextWindowTokens,
+                providerConfig.contextWindow,
+              ),
+              modelMaxOutputTokens: providerConfig.maxOutputTokens,
+              requestedOutputTokens: maxOutputTokens,
+              systemPrompt: stepInstructions,
+            });
 
-            return {
-              activeTools: [],
-              toolChoice: "none",
-              instructions: `${systemPrompt}\n\nTool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.`,
-            };
+            return reachedToolCallLimit
+              ? {
+                  activeTools: [],
+                  toolChoice: "none",
+                  instructions: stepInstructions,
+                  messages: stepContext.messages,
+                  maxOutputTokens: stepContext.maxOutputTokens,
+                }
+              : {
+                  messages: stepContext.messages,
+                  maxOutputTokens: stepContext.maxOutputTokens,
+                };
           }
         : undefined,
   });

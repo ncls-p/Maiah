@@ -7,7 +7,10 @@ import {
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { parsePartialJson } from "ai";
 import { z } from "zod";
-import { MAX_INPUT_CHARACTERS } from "@/modules/chat/conversation-context-policy";
+import {
+  MAX_GENERATION_OUTPUT_TOKENS,
+  MAX_INPUT_CHARACTERS,
+} from "@/modules/chat/conversation-context-policy";
 
 registerAiSdkDevTools();
 
@@ -54,7 +57,7 @@ export const chatRequestSchema = z.object({
 });
 
 export const defaultMaxToolCalls = 20;
-export const defaultMaxOutputTokens = 30_000;
+export const defaultMaxOutputTokens = MAX_GENERATION_OUTPUT_TOKENS;
 export const BUILTIN_TOOL_SOURCE = "builtin";
 export const KNOWLEDGE_SEARCH_TOOL_NAME = "search_knowledge";
 export const KNOWLEDGE_CONTEXT_TOOL_NAME = "read_knowledge_context";

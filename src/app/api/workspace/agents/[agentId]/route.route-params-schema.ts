@@ -30,6 +30,7 @@ import { users } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -75,7 +76,12 @@ export const updateAgentSchema = z.object({
   modelId: z.uuid().optional(),
   temperature: z.string().optional(),
   topP: z.string().optional(),
-  maxOutputTokens: z.number().int().min(0).optional(),
+  maxOutputTokens: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_GENERATION_OUTPUT_TOKENS)
+    .optional(),
   maxToolCalls: z.number().int().min(0).optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),

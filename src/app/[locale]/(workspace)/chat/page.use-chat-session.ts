@@ -34,6 +34,8 @@ import {
 type Setter<T> = Dispatch<SetStateAction<T>>;
 type SessionContext = {
   workspaceId: string | null;
+  canViewUsage: boolean;
+  permissionsReady: boolean;
   selectedAgentId: string | null;
   activeConversationId: string | null;
   ephemeral: boolean;
@@ -72,6 +74,8 @@ type SessionContext = {
 export function useChatSession(c: SessionContext) {
   const {
     workspaceId,
+    canViewUsage,
+    permissionsReady,
     selectedAgentId,
     activeConversationId,
     ephemeral,
@@ -337,7 +341,10 @@ export function useChatSession(c: SessionContext) {
   }, [selectedAgentId, setLoadingContext, workspaceId]);
 
   useEffect(() => {
-    if (!workspaceId) return;
+    if (!workspaceId || !permissionsReady || !canViewUsage) {
+      queueMicrotask(() => setQuota(null));
+      return;
+    }
     let cancelled = false;
     void fetchJson<{ quota: { used: number; limit: number } | null }>(
       `/api/workspace/usage?workspaceId=${workspaceId}&limit=1`,
@@ -351,7 +358,7 @@ export function useChatSession(c: SessionContext) {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [canViewUsage, permissionsReady, workspaceId]);
 
   useEffect(() => {
     if (!activeConversationId) {

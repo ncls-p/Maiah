@@ -1,6 +1,7 @@
 import type { Agent, AgentForm } from "./types";
 import { defaultGenParams } from "./types";
 import { normalizeReasoningPresets } from "@/modules/agent/reasoning-presets";
+import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 export type AgentVersionPayload = {
   isActive?: boolean;
@@ -45,6 +46,11 @@ function coerceNumericField(
 function optionalNumericField(value: number | null | undefined): string {
   if (value === null || value === undefined) return "";
   return String(value);
+}
+
+function outputTokenField(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  return String(Math.min(value, MAX_GENERATION_OUTPUT_TOKENS));
 }
 
 function buildGenerationSettings(activeVersion: AgentVersionPayload | null) {
@@ -102,7 +108,7 @@ function buildModelSettings(activeVersion: AgentVersionPayload | null) {
       defaultGenParams.temperature,
     ),
     topP: coerceNumericField(activeVersion?.topP, defaultGenParams.topP),
-    maxOutputTokens: optionalNumericField(activeVersion?.maxOutputTokens),
+    maxOutputTokens: outputTokenField(activeVersion?.maxOutputTokens),
     maxToolCalls: coerceNumericField(
       activeVersion?.maxToolCalls,
       defaultGenParams.maxToolCalls,

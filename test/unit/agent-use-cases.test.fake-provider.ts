@@ -26,6 +26,8 @@ export const fakeModel = {
   providerId: "prov-1",
   modelId: "gpt-4",
   displayName: "GPT-4",
+  contextWindow: 128_000,
+  maxOutputTokens: 8_192,
   enabled: true,
 };
 

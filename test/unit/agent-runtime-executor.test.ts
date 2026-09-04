@@ -202,6 +202,25 @@ describe("agent runtime executor", () => {
     );
   });
 
+  it("honors the output limit advertised by the selected model", async () => {
+    mocks.resolveProvider.mockResolvedValueOnce({
+      ...provider,
+      maxOutputTokens: 2_048,
+    });
+
+    await executeAgent({
+      workspaceId: rootAgent.workspaceId,
+      userId: rootAgent.createdById,
+      agentId: rootAgent.id,
+      prompt: "Hello",
+      trigger: "api",
+    });
+
+    expect(mocks.generateText).toHaveBeenCalledWith(
+      expect.objectContaining({ maxOutputTokens: 2_048 }),
+    );
+  });
+
   it("fails explicitly when the model loop ends without a final answer", async () => {
     mocks.generateText.mockResolvedValueOnce({
       text: "   ",

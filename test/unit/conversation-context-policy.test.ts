@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { ModelMessage } from "ai";
 
 import {
+  CONTEXT_SAFETY_MARGIN_TOKENS,
   DEFAULT_MAX_INPUT_CHARACTERS,
+  MAX_GENERATION_OUTPUT_TOKENS,
   fitModelHistoryToContext,
   limitModelHistory,
   resolveContextWindowTokens,
@@ -27,7 +29,7 @@ describe("conversation context policy", () => {
     );
   });
 
-  it("keeps the newest messages inside the configured context budget", () => {
+  it("keeps the newest messages inside the context budget and safety margin", () => {
     const messages: ModelMessage[] = [
       { role: "user", content: "a".repeat(3_000) },
       { role: "assistant", content: "b".repeat(1_600) },
@@ -41,7 +43,7 @@ describe("conversation context policy", () => {
         reservedOutputTokens: 1_000,
         systemPrompt: "",
       }),
-    ).toEqual(messages.slice(1));
+    ).toEqual(messages.slice(2));
   });
 
   it("preserves a leading conversation summary while trimming history", () => {
@@ -67,7 +69,7 @@ describe("conversation context policy", () => {
     expect(result).not.toContain(recent[0]);
   });
 
-  it("keeps a short conversation when the configured output exceeds the context window", () => {
+  it("caps oversized output requests while keeping a short conversation", () => {
     const messages: ModelMessage[] = [
       { role: "user", content: "Is Prime Agent the best harness?" },
       { role: "assistant", content: "It depends on the workload." },
@@ -84,7 +86,45 @@ describe("conversation context policy", () => {
     });
 
     expect(result.messages).toEqual(messages);
-    expect(result.maxOutputTokens).toBeLessThan(122_880);
-    expect(result.maxOutputTokens).toBeGreaterThan(100_000);
+    expect(result.maxOutputTokens).toBe(MAX_GENERATION_OUTPUT_TOKENS);
+  });
+
+  it("keeps a safety margin between estimated input and output", () => {
+    const result = fitModelHistoryToContext({
+      messages: [{ role: "user", content: "a".repeat(400) }],
+      contextWindowTokens: 10_000,
+      requestedOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+      systemPrompt: "",
+    });
+
+    expect(result.maxOutputTokens).toBe(
+      10_000 - 64 - 104 - CONTEXT_SAFETY_MARGIN_TOKENS,
+    );
+  });
+
+  it.each([250_000, 1_000_000])(
+    "keeps oversized requests safely below a %i-token context window",
+    (contextWindowTokens) => {
+      const result = fitModelHistoryToContext({
+        messages: [{ role: "user", content: "a".repeat(26_156) }],
+        contextWindowTokens,
+        requestedOutputTokens: contextWindowTokens,
+        systemPrompt: "",
+      });
+
+      expect(result.maxOutputTokens).toBe(MAX_GENERATION_OUTPUT_TOKENS);
+      expect(result.maxOutputTokens + 6_608).toBeLessThan(contextWindowTokens);
+    },
+  );
+
+  it("honors a model output limit below the application cap", () => {
+    const result = fitModelHistoryToContext({
+      messages: [],
+      modelMaxOutputTokens: 4_096,
+      requestedOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+      systemPrompt: "",
+    });
+
+    expect(result.maxOutputTokens).toBe(4_096);
   });
 });
