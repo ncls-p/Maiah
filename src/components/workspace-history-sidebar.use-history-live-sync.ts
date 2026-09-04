@@ -11,8 +11,9 @@ import {
   type WorkspaceHistoryOptimisticLiveState,
 } from "./workspace-history-sidebar.state";
 
-const ACTIVE_STREAM_REFRESH_MS = 2_500;
+const ACTIVE_STREAM_REFRESH_MS = 10_000;
 const IDLE_REFRESH_MS = 15_000;
+const REFRESH_DEBOUNCE_MS = 250;
 
 function activeConversationIdFromLocation() {
   if (typeof window === "undefined") return null;
@@ -48,6 +49,15 @@ export function useWorkspaceHistoryLiveSync(
 
   useEffect(() => {
     if (!workspaceId) return;
+    let refreshTimeoutId: number | null = null;
+
+    const requestRefresh = () => {
+      if (refreshTimeoutId !== null) window.clearTimeout(refreshTimeoutId);
+      refreshTimeoutId = window.setTimeout(() => {
+        refreshTimeoutId = null;
+        void onRefreshRef.current();
+      }, REFRESH_DEBOUNCE_MS);
+    };
 
     function applyOverride(
       kind: "streaming" | "unread",
@@ -76,8 +86,8 @@ export function useWorkspaceHistoryLiveSync(
       });
     }
 
-    return subscribeWorkspaceHistoryLive(workspaceId, {
-      onRefresh: () => onRefreshRef.current(),
+    const unsubscribe = subscribeWorkspaceHistoryLive(workspaceId, {
+      onRefresh: requestRefresh,
       onStreaming: (conversationId, streaming, markUnread) => {
         applyOverride("streaming", conversationId, streaming);
         if (streaming) {
@@ -96,6 +106,10 @@ export function useWorkspaceHistoryLiveSync(
       onUnread: (conversationId, unread) =>
         applyOverride("unread", conversationId, unread),
     });
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId !== null) window.clearTimeout(refreshTimeoutId);
+    };
   }, [serverRevision, workspaceId]);
 
   useEffect(() => {

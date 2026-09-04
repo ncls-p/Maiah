@@ -5,6 +5,8 @@ export const MAX_INPUT_CHARACTERS = 200_000;
 export const DEFAULT_SUMMARY_THRESHOLD_TOKENS = 24_000;
 export const DEFAULT_SUMMARY_MAX_TOKENS = 1_200;
 export const MIN_GENERATION_OUTPUT_TOKENS = 1_024;
+export const CONTEXT_SAFETY_MARGIN_TOKENS = 1_024;
+export const MAX_GENERATION_OUTPUT_TOKENS = 16_384;
 
 export interface ConversationContextPolicy {
   enabled?: boolean;
@@ -58,12 +60,17 @@ export function estimateModelMessageTokens(message: ModelMessage) {
 export function fitModelHistoryToContext(input: {
   messages: ModelMessage[];
   contextWindowTokens?: number;
+  modelMaxOutputTokens?: number;
   requestedOutputTokens: number;
   systemPrompt: string;
 }): { messages: ModelMessage[]; maxOutputTokens: number } {
-  const requestedOutputTokens = Math.max(
-    1,
-    Math.floor(input.requestedOutputTokens),
+  const modelMaxOutputTokens = Number.isFinite(input.modelMaxOutputTokens)
+    ? Math.max(1, Math.floor(input.modelMaxOutputTokens ?? 1))
+    : MAX_GENERATION_OUTPUT_TOKENS;
+  const requestedOutputTokens = Math.min(
+    MAX_GENERATION_OUTPUT_TOKENS,
+    modelMaxOutputTokens,
+    Math.max(1, Math.floor(input.requestedOutputTokens)),
   );
   if (!Number.isFinite(input.contextWindowTokens)) {
     return { messages: input.messages, maxOutputTokens: requestedOutputTokens };
@@ -79,7 +86,10 @@ export function fitModelHistoryToContext(input: {
   );
   const outputTokensWithFullHistory = Math.max(
     1,
-    contextWindowTokens - fixedTokens - allMessageTokens,
+    contextWindowTokens -
+      fixedTokens -
+      allMessageTokens -
+      CONTEXT_SAFETY_MARGIN_TOKENS,
   );
   const minimumOutputTokens = Math.min(
     requestedOutputTokens,
@@ -98,7 +108,10 @@ export function fitModelHistoryToContext(input: {
 
   const availableTokens = Math.max(
     256,
-    contextWindowTokens - minimumOutputTokens - fixedTokens,
+    contextWindowTokens -
+      minimumOutputTokens -
+      fixedTokens -
+      CONTEXT_SAFETY_MARGIN_TOKENS,
   );
   const leadingSummary =
     input.messages[0]?.role === "system" ? input.messages[0] : null;
@@ -127,7 +140,13 @@ export function fitModelHistoryToContext(input: {
     messages,
     maxOutputTokens: Math.min(
       requestedOutputTokens,
-      Math.max(1, contextWindowTokens - fixedTokens - selectedTokens),
+      Math.max(
+        1,
+        contextWindowTokens -
+          fixedTokens -
+          selectedTokens -
+          CONTEXT_SAFETY_MARGIN_TOKENS,
+      ),
     ),
   };
 }

@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
+import { useWorkspaceShell } from "@/components/app-shell";
 import {
   assistantSelectionNeedsSetup,
   isAssistantSelectionLoading,
@@ -38,6 +39,7 @@ export function useChatPageController() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
+  const { permissions, permissionsReady } = useWorkspaceShell();
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
@@ -198,6 +200,8 @@ export function useChatPageController() {
     conversationImpact,
   } = useChatSession({
     workspaceId,
+    canViewUsage: permissions.canViewUsage,
+    permissionsReady,
     selectedAgentId,
     activeConversationId,
     ephemeral: effectiveEphemeral,

@@ -271,11 +271,26 @@ describe("agent runtime executor", () => {
         expect(options.instructions).toContain(attachment.fileName);
         const prepareStep = options.prepareStep as (input: {
           stepNumber: number;
+          instructions: string;
+          messages: Array<{ role: "user"; content: string }>;
         }) => unknown;
-        expect(await prepareStep({ stepNumber: 2 })).toBeUndefined();
-        expect(await prepareStep({ stepNumber: 3 })).toMatchObject({
+        const stepInput = {
+          instructions: options.instructions as string,
+          messages: [{ role: "user" as const, content: "Continue" }],
+        };
+        expect(
+          await prepareStep({ ...stepInput, stepNumber: 2 }),
+        ).toMatchObject({
+          messages: stepInput.messages,
+          maxOutputTokens: 4_000,
+        });
+        expect(
+          await prepareStep({ ...stepInput, stepNumber: 3 }),
+        ).toMatchObject({
           activeTools: [],
           toolChoice: "none",
+          messages: stepInput.messages,
+          maxOutputTokens: 4_000,
         });
         const childToolCall = {
           type: "tool-call" as const,

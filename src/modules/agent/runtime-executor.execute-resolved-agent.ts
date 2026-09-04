@@ -93,7 +93,11 @@ export async function executeResolvedAgent(
     }
     const maxOutputTokens = Math.max(
       1,
-      Math.min(runtimeLimits.maxOutputTokens, remainingTokens),
+      Math.min(
+        runtimeLimits.maxOutputTokens,
+        remainingTokens,
+        provider.maxOutputTokens ?? Number.POSITIVE_INFINITY,
+      ),
     );
     const maxSteps =
       input.depth > 0 && input.budget.policy.maxChildSteps > 0
@@ -177,6 +181,7 @@ export async function executeResolvedAgent(
             contextPolicy?.contextWindowTokens,
             provider.contextWindow,
           ),
+          modelMaxOutputTokens: provider.maxOutputTokens,
           requestedOutputTokens: maxOutputTokens,
           systemPrompt: system,
         })
@@ -213,13 +218,35 @@ export async function executeResolvedAgent(
         toolApproval: bound.toolApproval,
         stopWhen: isStepCount(Math.max(1, effectiveMaxSteps)),
         prepareStep: hasTools
-          ? ({ stepNumber }) => {
-              if (stepNumber < effectiveMaxSteps - 1) return undefined;
-              return {
-                activeTools: [],
-                toolChoice: "none",
-                instructions: `${system}\n\n${finalSynthesisInstruction}`,
-              };
+          ? ({ instructions, messages, stepNumber }) => {
+              const isFinalStep = stepNumber >= effectiveMaxSteps - 1;
+              const stepInstructions = isFinalStep
+                ? `${system}\n\n${finalSynthesisInstruction}`
+                : typeof instructions === "string"
+                  ? instructions
+                  : system;
+              const stepContext = fitModelHistoryToContext({
+                messages,
+                contextWindowTokens: resolveContextWindowTokens(
+                  contextPolicy?.contextWindowTokens,
+                  provider.contextWindow,
+                ),
+                modelMaxOutputTokens: provider.maxOutputTokens,
+                requestedOutputTokens: maxOutputTokens,
+                systemPrompt: stepInstructions,
+              });
+              return isFinalStep
+                ? {
+                    activeTools: [],
+                    toolChoice: "none",
+                    instructions: stepInstructions,
+                    messages: stepContext.messages,
+                    maxOutputTokens: stepContext.maxOutputTokens,
+                  }
+                : {
+                    messages: stepContext.messages,
+                    maxOutputTokens: stepContext.maxOutputTokens,
+                  };
             }
           : undefined,
         abortSignal: deadline.signal,
@@ -360,6 +387,7 @@ export async function executeResolvedAgent(
                 contextPolicy?.contextWindowTokens,
                 provider.contextWindow,
               ),
+              modelMaxOutputTokens: provider.maxOutputTokens,
               requestedOutputTokens: Math.max(
                 1,
                 Math.min(

@@ -70,6 +70,8 @@ describe("resolveProviderForVersion", () => {
     expect(result).not.toBeNull();
     expect(result!.providerId).toBe("prov-1");
     expect(result!.modelId).toBe("gpt-4");
+    expect(result!.contextWindow).toBe(128_000);
+    expect(result!.maxOutputTokens).toBe(8_192);
   });
 
   it("resolves provider without model when modelId is null", async () => {

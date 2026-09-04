@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { mergeAgentEditorState } from "@/app/[locale]/(workspace)/agents/[agentId]/agent-editor-state";
+import { buildAgentFormFromVersion } from "@/app/[locale]/(workspace)/agents/[agentId]/agent-form-from-version";
 import type { Agent } from "@/app/[locale]/(workspace)/agents/[agentId]/types";
 
 const currentAgent: Agent = {
@@ -28,6 +29,26 @@ const currentAgent: Agent = {
 };
 
 describe("mergeAgentEditorState", () => {
+  it("normalizes legacy output limits to the supported maximum", () => {
+    const form = buildAgentFormFromVersion(currentAgent, {
+      systemPrompt: null,
+      providerId: null,
+      modelId: null,
+      temperature: null,
+      topP: null,
+      maxOutputTokens: 1_000_000,
+      maxToolCalls: null,
+      toolChoice: null,
+      generationSettingsJson: null,
+      responseFormatJson: null,
+      memoryPolicyJson: null,
+      guardrailsJson: null,
+      approvalPolicyJson: null,
+    });
+
+    expect(form.maxOutputTokens).toBe("16384");
+  });
+
   it("keeps editor permissions and resolved sharing data after a mutation", () => {
     const persisted: Agent = {
       ...currentAgent,

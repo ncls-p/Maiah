@@ -1,5 +1,7 @@
+import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
+
 export const agentRuntimePolicy = {
-  defaultMaxOutputTokens: 30_000,
+  defaultMaxOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
   stepOverhead: 2,
   // A generation must eventually reach a terminal state. The stream lease
   // catches crashed producers; this cap also covers a provider connection that
@@ -30,7 +32,7 @@ export function resolveAgentRuntimeLimits(input: {
 }) {
   const maxToolCalls = boundedInteger(input.maxToolCalls, 20);
   const configuredMaxOutputTokens = boundedInteger(input.maxOutputTokens, 0);
-  const maxOutputTokens =
+  const requestedMaxOutputTokens =
     configuredMaxOutputTokens > 0
       ? configuredMaxOutputTokens
       : Math.max(
@@ -40,6 +42,10 @@ export function resolveAgentRuntimeLimits(input: {
             agentRuntimePolicy.defaultMaxOutputTokens,
           ),
         );
+  const maxOutputTokens = Math.min(
+    MAX_GENERATION_OUTPUT_TOKENS,
+    requestedMaxOutputTokens,
+  );
   return {
     maxToolCalls,
     maxOutputTokens,
