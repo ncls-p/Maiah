@@ -3248,7 +3248,9 @@
       "organizationMember": "Organization Member",
       "projectAdmin": "Project Administrator",
       "projectEditor": "Project Editor",
-      "projectViewer": "Project Viewer"
+      "projectViewer": "Project Viewer",
+      "knowledgeEditor": "Knowledge Editor",
+      "assistantUser": "Assistant User"
     },
     "permissionGroups": {
       "organization": {
@@ -3581,6 +3583,16 @@
       "viewMatrix": "Advanced: full permission matrix",
       "advancedScope": "Advanced: organization or team",
       "cancel": "Cancel"
+    },
+    "builtInRoleDescriptions": {
+      "owner": "Full organization administration, including deletion and migration.",
+      "organizationAdmin": "Manage members, teams, projects and their resources.",
+      "organizationMember": "Organization membership; project access is granted separately.",
+      "projectAdmin": "Manage all resources and access in this project.",
+      "projectEditor": "Create and use resources without managing project access.",
+      "projectViewer": "View project resources and activity.",
+      "knowledgeEditor": "View and edit a shared knowledge collection.",
+      "assistantUser": "Use an assistant shared with you."
     }
   },
   "shell": {

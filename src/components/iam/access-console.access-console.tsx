@@ -95,7 +95,15 @@ export function useAccessConsoleController({
         const data = await fetchJson<AccessSnapshot>(
           `/api/workspace/iam?workspaceId=${workspaceId}`,
         );
-        setSnapshot(data);
+        setSnapshot({
+          ...data,
+          roles: data.roles.map((role) => {
+            const key = role.isSystem ? builtInRoleKey(role.name) : undefined;
+            return key
+              ? { ...role, description: t(`builtInRoleDescriptions.${key}`) }
+              : role;
+          }),
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : t("loadError");
         setRefreshError(message);

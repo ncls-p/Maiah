@@ -3248,7 +3248,9 @@
       "organizationMember": "Membre de l’organisation",
       "projectAdmin": "Administrateur du projet",
       "projectEditor": "Éditeur du projet",
-      "projectViewer": "Lecteur du projet"
+      "projectViewer": "Lecteur du projet",
+      "knowledgeEditor": "Éditeur de connaissances",
+      "assistantUser": "Utilisateur d’assistant"
     },
     "permissionGroups": {
       "organization": {
@@ -3581,6 +3583,16 @@
       "viewMatrix": "Avancé : tableau complet des permissions",
       "advancedScope": "Avancé : organisation ou équipe",
       "cancel": "Annuler"
+    },
+    "builtInRoleDescriptions": {
+      "owner": "Administrer toute l’organisation, y compris sa suppression et sa migration.",
+      "organizationAdmin": "Gérer les personnes, équipes, projets et leurs ressources.",
+      "organizationMember": "Appartenir à l’organisation ; l’accès aux projets est attribué séparément.",
+      "projectAdmin": "Gérer les ressources et les accès de ce projet.",
+      "projectEditor": "Créer et utiliser les ressources sans gérer les accès du projet.",
+      "projectViewer": "Consulter les ressources et l’activité du projet.",
+      "knowledgeEditor": "Consulter et modifier une collection de connaissances partagée.",
+      "assistantUser": "Utiliser un assistant qui vous est partagé."
     }
   },
   "shell": {
