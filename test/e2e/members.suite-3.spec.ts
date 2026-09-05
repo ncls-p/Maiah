@@ -99,9 +99,7 @@ test.describe("members page", () => {
     await page.getByRole("button", { name: "Add person" }).click();
     const personDialog = page.getByRole("dialog", { name: "Add a person" });
     await personDialog.getByLabel("Email").fill(e2eMember.email);
-    await personDialog
-      .getByRole("button", { name: "Add to organization" })
-      .click();
+    await personDialog.getByRole("button", { name: "Add person" }).click();
     await expect(personDialog).not.toBeVisible();
 
     await page.getByRole("tab", { name: "Teams" }).click();
@@ -127,12 +125,16 @@ test.describe("members page", () => {
     await page.getByRole("tab", { name: "People & access" }).click();
     await page.getByRole("button", { name: "Grant access" }).click();
     const accessDialog = page.getByRole("dialog", { name: "Grant access" });
-    const accessSelects = accessDialog.getByRole("combobox");
-    await accessSelects.nth(1).click();
+    await accessDialog.getByText("Advanced: organization or team").click();
+    await accessDialog.getByRole("combobox", { name: "Grant to" }).click();
     await page.getByRole("option", { name: "Team", exact: true }).click();
-    await accessSelects.nth(2).click();
+    await accessDialog
+      .getByRole("combobox", { name: "Member or team" })
+      .click();
     await page.getByRole("option", { name: teamName, exact: true }).click();
-    await accessSelects.nth(3).click();
+    await accessDialog
+      .getByRole("combobox", { name: "Role", exact: true })
+      .click();
     await page.getByRole("option", { name: "Project Viewer" }).click();
     await accessDialog.getByRole("button", { name: "Grant access" }).click();
     await expect(accessDialog).not.toBeVisible();

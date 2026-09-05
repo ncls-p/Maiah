@@ -45,7 +45,14 @@ test.describe("members page", () => {
       name: /Project Viewer permissions/,
     });
     await expect(roleDialog.getByLabel("Role name")).toBeDisabled();
-    await expect(roleDialog.getByRole("checkbox").first()).toBeDisabled();
+    await roleDialog
+      .getByRole("textbox", { name: "Search permissions" })
+      .fill("workspaces.get");
+    const permission = roleDialog.getByRole("checkbox", {
+      name: "View projects",
+    });
+    await expect(permission).toBeChecked();
+    await expect(permission).toBeDisabled();
     await expect(
       roleDialog.getByRole("button", { name: "Duplicate and customize" }),
     ).toBeVisible();
