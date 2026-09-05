@@ -52,6 +52,7 @@ export const mutationSchema = z.discriminatedUnion("action", [
     action: z.literal("addMember"),
     workspaceId: z.uuid(),
     email: z.email(),
+    projectRoleId: z.uuid().optional(),
   }),
   z.object({
     action: z.literal("removeMember"),
@@ -138,6 +139,7 @@ export const mutationSchema = z.discriminatedUnion("action", [
     action: z.literal("updateRole"),
     workspaceId: z.uuid(),
     roleId: z.uuid(),
+    expectedUpdatedAt: z.iso.datetime().optional(),
     displayName: z.string().trim().min(2).max(255),
     description: z.string().trim().max(500).optional(),
     permissions: z.array(z.string().trim().min(1)).min(1).max(100),

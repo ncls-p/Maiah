@@ -24,8 +24,6 @@ export function AccessRolesSection1({
   model: AccessConsoleViewModel;
 }) {
   const {
-    canManageOrganizationAccess,
-    canManageProjectAccess,
     filteredRoles,
     mutate,
     pendingAction,
@@ -91,12 +89,7 @@ export function AccessRolesSection1({
                 const assignmentCount = snapshot.assignments.filter(
                   (item) => item.roleId === role.id,
                 ).length;
-                const canManageRole =
-                  !role.isSystem &&
-                  snapshot.assignableRoleIds.includes(role.id) &&
-                  (role.scopeType === "organization"
-                    ? canManageOrganizationAccess
-                    : canManageProjectAccess);
+                const canManageRole = role.canUpdate;
                 return (
                   <tr
                     key={role.id}
@@ -135,7 +128,7 @@ export function AccessRolesSection1({
                         className="text-left text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         onClick={() => {
                           setEditingRoleId(role.id);
-                          setRoleEditorReadOnly(role.isSystem);
+                          setRoleEditorReadOnly(!role.canUpdate);
                           setRoleForm({
                             displayName: roleLabel(role.name, role.displayName),
                             description: role.description ?? "",
@@ -167,7 +160,7 @@ export function AccessRolesSection1({
                           variant="outline"
                           onClick={() => {
                             setEditingRoleId(role.id);
-                            setRoleEditorReadOnly(role.isSystem);
+                            setRoleEditorReadOnly(!role.canUpdate);
                             setRoleForm({
                               displayName: roleLabel(
                                 role.name,
@@ -192,7 +185,7 @@ export function AccessRolesSection1({
                           ) : null}
                           {canManageRole ? t("edit") : t("view")}
                         </Button>
-                        {canManageRole ? (
+                        {role.canDelete && assignmentCount === 0 ? (
                           <ConfirmRemovalButton
                             pending={pendingAction === `delete-role-${role.id}`}
                             label={t("deleteRole", {

@@ -1486,7 +1486,6 @@
       "toastModelRegistered": "Modèle ajouté",
       "toastModelsRegistered": "{count, plural, one {# modèle ajouté} other {# modèles ajoutés}}",
       "toastDiscoveredModels": "{count, plural, one {# modèle découvert} other {# modèles découverts}}",
-      "discoverModels": "Découvrir les modèles",
       "toastLogoAssigned": "Logo ajouté",
       "toastLogoRemoved": "Logo retiré",
       "toastModelUpdated": "Configuration du modèle enregistrée",
@@ -2914,7 +2913,7 @@
     "noMemberTransferDestination": "Aucun autre projet administrable",
     "noMemberTransferDestinationDescription": "Vous devez pouvoir gérer les accès d’un autre projet pour y ajouter ou déplacer des personnes.",
     "destinationProject": "Projet de destination",
-    "chooseDestination": "Choisir une organisation et un projet",
+    "chooseDestination": "Choisir un projet…",
     "transferMode": "Action",
     "addToDestination": "Ajouter",
     "addToDestinationDescription": "Conserve les accès actuels et ajoute le nouvel accès.",
@@ -3182,9 +3181,7 @@
     "loadingDestinations": "Chargement des projets de destination",
     "noTransferDestination": "Aucun projet de destination",
     "noTransferDestinationDescription": "Vous devez administrer les accès d’au moins un autre projet pour y transférer une ressource.",
-    "destinationProject": "Projet de destination",
     "searchDestination": "Rechercher une organisation ou un projet…",
-    "chooseDestination": "Choisir un projet…",
     "includeDependencies": "Inclure automatiquement les éléments liés",
     "includeDependenciesDescription": "Déplace les modèles, connexions, outils, assistants dépendants et historiques nécessaires pour ne rien casser.",
     "advancedTransferOptions": "Options avancées",
@@ -3455,7 +3452,135 @@
       "apiKeys_manage": {
         "label": "Gérer toutes les clés API",
         "description": "Administrer les identifiants du projet."
+      },
+      "roles_get": {
+        "label": "Consulter les accès",
+        "description": "Consulter les rôles, attributions, membres et équipes."
+      },
+      "roles_create": {
+        "label": "Créer des rôles personnalisés",
+        "description": "Créer un rôle limité aux permissions que vous détenez."
+      },
+      "roles_update": {
+        "label": "Modifier les rôles personnalisés",
+        "description": "Modifier les permissions d’un rôle subordonné, sans modifier vos propres accès."
+      },
+      "roles_delete": {
+        "label": "Supprimer des rôles personnalisés",
+        "description": "Supprimer un rôle subordonné qui n’est plus attribué."
+      },
+      "roles_assign": {
+        "label": "Attribuer des rôles",
+        "description": "Accorder des accès à des membres ou équipes moins privilégiés."
+      },
+      "roles_revoke": {
+        "label": "Révoquer des rôles",
+        "description": "Retirer des attributions à des membres ou équipes moins privilégiés."
+      },
+      "members_create": {
+        "label": "Ajouter des membres",
+        "description": "Ajouter un compte à l’organisation."
+      },
+      "members_delete": {
+        "label": "Retirer des membres",
+        "description": "Retirer un membre moins privilégié de l’organisation."
+      },
+      "teams_create": {
+        "label": "Créer des équipes",
+        "description": "Créer une équipe dans l’organisation."
+      },
+      "teams_update": {
+        "label": "Modifier les membres des équipes",
+        "description": "Ajouter ou retirer des membres dans la limite des droits délégables."
+      },
+      "teams_delete": {
+        "label": "Supprimer des équipes",
+        "description": "Supprimer une équipe dont vous pouvez administrer les droits."
+      },
+      "agents_test": {
+        "label": "Tester les assistants",
+        "description": "Exécuter les tests d’un assistant."
+      },
+      "agents_manage": {
+        "label": "Administrer les assistants",
+        "description": "Toutes les actions d’assistant enregistrées dans le catalogue."
+      },
+      "providers_create": {
+        "label": "Créer des connexions IA",
+        "description": "Créer une connexion à un fournisseur."
+      },
+      "providers_update": {
+        "label": "Modifier des connexions IA",
+        "description": "Modifier les paramètres d’un fournisseur."
+      },
+      "providers_delete": {
+        "label": "Supprimer des connexions IA",
+        "description": "Supprimer une connexion à un fournisseur."
+      },
+      "providers_test": {
+        "label": "Tester des connexions IA",
+        "description": "Tester la connexion à un fournisseur."
+      },
+      "models_create": {
+        "label": "Créer des modèles",
+        "description": "Ajouter un modèle."
+      },
+      "models_update": {
+        "label": "Modifier des modèles",
+        "description": "Modifier la configuration d’un modèle."
+      },
+      "models_delete": {
+        "label": "Supprimer des modèles",
+        "description": "Supprimer un modèle."
+      },
+      "models_sync": {
+        "label": "Synchroniser les modèles",
+        "description": "Découvrir les modèles d’un fournisseur."
+      },
+      "tools_manage": {
+        "label": "Administrer les outils",
+        "description": "Toutes les actions d’outil enregistrées dans le catalogue."
+      },
+      "organization_delete": {
+        "label": "Supprimer l’organisation",
+        "description": "Supprimer l’organisation et tous ses projets."
+      },
+      "organization_transfer": {
+        "label": "Migrer l’organisation",
+        "description": "Déplacer ou cloner une organisation vers une autre organisation autorisée."
+      },
+      "workspaces_delete": {
+        "label": "Supprimer des projets",
+        "description": "Supprimer un projet et ses ressources."
+      },
+      "workspaces_transfer": {
+        "label": "Transférer les ressources des projets",
+        "description": "Déplacer ou cloner les ressources et leurs attributions d’accès."
+      },
+      "workspaces_curate": {
+        "label": "Gérer les ressources communes du projet",
+        "description": "Gérer les assistants, connaissances et connexions communs, sans administrer les droits d’accès."
       }
+    },
+    "matrix": {
+      "title": "Permissions",
+      "description": "Les droits s’héritent de l’organisation vers les projets et leurs ressources. Vous pouvez déléguer uniquement vos droits à des membres moins privilégiés. Les actions « Administrer » regroupent les actions du même domaine.",
+      "caption": "{count} permissions à cette portée. Les droits sur une ressource peuvent être complétés par ses attributions directes.",
+      "effective": "Mes droits effectifs",
+      "delegable": "Délégable",
+      "allowed": "Oui",
+      "denied": "—"
+    },
+    "simpleAccess": {
+      "addDescription": "Choisissez le compte et son rôle dans « {project} ».",
+      "accountCreatedRetry": "Le compte a été créé. Corrigez l’accès puis réessayez ; le compte sera réutilisé.",
+      "standardAccount": "Compte standard. Son accès dépend du rôle choisi ci-dessous.",
+      "projectRole": "Rôle dans ce projet",
+      "noProjectAccess": "Aucun accès au projet",
+      "noProjectAccessDescription": "La personne rejoindra l’organisation. Un rôle de projet pourra lui être attribué ensuite.",
+      "viewMatrix": "Avancé : tableau complet des permissions",
+      "advancedScope": "Avancé : organisation ou équipe",
+      "cancel": "Annuler"
     }
   },
   "shell": {
@@ -3761,10 +3886,18 @@
       "skipped": "Ignorée"
     },
     "nodes": {
-      "trigger": { "manual": "Déclencheur API" },
-      "agent": { "run": "Exécuter un assistant" },
-      "http": { "request": "Requête HTTP" },
-      "code": { "execute": "Code personnalisé" },
+      "trigger": {
+        "manual": "Déclencheur API"
+      },
+      "agent": {
+        "run": "Exécuter un assistant"
+      },
+      "http": {
+        "request": "Requête HTTP"
+      },
+      "code": {
+        "execute": "Code personnalisé"
+      },
       "data": {
         "set": "Définir des données",
         "pick": "Garder des champs",
@@ -3774,8 +3907,12 @@
         "parseJson": "Lire du JSON",
         "stringifyJson": "Convertir en JSON"
       },
-      "text": { "transform": "Transformer du texte" },
-      "number": { "calculate": "Calculer" },
+      "text": {
+        "transform": "Transformer du texte"
+      },
+      "number": {
+        "calculate": "Calculer"
+      },
       "list": {
         "filter": "Filtrer une liste",
         "sort": "Trier une liste",
@@ -3786,14 +3923,26 @@
         "delay": "Attendre",
         "stop": "Terminer le workflow"
       },
-      "debug": { "snapshot": "Inspecter les données" },
-      "date": { "now": "Date actuelle" }
+      "debug": {
+        "snapshot": "Inspecter les données"
+      },
+      "date": {
+        "now": "Date actuelle"
+      }
     },
     "nodeDescriptions": {
-      "trigger": { "manual": "Reçoit le JSON envoyé au lancement." },
-      "agent": { "run": "Confie cette étape à un assistant Maiah." },
-      "http": { "request": "Appelle une API HTTPS externe." },
-      "code": { "execute": "Exécute du JavaScript ou Python isolé." },
+      "trigger": {
+        "manual": "Reçoit le JSON envoyé au lancement."
+      },
+      "agent": {
+        "run": "Confie cette étape à un assistant Maiah."
+      },
+      "http": {
+        "request": "Appelle une API HTTPS externe."
+      },
+      "code": {
+        "execute": "Exécute du JavaScript ou Python isolé."
+      },
       "data": {
         "set": "Ajoute ou remplace des champs.",
         "pick": "Ne conserve que les champs choisis.",
@@ -3803,8 +3952,12 @@
         "parseJson": "Convertit un texte JSON en données.",
         "stringifyJson": "Convertit des données en texte JSON."
       },
-      "text": { "transform": "Nettoie, change la casse ou remplace du texte." },
-      "number": { "calculate": "Effectue un calcul numérique simple." },
+      "text": {
+        "transform": "Nettoie, change la casse ou remplace du texte."
+      },
+      "number": {
+        "calculate": "Effectue un calcul numérique simple."
+      },
       "list": {
         "filter": "Garde les éléments correspondant à une règle.",
         "sort": "Trie une liste par champ et direction.",
@@ -3818,7 +3971,9 @@
       "debug": {
         "snapshot": "Capture les données ici sans les modifier."
       },
-      "date": { "now": "Ajoute la date ou l’horodatage courant." }
+      "date": {
+        "now": "Ajoute la date ou l’horodatage courant."
+      }
     }
   },
   "scheduledTasks": {

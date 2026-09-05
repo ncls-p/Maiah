@@ -75,12 +75,19 @@ export function AccessConsoleSection2({
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        {canManageProjectLifecycle || canManageOrganizationLifecycle ? (
+        {canManageProjectLifecycle ||
+        canManageOrganizationLifecycle ||
+        snapshot.actions.workspace["workspaces.delete"] ||
+        snapshot.actions.organization["organization.delete"] ? (
           <ScopeLifecycleDialog
             organization={snapshot.organization}
             project={snapshot.activeProject}
             canManageProject={canManageProjectLifecycle}
             canManageOrganization={canManageOrganizationLifecycle}
+            canDeleteProject={snapshot.actions.workspace["workspaces.delete"]}
+            canDeleteOrganization={
+              snapshot.actions.organization["organization.delete"]
+            }
             onRenamed={() => load({ preserveData: true })}
           />
         ) : null}

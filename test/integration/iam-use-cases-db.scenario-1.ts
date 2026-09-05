@@ -127,14 +127,25 @@ export async function runIamDatabaseScenario1(
   expect(
     (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
   ).not.toContain(memberOwnedAgent.id);
-  await assignResourceRole({
-    actorUserId: ownerId,
-    workspaceId: secondProjectId,
+  await expect(
+    assignResourceRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      principalType: "user",
+      principalId: ownerId,
+      roleId: resourceRole.id,
+      resourceType: "agent",
+      resourceId: memberOwnedAgent.id,
+    }),
+  ).rejects.toMatchObject({ status: 403 });
+  // A direct share created by the resource's owner is distinct from self-granting access.
+  await db.insert(roleBindings).values({
     principalType: "user",
     principalId: ownerId,
     roleId: resourceRole.id,
     resourceType: "agent",
     resourceId: memberOwnedAgent.id,
+    createdById: memberId,
   });
   expect(
     (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),

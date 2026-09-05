@@ -1,3 +1,5 @@
+import { policyMutation } from "./policy-mutation";
+import { requireSubordinatePrincipal } from "./delegation";
 import { and, eq } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
@@ -53,7 +55,7 @@ export async function validateAssignmentPrincipal(input: {
   return Boolean(team);
 }
 
-export async function assignRole(input: {
+export const assignRole = policyMutation(async function assignRole(input: {
   actorUserId: string;
   workspaceId: string;
   principalType: AssignmentPrincipalType;
@@ -84,7 +86,7 @@ export async function assignRole(input: {
   }
   await requirePermission({
     userId: input.actorUserId,
-    permission: "roles.manage",
+    permission: "roles.assign",
     resourceType: input.scopeType,
     resourceId:
       input.scopeType === "organization" ? organization.id : input.workspaceId,
@@ -119,6 +121,11 @@ export async function assignRole(input: {
 
   const resourceId =
     input.scopeType === "organization" ? organization.id : input.workspaceId;
+  await requireSubordinatePrincipal({
+    ...input,
+    resourceType: input.scopeType,
+    resourceId,
+  });
   await db
     .insert(roleBindings)
     .values({
@@ -160,4 +167,4 @@ export async function assignRole(input: {
       principalId: input.principalId,
     },
   });
-}
+});

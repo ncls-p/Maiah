@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
             actorUserId: session.user.id,
             workspaceId: input.workspaceId,
             email: input.email,
+            projectRoleId: input.projectRoleId,
           });
           break;
         case "removeMember":
@@ -213,6 +214,7 @@ export async function POST(req: NextRequest) {
             actorUserId: session.user.id,
             workspaceId: input.workspaceId,
             roleId: input.roleId,
+            expectedUpdatedAt: input.expectedUpdatedAt,
             displayName: input.displayName,
             description: input.description,
             permissions: input.permissions,

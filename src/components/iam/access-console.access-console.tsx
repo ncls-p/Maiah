@@ -117,6 +117,7 @@ export function useAccessConsoleController({
     successMessage: string,
     options?: { close?: () => void; nextWorkspaceId?: string },
   ) {
+    if (pendingAction || refreshError) return false;
     setPendingAction(key);
     try {
       const result = await fetchJson<{ project?: { id: string } }>(
@@ -188,8 +189,18 @@ export function useAccessConsoleController({
   );
   const principalOptions =
     assignment.principalType === "user"
-      ? activeMembers
-      : (snapshot?.teams ?? []);
+      ? activeMembers.filter((member) =>
+          snapshot?.subordinateIds[assignment.scopeType].includes(
+            member.userId,
+          ),
+        )
+      : (snapshot?.teams ?? []).filter((team) =>
+          team.members.every((member) =>
+            snapshot?.subordinateIds[assignment.scopeType].includes(
+              member.userId,
+            ),
+          ),
+        );
   const selectedAssignmentRole = snapshot?.roles.find(
     (role) => role.id === assignment.roleId,
   );
@@ -245,6 +256,8 @@ export function useAccessConsoleController({
     canManageTeams,
   } = snapshot.capabilities;
   const canManageAnything =
+    snapshot.actions.workspace["roles.create"] ||
+    snapshot.actions.organization["roles.create"] ||
     snapshot.canManageAccess ||
     canCreateProjects ||
     canManageProjectLifecycle ||
@@ -252,9 +265,7 @@ export function useAccessConsoleController({
     canManageMembers ||
     canManageTeams;
   const canCustomizeViewedRole =
-    roleForm.scopeType === "organization"
-      ? canManageOrganizationAccess
-      : canManageProjectAccess;
+    snapshot.actions[roleForm.scopeType]["roles.create"];
   const canDelegateViewedRole =
     !editingRoleId || snapshot.assignableRoleIds.includes(editingRoleId);
   const grantablePermissionSet = new Set(
@@ -286,7 +297,10 @@ export function useAccessConsoleController({
   });
   const visiblePeople = people.slice(0, visiblePeopleCount);
   const selectedVisiblePeople = visiblePeople.filter(
-    (person) => person.memberStatus === "active",
+    (person) =>
+      person.memberStatus === "active" &&
+      snapshot.subordinateIds.workspace.includes(person.userId) &&
+      snapshot.actions.workspace["roles.assign"],
   );
   const allVisiblePeopleSelected =
     selectedVisiblePeople.length > 0 &&

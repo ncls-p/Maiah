@@ -123,75 +123,6 @@ export function AccessPeopleTransferBranch1({
           }}
         >
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="assignment-scope">{t("scope")}</FieldLabel>
-              <Select
-                value={assignment.scopeType}
-                onValueChange={(value) =>
-                  setAssignment({
-                    ...assignment,
-                    scopeType: value as "organization" | "workspace",
-                    roleId: "",
-                  })
-                }
-              >
-                <SelectTrigger id="assignment-scope" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="workspace">
-                      {t("projectOnly")}
-                    </SelectItem>
-                    {canManageOrganizationAccess ? (
-                      <SelectItem value="organization">
-                        {t("wholeOrganization")}
-                      </SelectItem>
-                    ) : null}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            {bulkAssignmentIds.length === 0 ? (
-              <Field>
-                <FieldLabel htmlFor="assignment-principal-type">
-                  {t("principalType")}
-                </FieldLabel>
-                <Select
-                  value={assignment.principalType}
-                  onValueChange={(value) =>
-                    setAssignment({
-                      ...assignment,
-                      principalType: value as "user" | "group",
-                      principalId: "",
-                    })
-                  }
-                >
-                  <SelectTrigger
-                    id="assignment-principal-type"
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="user">{t("member")}</SelectItem>
-                      <SelectItem value="group">{t("team")}</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-            ) : (
-              <Alert>
-                <UsersIcon aria-hidden="true" />
-                <AlertTitle>
-                  {t("bulkGrantTitle", {
-                    count: bulkAssignmentIds.length,
-                  })}
-                </AlertTitle>
-                <AlertDescription>{t("bulkGrantDescription")}</AlertDescription>
-              </Alert>
-            )}
             {bulkAssignmentIds.length === 0 ? (
               <Field>
                 <FieldLabel htmlFor="assignment-principal">
@@ -267,6 +198,87 @@ export function AccessPeopleTransferBranch1({
                 </FieldDescription>
               ) : null}
             </Field>
+            <details className="rounded-lg border p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("simpleAccess.advancedScope")}
+              </summary>
+              <div className="flex flex-col gap-4 pt-3">
+                {" "}
+                <Field>
+                  <FieldLabel htmlFor="assignment-scope">
+                    {t("scope")}
+                  </FieldLabel>
+                  <Select
+                    value={assignment.scopeType}
+                    onValueChange={(value) =>
+                      setAssignment({
+                        ...assignment,
+                        scopeType: value as "organization" | "workspace",
+                        roleId: "",
+                      })
+                    }
+                  >
+                    <SelectTrigger id="assignment-scope" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="workspace">
+                          {t("projectOnly")}
+                        </SelectItem>
+                        {canManageOrganizationAccess ? (
+                          <SelectItem value="organization">
+                            {t("wholeOrganization")}
+                          </SelectItem>
+                        ) : null}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                {bulkAssignmentIds.length === 0 ? (
+                  <Field>
+                    <FieldLabel htmlFor="assignment-principal-type">
+                      {t("principalType")}
+                    </FieldLabel>
+                    <Select
+                      value={assignment.principalType}
+                      onValueChange={(value) =>
+                        setAssignment({
+                          ...assignment,
+                          principalType: value as "user" | "group",
+                          principalId: "",
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="assignment-principal-type"
+                        className="w-full"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="user">{t("member")}</SelectItem>
+                          <SelectItem value="group">{t("team")}</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                ) : (
+                  <Alert>
+                    <UsersIcon aria-hidden="true" />
+                    <AlertTitle>
+                      {t("bulkGrantTitle", {
+                        count: bulkAssignmentIds.length,
+                      })}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {t("bulkGrantDescription")}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </details>
           </FieldGroup>
           <DialogFooter>
             <MutatingButton pending={pendingAction === "assignRole"}>

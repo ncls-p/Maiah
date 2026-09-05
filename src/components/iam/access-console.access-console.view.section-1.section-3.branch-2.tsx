@@ -29,8 +29,6 @@ export function AccessPeopleBranch2({
     allVisiblePeopleSelected,
     busyPlatformUserId,
     canManageMembers,
-    canManageOrganizationAccess,
-    canManageProjectAccess,
     currentUserId,
     mutate,
     pendingAction,
@@ -80,6 +78,9 @@ export function AccessPeopleBranch2({
         <tbody className="divide-y divide-border/60 max-md:grid max-md:gap-3 max-md:divide-y-0 max-md:bg-muted/15 max-md:p-3">
           {visiblePeople.map((person) => {
             const isMember = person.memberStatus === "active";
+            const canGrant =
+              model.snapshot.subordinateIds.workspace.includes(person.userId) &&
+              model.snapshot.actions.workspace["roles.assign"];
             const isCurrentUser = person.userId === currentUserId;
             return (
               <tr
@@ -92,7 +93,7 @@ export function AccessPeopleBranch2({
                     aria-label={t("selectPerson", {
                       name: person.name,
                     })}
-                    disabled={!isMember}
+                    disabled={!isMember || !canGrant}
                     checked={selectedPeople.includes(person.userId)}
                     onCheckedChange={(checked) =>
                       setSelectedPeople((current) =>
@@ -156,11 +157,16 @@ export function AccessPeopleBranch2({
                               : t("projectShort")}
                           </span>
                         </Badge>
-                        {(
+                        {model.snapshot.actions[
                           item.scope === "organization"
-                            ? canManageOrganizationAccess
-                            : canManageProjectAccess
-                        ) ? (
+                            ? "organization"
+                            : "workspace"
+                        ]["roles.revoke"] &&
+                        model.snapshot.subordinateIds[
+                          item.scope === "organization"
+                            ? "organization"
+                            : "workspace"
+                        ].includes(person.userId) ? (
                           <ConfirmRemovalButton
                             pending={pendingAction === item.id}
                             label={t("removeAssignment", {
@@ -243,9 +249,7 @@ export function AccessPeopleBranch2({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
                       <DropdownMenuLabel>{person.name}</DropdownMenuLabel>
-                      {isMember &&
-                      (canManageProjectAccess ||
-                        canManageOrganizationAccess) ? (
+                      {isMember && canGrant ? (
                         <DropdownMenuItem
                           onSelect={() => {
                             setBulkAssignmentIds([]);
@@ -314,7 +318,11 @@ export function AccessPeopleBranch2({
                           </DropdownMenuItem>
                         </>
                       ) : null}
-                      {isMember && canManageMembers ? (
+                      {isMember &&
+                      model.snapshot.actions.organization["members.delete"] &&
+                      model.snapshot.subordinateIds.organization.includes(
+                        person.userId,
+                      ) ? (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

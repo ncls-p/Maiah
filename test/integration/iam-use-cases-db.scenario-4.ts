@@ -63,20 +63,16 @@ export async function runIamDatabaseScenario4(
       .where(and(eq(roles.name, "workspace.admin"), eq(roles.isSystem, true)))
       .limit(1),
   ]);
-  const ownerMovePreview = await previewMemberTransfer({
-    actorUserId: ownerId,
-    sourceWorkspaceId: firstProjectId,
-    targetWorkspaceId: destination.id,
-    userIds: [ownerId],
-    roleId: viewerRole[0].id,
-    mode: "move",
-  });
-  expect(ownerMovePreview.blockers).toEqual(
-    expect.arrayContaining([
-      expect.stringContaining("own account"),
-      expect.stringContaining("last owner"),
-    ]),
-  );
+  await expect(
+    previewMemberTransfer({
+      actorUserId: ownerId,
+      sourceWorkspaceId: firstProjectId,
+      targetWorkspaceId: destination.id,
+      userIds: [ownerId],
+      roleId: viewerRole[0].id,
+      mode: "move",
+    }),
+  ).rejects.toMatchObject({ status: 403 });
   await assignRole({
     actorUserId: ownerId,
     workspaceId: firstProjectId,

@@ -31,6 +31,7 @@ export function TeamCard({
   team,
   members,
   canManage,
+  canDelete,
   pending,
   onAdd,
   onRemove,
@@ -39,6 +40,7 @@ export function TeamCard({
   team: AccessTeam;
   members: AccessMember[];
   canManage: boolean;
+  canDelete: boolean;
   pending: string | null;
   onAdd: (userId: string) => Promise<boolean>;
   onRemove: (userId: string) => Promise<boolean>;
@@ -68,7 +70,7 @@ export function TeamCard({
           <Badge variant="secondary">
             {t("memberCount", { count: team.members.length })}
           </Badge>
-          {canManage ? (
+          {canDelete ? (
             <ConfirmRemovalButton
               pending={pending === `delete-team-${team.id}`}
               label={t("deleteTeam", { name: team.name })}

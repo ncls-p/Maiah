@@ -52,6 +52,7 @@ describe("ensurePrimaryWorkspaceForUser", () => {
       .mockResolvedValueOnce([{ workspace: primaryWorkspace }]) // getPrimaryWorkspace
       .mockResolvedValueOnce([]) // getActiveWorkspaceMember
       .mockResolvedValueOnce([]) // getActiveOrganizationMember
+      .mockResolvedValueOnce([]) // no managed membership in any organization
       .mockResolvedValueOnce([primaryWorkspace]) // addWorkspaceMember workspace lookup
       .mockResolvedValueOnce([]) // existing member lookup
       .mockResolvedValueOnce([]) // existing organization member

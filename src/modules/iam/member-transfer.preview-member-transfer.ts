@@ -1,3 +1,10 @@
+import { requireDelegableMembership } from "./membership-grants";
+import { requireManageableOrganizationMember } from "./organization-member-delegation";
+import {
+  requireDelegablePermissions,
+  rolePermissions,
+} from "./use-cases.iam-operation-error";
+import { requireSubordinatePrincipal } from "./delegation";
 import { and, count, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
@@ -46,6 +53,11 @@ export async function previewMemberTransfer(input: {
     mode: input.mode,
   });
   const crossOrganization = source.organization.id !== target.organization.id;
+  if (crossOrganization)
+    await requireDelegableMembership({
+      actorUserId: input.actorUserId,
+      organizationId: target.organization.id,
+    });
 
   const [destinationRole] = await db
     .select()
@@ -63,6 +75,41 @@ export async function previewMemberTransfer(input: {
     throw new IamOperationError(
       "The selected role cannot be used in the destination project",
     );
+  }
+
+  await requireDelegablePermissions({
+    actorUserId: input.actorUserId,
+    resourceType: "workspace",
+    resourceId: target.workspace.id,
+    permissions: rolePermissions(destinationRole),
+  });
+  for (const userId of userIds) {
+    await requireSubordinatePrincipal({
+      actorUserId: input.actorUserId,
+      principalType: "user",
+      principalId: userId,
+      resourceType: "workspace",
+      resourceId: target.workspace.id,
+    });
+    if (input.mode === "move" && crossOrganization) {
+      await requireManageableOrganizationMember({
+        actorUserId: input.actorUserId,
+        userId,
+        workspaceId: source.workspace.id,
+        organizationId: source.organization.id,
+      });
+    }
+    if (input.mode === "move") {
+      await requireSubordinatePrincipal({
+        actorUserId: input.actorUserId,
+        principalType: "user",
+        principalId: userId,
+        resourceType: crossOrganization ? "organization" : "workspace",
+        resourceId: crossOrganization
+          ? source.organization.id
+          : source.workspace.id,
+      });
+    }
   }
 
   const members = await db
