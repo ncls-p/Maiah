@@ -1,3 +1,4 @@
+import { requireResourceSharePermissions } from "@/modules/iam/resource-share-permissions";
 import { listResourceShareTargets } from "@/modules/iam/resource-sharing";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -64,13 +65,13 @@ export async function getAgentAccessOptions(
   const [canShareProject, canShareOrganization] = await Promise.all([
     authorization.hasPermission(
       { principalType: "user", principalId: userId },
-      "roles.manage",
+      "roles.assign",
       "workspace",
       workspaceId,
     ),
     authorization.hasPermission(
       { principalType: "user", principalId: userId },
-      "roles.manage",
+      "roles.assign",
       "organization",
       scope.organizationId,
     ),
@@ -134,6 +135,23 @@ export async function applyAgentAccessSelection(
     .limit(1);
   if (!scope) throw new AgentAccessError("Assistant not found", 404);
 
+  const targets = await listResourceShareTargets(
+    {
+      resourceType: "agent",
+      resourceId: input.agentId,
+      includeDependencies: true,
+    },
+    executor,
+  );
+  if (input.selection.scope !== "private") {
+    for (const target of targets)
+      await requireResourceSharePermissions({
+        actorUserId: input.userId,
+        workspaceId: scope.workspaceId,
+        resourceType: target.type,
+        resourceId: target.id,
+      });
+  }
   const generatedBindings = await executor
     .select({ principalId: roleBindings.principalId })
     .from(roleBindings)
@@ -158,14 +176,6 @@ export async function applyAgentAccessSelection(
     input,
     executor,
   );
-  const targets = await listResourceShareTargets(
-    {
-      resourceType: "agent",
-      resourceId: input.agentId,
-      includeDependencies: true,
-    },
-    executor,
-  );
   const groupId =
     input.selection.scope === "project"
       ? scope.workspaceId
@@ -179,7 +189,12 @@ export async function applyAgentAccessSelection(
     const roleRows = await executor
       .select({ id: roles.id, name: roles.name })
       .from(roles)
-      .where(inArray(roles.name, ["workspace.agent_user", "workspace.viewer"]));
+      .where(
+        and(
+          eq(roles.isSystem, true),
+          inArray(roles.name, ["workspace.agent_user", "workspace.viewer"]),
+        ),
+      );
     const agentUserRole = roleRows.find(
       ({ name }) => name === "workspace.agent_user",
     );

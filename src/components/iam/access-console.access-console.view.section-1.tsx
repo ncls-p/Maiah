@@ -15,7 +15,7 @@ export function AccessConsoleSection1({
   const { snapshot, t, workspaceId } = model;
   return (
     <Tabs defaultValue="access" className="min-w-0">
-      <TabsList className="w-full justify-start sm:w-fit">
+      <TabsList className="h-auto w-full flex-wrap justify-start sm:w-fit">
         <TabsTrigger value="access">
           <UsersIcon data-icon="inline-start" aria-hidden="true" />
           {t("tabs.people")}

@@ -79,20 +79,20 @@ export async function requireTransferPermissions(input: {
   const checks = await Promise.all([
     hasPermission(
       input.actorUserId,
-      "roles.manage",
+      input.mode === "move" ? "roles.revoke" : "roles.get",
       "workspace",
       input.sourceWorkspaceId,
     ),
     hasPermission(
       input.actorUserId,
-      "roles.manage",
+      "roles.assign",
       "workspace",
       input.targetWorkspaceId,
     ),
     crossOrganization
       ? hasPermission(
           input.actorUserId,
-          "members.manage",
+          "members.create",
           "organization",
           input.targetOrganizationId,
         )
@@ -100,7 +100,7 @@ export async function requireTransferPermissions(input: {
     crossOrganization && input.mode === "move"
       ? hasPermission(
           input.actorUserId,
-          "members.manage",
+          "members.delete",
           "organization",
           input.sourceOrganizationId,
         )

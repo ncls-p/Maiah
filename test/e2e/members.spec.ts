@@ -165,6 +165,7 @@ test.describe("members page", () => {
 
     await page.getByRole("button", { name: "Grant access" }).click();
     const dialog = page.getByRole("dialog", { name: "Grant access" });
+    await dialog.getByText("Advanced: organization or team").click();
     await dialog.getByRole("combobox", { name: "Scope" }).click();
     await page
       .getByRole("option", { name: "Whole organization", exact: true })

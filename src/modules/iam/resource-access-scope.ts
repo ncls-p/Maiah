@@ -1,3 +1,4 @@
+import { requireResourceSharePermissions } from "./resource-share-permissions";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -58,6 +59,11 @@ export async function applyResourceAccessSelection(input: {
   userId: string;
   selection: ResourceAccessSelection;
 }) {
+  if (input.selection.scope !== "private")
+    await requireResourceSharePermissions({
+      ...input,
+      actorUserId: input.userId,
+    });
   const [viewerRole] = await db
     .select({ id: roles.id })
     .from(roles)

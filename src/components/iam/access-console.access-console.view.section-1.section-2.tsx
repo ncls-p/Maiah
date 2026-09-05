@@ -62,7 +62,7 @@ export function AccessMainSection2({
           <CardHeader>
             <CardTitle>{t("teamsTitle")}</CardTitle>
             <CardDescription>{t("teamsDescription")}</CardDescription>
-            {canManageTeams ? (
+            {model.snapshot.actions.organization["teams.create"] ? (
               <CardAction>
                 <Dialog open={teamOpen} onOpenChange={setTeamOpen}>
                   <DialogTrigger asChild>
@@ -190,6 +190,7 @@ export function AccessMainSection2({
               team={team}
               members={activeMembers}
               canManage={canManageTeams}
+              canDelete={model.snapshot.actions.organization["teams.delete"]}
               pending={pendingAction}
               onAdd={(userId) =>
                 mutate(
