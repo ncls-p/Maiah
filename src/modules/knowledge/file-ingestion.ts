@@ -64,6 +64,7 @@ export async function extractKnowledgeUploads(
     mimeType: string;
     originalBytes: Uint8Array;
     originalMimeType: string | undefined;
+    extractionWarning?: string;
   }> = [];
   const rejected: Array<{ title: string; error: string }> = [];
   for (const upload of expanded) {
@@ -76,7 +77,11 @@ export async function extractKnowledgeUploads(
         bytes: upload.bytes,
         ...(context ? { config: context.config } : {}),
       });
-      if (!extracted.text || extracted.status === "unreadable") {
+      if (
+        !extracted.text ||
+        extracted.status === "unreadable" ||
+        extracted.status === "truncated"
+      ) {
         rejected.push({
           title,
           error: extracted.message ?? "No readable text was found.",
@@ -88,6 +93,7 @@ export async function extractKnowledgeUploads(
           mimeType: extracted.mimeType,
           originalBytes: upload.bytes,
           originalMimeType: upload.mimeType,
+          extractionWarning: extracted.message,
         });
       }
     } catch (error) {

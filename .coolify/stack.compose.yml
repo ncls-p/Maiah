@@ -26,6 +26,7 @@ services:
       - OBJECT_STORAGE_ACCESS_KEY_ID=${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
       - OBJECT_STORAGE_SECRET_ACCESS_KEY=${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
       - OBJECT_STORAGE_FORCE_PATH_STYLE=true
+      - DOCUMENT_CONVERTER_URL=http://document-converter:3000
       - SEARXNG_URL=${SEARXNG_URL:-http://searxng:8080}
       - SANDBOX_RUNNER_SOCKET=/run/sandbox/sandbox.sock
       - ALLOW_PERSONAL_WORKSPACES=${ALLOW_PERSONAL_WORKSPACES:-true}
@@ -41,6 +42,9 @@ services:
     restart: "no"
 
   app:
+    networks:
+      - default
+      - document-conversion
     image: ${AI_HUB_APP_IMAGE:?set AI_HUB_APP_IMAGE}
     pull_policy: always
     environment: *app-environment
@@ -56,6 +60,8 @@ services:
       rustfs-init:
         condition: service_completed_successfully
       searxng:
+        condition: service_healthy
+      document-converter:
         condition: service_healthy
       sandbox-runner:
         condition: service_healthy
@@ -83,6 +89,9 @@ services:
     restart: unless-stopped
 
   worker:
+    networks:
+      - default
+      - document-conversion
     image: ${AI_HUB_WORKER_IMAGE:?set AI_HUB_WORKER_IMAGE}
     pull_policy: always
     environment: *app-environment
@@ -98,6 +107,8 @@ services:
       rustfs-init:
         condition: service_completed_successfully
       searxng:
+        condition: service_healthy
+      document-converter:
         condition: service_healthy
       sandbox-runner:
         condition: service_healthy
@@ -123,6 +134,34 @@ services:
       start_period: 20s
       retries: 5
     restart: unless-stopped
+
+  document-converter:
+    image: gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-routes=true
+      - --libreoffice-deny-list=.*
+      - --api-download-from-deny-list=.*
+      - --webhook-deny-list=.*
+      - --api-timeout=60s
+      - --api-body-limit=70MB
+      - --libreoffice-max-queue-size=4
+    networks:
+      - document-conversion
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: "1.0"
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   sandbox-runner:
     image: ${AI_HUB_SANDBOX_IMAGE:?set AI_HUB_SANDBOX_IMAGE}
@@ -424,5 +463,7 @@ volumes:
   sandbox-runner-socket:
 
 networks:
+  document-conversion:
+    internal: true
   sandbox-egress:
     internal: true

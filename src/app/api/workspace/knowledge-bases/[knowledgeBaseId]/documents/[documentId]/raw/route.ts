@@ -1,4 +1,6 @@
 import { originalDocumentDisposition } from "@/modules/knowledge/document-metadata";
+import { presentationPdf } from "@/modules/document-extraction/presentation-pdf";
+import { presentationExtension } from "@/modules/document-extraction/presentation-format";
 import {
   handleRoute,
   requireResourcePermissionAsync,
@@ -65,15 +67,45 @@ export async function GET(
     if (!document?.objectStorageKey) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    const bytes = await storage.download(document.objectStorageKey);
+    let bytes = await storage.download(document.objectStorageKey);
+    const preview =
+      req.nextUrl.searchParams.get("preview") === "pdf" &&
+      req.nextUrl.searchParams.get("download") !== "1";
+    if (preview) {
+      if (!presentationExtension(document.title, document.mimeType)) {
+        return NextResponse.json(
+          { error: "Unsupported preview format" },
+          { status: 400 },
+        );
+      }
+      try {
+        bytes = await presentationPdf({
+          fileName: document.title,
+          mimeType: document.mimeType,
+          bytes,
+        });
+      } catch {
+        return NextResponse.json(
+          {
+            error:
+              "Presentation preview unavailable. Please retry or download the original.",
+          },
+          { status: 503 },
+        );
+      }
+    }
     const safeFileName = document.title.replace(/["\r\n]/g, "_");
     const body = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(body).set(bytes);
     return new Response(body, {
       headers: {
-        "Content-Type": document.mimeType ?? "application/octet-stream",
+        "Content-Type": preview
+          ? "application/pdf"
+          : (document.mimeType ?? "application/octet-stream"),
         "Content-Length": String(bytes.byteLength),
-        "Content-Disposition": `${originalDocumentDisposition(document.mimeType, req.nextUrl.searchParams.get("download") === "1")}; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(document.title)}`,
+        "Content-Disposition": preview
+          ? 'inline; filename="presentation.pdf"'
+          : `${originalDocumentDisposition(document.mimeType, req.nextUrl.searchParams.get("download") === "1")}; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(document.title)}`,
         "Cache-Control": "no-store",
         "Content-Security-Policy": "default-src 'none'; sandbox",
         "X-Content-Type-Options": "nosniff",

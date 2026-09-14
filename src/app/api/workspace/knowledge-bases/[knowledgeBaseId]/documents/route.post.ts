@@ -129,6 +129,7 @@ export async function POST(
                 mimeType: file.mimeType,
                 originalBytes: file.originalBytes,
                 originalMimeType: file.originalMimeType,
+                extractionWarning: file.extractionWarning,
               }),
             );
           }
@@ -221,6 +222,7 @@ export async function POST(
               mimeType: file.mimeType,
               originalBytes: file.originalBytes,
               originalMimeType: file.originalMimeType,
+              extractionWarning: file.extractionWarning,
             }),
           );
         }

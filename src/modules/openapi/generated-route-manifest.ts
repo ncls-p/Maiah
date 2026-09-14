@@ -2007,9 +2007,9 @@ export const OPENAPI_ROUTE_MANIFEST = [
     auth: ["session", "apiKey"],
     permissions: ["knowledgeBases.viewAllowed"],
     pathParameters: ["knowledgeBaseId", "documentId"],
-    queryParameters: ["download", "workspaceId"],
+    queryParameters: ["download", "preview", "workspaceId"],
     bodyKind: "none",
-    responseKind: "json",
+    responseKind: "stream",
   },
   {
     path: "/api/workspace/knowledge-bases/{knowledgeBaseId}/reindex",

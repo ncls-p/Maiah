@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   extractWithAnydoc: vi.fn(),
+  presentationVisualCandidates: vi.fn(),
   getDefaultRagConfig: vi.fn(),
   inspectPdfVisualCandidates: vi.fn(),
   isSupportedOcrImage: vi.fn((mimeType: string) =>
@@ -9,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   ),
   runVisualOcr: vi.fn(),
   visualRegionsMarkdown: vi.fn(),
+}));
+
+vi.mock("@/modules/document-extraction/presentation-visual-candidates", () => ({
+  presentationVisualCandidates: mocks.presentationVisualCandidates,
 }));
 
 vi.mock("@/modules/document-extraction/anydoc-adapter", () => ({
@@ -169,4 +174,50 @@ describe("document extraction orchestration", () => {
       warnings: [expect.stringContaining("workspace model context")],
     });
   });
+});
+
+it("OCRs complete slides and exposes rendering limits", async () => {
+  mocks.extractWithAnydoc.mockResolvedValue({
+    format: "pptx",
+    markdown: "Notes and tables",
+    imageAssets: [],
+  });
+  const candidates = [
+    {
+      sourceKind: "page",
+      sourceRef: "slide:1",
+      mediaType: "image/png",
+      data: new Uint8Array([1]),
+    },
+  ];
+  mocks.presentationVisualCandidates.mockResolvedValue({
+    candidates,
+    limited: true,
+  });
+  const result = await extractDocument({
+    fileName: "deck.pptx",
+    workspaceId: "workspace",
+    bytes: new Uint8Array([1]),
+    config: ocrConfig,
+  });
+  expect(mocks.runVisualOcr).toHaveBeenCalledWith(
+    expect.objectContaining({ candidates }),
+  );
+  expect(result?.warnings.join(" ")).toContain("slide or image-size limit");
+});
+it("keeps native text and warns when full-slide rendering fails", async () => {
+  mocks.extractWithAnydoc.mockResolvedValue({
+    format: "pptx",
+    markdown: "Notes and tables",
+    imageAssets: [],
+  });
+  mocks.presentationVisualCandidates.mockRejectedValue(new Error("offline"));
+  const result = await extractDocument({
+    fileName: "deck.pptx",
+    workspaceId: "workspace",
+    bytes: new Uint8Array([1]),
+    config: ocrConfig,
+  });
+  expect(result?.markdown).toContain("Notes and tables");
+  expect(result?.warnings.join(" ")).toContain("Slide rendering unavailable");
 });

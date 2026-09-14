@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { presentationExtension } from "@/modules/document-extraction/presentation-format";
 
 export function OriginalDocumentPreview({
   open,
@@ -32,7 +33,9 @@ export function OriginalDocumentPreview({
   );
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [indexedText, setIndexedText] = useState(false);
   const isPdf = mimeType === "application/pdf";
+  const isPresentation = Boolean(presentationExtension(title, mimeType));
   const isImage = [
     "image/png",
     "image/jpeg",
@@ -42,7 +45,12 @@ export function OriginalDocumentPreview({
   ].includes(mimeType ?? "");
   const isText =
     mimeType?.startsWith("text/") || mimeType === "application/json";
-  const native = isPdf || isImage || isText;
+  const native = isPdf || isImage || isText || isPresentation || indexedText;
+  const previewUrl = indexedText
+    ? url.replace("/raw?", "?")
+    : isPresentation
+      ? `${url}&preview=pdf`
+      : url;
   useEffect(() => {
     if (!open || !native) return;
     const controller = new AbortController();
@@ -53,9 +61,20 @@ export function OriginalDocumentPreview({
         setError(false);
       }
     });
-    void fetch(url, { signal: controller.signal })
+    void fetch(previewUrl, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Original unavailable");
+        if (indexedText) {
+          const data = await response.json();
+          if (controller.signal.aborted) return;
+          setSource({
+            url: "",
+            text: data.document.chunks
+              .map((chunk: { content: string }) => chunk.content)
+              .join("\n\n"),
+          });
+          return;
+        }
         const blob = await response.blob();
         const text = isText ? await blob.text() : undefined;
         if (controller.signal.aborted) return;
@@ -69,7 +88,7 @@ export function OriginalDocumentPreview({
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [open, native, url, isText, attempt]);
+  }, [open, native, previewUrl, isText, indexedText, attempt]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden sm:max-w-5xl">
@@ -79,7 +98,29 @@ export function OriginalDocumentPreview({
             {t("originalPreviewDescription")}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            className="flex gap-1"
+            role="group"
+            aria-label={t("documentPreviewMode")}
+          >
+            <Button
+              size="sm"
+              variant={indexedText ? "ghost" : "secondary"}
+              aria-pressed={!indexedText}
+              onClick={() => setIndexedText(false)}
+            >
+              {t("documentOriginal")}
+            </Button>
+            <Button
+              size="sm"
+              variant={indexedText ? "secondary" : "ghost"}
+              aria-pressed={indexedText}
+              onClick={() => setIndexedText(true)}
+            >
+              {t("documentIndexedText")}
+            </Button>
+          </div>
           <Button asChild variant="outline">
             <a href={`${url}&download=1`}>
               <DownloadIcon data-icon="inline-start" />
@@ -108,13 +149,13 @@ export function OriginalDocumentPreview({
               <Spinner />
               {t("documentPreviewLoading")}
             </div>
-          ) : isPdf ? (
+          ) : !indexedText && (isPdf || isPresentation) ? (
             <iframe
               src={source.url}
               title={title}
               className="h-[68svh] w-full rounded-xl border"
             />
-          ) : isImage ? (
+          ) : !indexedText && isImage ? (
             <img
               src={source.url}
               alt={title}
