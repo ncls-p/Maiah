@@ -1,3 +1,6 @@
+vi.mock("@/modules/usage/billing-scope", () => ({
+  resolveUsageBillingWorkspace: vi.fn(async () => "billing-workspace"),
+}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -152,6 +155,7 @@ describe("generateWorkspaceImage", () => {
     expect(mocks.insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: "image_generation",
+        billingWorkspaceId: "billing-workspace",
         costUsd: "0.02",
         status: "success",
       }),

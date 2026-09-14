@@ -150,6 +150,7 @@ describe("agent run lifecycle", () => {
       outputTokens: 20,
       usage: {
         workspaceId: run.workspaceId,
+        billingWorkspaceId: "consumer-project",
         userId: "55555555-5555-4555-8555-555555555555",
         agentId: "33333333-3333-4333-8333-333333333333",
         operation: "api",
@@ -170,6 +171,7 @@ describe("agent run lifecycle", () => {
     expect(dbMock.chain.values).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: run.workspaceId,
+        billingWorkspaceId: "consumer-project",
         operation: "api",
         inputTokens: 10,
         outputTokens: 20,

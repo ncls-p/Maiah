@@ -1,3 +1,4 @@
+import { audit } from "@/server/domain/services/audit";
 import { and, eq } from "drizzle-orm";
 
 import type {
@@ -75,6 +76,7 @@ export async function updateOrganizationBranding(input: {
   workspaceId?: string;
   organizationId?: string;
   userId: string;
+  organizationName?: string;
   logoUrl: string | null;
   theme: OrganizationTheme;
   themeConfig: OrganizationThemeConfig | null;
@@ -86,6 +88,7 @@ export async function updateOrganizationBranding(input: {
   const [organization] = await db
     .update(organizations)
     .set({
+      ...(input.organizationName ? { name: input.organizationName } : {}),
       logoUrl: input.logoUrl,
       theme: input.theme,
       themeConfigJson: input.themeConfig,
@@ -94,5 +97,21 @@ export async function updateOrganizationBranding(input: {
     })
     .where(eq(organizations.id, current.organizationId))
     .returning();
+  await audit.emit({
+    organizationId: current.organizationId,
+    actorPrincipalType: "user",
+    actorPrincipalId: input.userId,
+    action: "organization.branding.update",
+    resourceType: "organization",
+    resourceId: current.organizationId,
+    outcome: "success",
+    metadata: {
+      nameChanged: Boolean(
+        input.organizationName &&
+        input.organizationName !== current.organizationName,
+      ),
+      theme: input.theme,
+    },
+  });
   return { status: "updated" as const, organization };
 }

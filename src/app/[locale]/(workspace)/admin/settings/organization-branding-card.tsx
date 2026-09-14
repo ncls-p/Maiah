@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { applyOrganizationTheme } from "@/components/organization-theme";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSettingsOrganizationId } from "@/components/admin/organization-settings-context";
@@ -52,7 +54,7 @@ async function readLogo(file: File) {
   });
 }
 
-function OrganizationBrandingContent() {
+function OrganizationBrandingContent({ onSaved }: { onSaved?: () => void }) {
   const t = useTranslations("settings.branding");
   const { workspaceId, workspaces, refresh } = useWorkspace();
   const organizationId = useSettingsOrganizationId();
@@ -61,6 +63,7 @@ function OrganizationBrandingContent() {
     : `workspaceId=${workspaceId}`;
   const inputRef = useRef<HTMLInputElement>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
+  const [organizationName, setOrganizationName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [theme, setTheme] = useState<OrganizationTheme>("ocean");
   const [themeConfig, setThemeConfig] =
@@ -84,6 +87,7 @@ function OrganizationBrandingContent() {
       })
       .then((data) => {
         setBranding(data);
+        setOrganizationName(data.organizationName);
         setLogoUrl(data.logoUrl);
         setTheme(data.theme);
         setThemeConfig(data.themeConfig);
@@ -124,6 +128,7 @@ function OrganizationBrandingContent() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...(organizationId ? { organizationId } : { workspaceId }),
+          organizationName: organizationName.trim(),
           logoUrl,
           theme,
           themeConfig,
@@ -138,7 +143,15 @@ function OrganizationBrandingContent() {
       )
         applyOrganizationTheme(theme, themeConfig);
       await refresh();
-      setBranding({ ...branding, logoUrl, theme, themeConfig, heroConfig });
+      setBranding({
+        ...branding,
+        organizationName: organizationName.trim(),
+        logoUrl,
+        theme,
+        themeConfig,
+        heroConfig,
+      });
+      onSaved?.();
       toast.success(t("saved"));
     } catch {
       toast.error(t("saveFailed"));
@@ -168,6 +181,7 @@ function OrganizationBrandingContent() {
   if (!branding) return <Skeleton className="h-80 rounded-2xl" />;
   const savedHero = branding.heroConfig ?? DEFAULT_ORGANIZATION_HERO;
   const dirty =
+    organizationName.trim() !== branding.organizationName ||
     logoUrl !== branding.logoUrl ||
     theme !== branding.theme ||
     JSON.stringify(themeConfig) !== JSON.stringify(branding.themeConfig) ||
@@ -183,6 +197,18 @@ function OrganizationBrandingContent() {
           {t("description", { organization: branding.organizationName })}
         </p>
       </div>
+      <Field className="px-5 pt-5 sm:px-6">
+        <FieldLabel htmlFor="branding-organization-name">
+          {t("organizationName")}
+        </FieldLabel>
+        <Input
+          id="branding-organization-name"
+          value={organizationName}
+          onChange={(event) => setOrganizationName(event.target.value)}
+          maxLength={255}
+          disabled={!branding.canManage}
+        />
+      </Field>
       <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[14rem_1fr]">
         <div>
           <Label>{t("logo")}</Label>
@@ -261,6 +287,7 @@ function OrganizationBrandingContent() {
               variant="outline"
               disabled={!dirty || saving}
               onClick={() => {
+                setOrganizationName(branding.organizationName);
                 setLogoUrl(branding.logoUrl);
                 setTheme(branding.theme);
                 setThemeConfig(branding.themeConfig);
@@ -270,7 +297,10 @@ function OrganizationBrandingContent() {
               <RotateCcwIcon className="size-4" aria-hidden="true" />
               {t("reset")}
             </Button>
-            <Button disabled={!dirty || saving} onClick={() => void save()}>
+            <Button
+              disabled={!dirty || saving || organizationName.trim().length < 2}
+              onClick={() => void save()}
+            >
               {saving ? t("saving") : t("save")}
             </Button>
           </div>
@@ -280,7 +310,11 @@ function OrganizationBrandingContent() {
   );
 }
 
-export function OrganizationBrandingCard() {
+export function OrganizationBrandingCard({
+  onSaved,
+}: {
+  onSaved?: () => void;
+}) {
   const { workspaceId, isLoading } = useWorkspace();
   const organizationId = useSettingsOrganizationId();
   const t = useTranslations("settings.branding");
@@ -290,5 +324,10 @@ export function OrganizationBrandingCard() {
     return (
       <p className="text-sm text-muted-foreground">{t("noOrganization")}</p>
     );
-  return <OrganizationBrandingContent key={organizationId ?? workspaceId} />;
+  return (
+    <OrganizationBrandingContent
+      key={organizationId ?? workspaceId}
+      onSaved={onSaved}
+    />
+  );
 }

@@ -482,6 +482,7 @@ export async function executeResolvedAgent(
         input.depth === 0 ? input.budget.tokensUsed : undefined,
       usage: {
         workspaceId: input.workspaceId,
+        billingWorkspaceId: input.billingWorkspaceId ?? input.workspaceId,
         userId: input.userId,
         providerId: provider.providerId,
         modelId: provider.modelRecordId,
@@ -532,6 +533,7 @@ export async function executeResolvedAgent(
         input.depth === 0 ? input.budget.tokensUsed : undefined,
       usage: {
         workspaceId: input.workspaceId,
+        billingWorkspaceId: input.billingWorkspaceId ?? input.workspaceId,
         userId: input.userId,
         providerId: usageProvider?.providerId,
         modelId: usageProvider?.modelRecordId,

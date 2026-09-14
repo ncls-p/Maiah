@@ -45,6 +45,7 @@ const updateSchema = z
   .strictObject({
     workspaceId: z.uuid().optional(),
     organizationId: z.uuid().optional(),
+    organizationName: z.string().trim().min(2).max(255).optional(),
     theme: z.enum(ORGANIZATION_THEMES),
     themeConfig: themeConfigSchema.nullable().optional().default(null),
     heroConfig: heroConfigSchema.nullable().optional().default(null),
@@ -112,6 +113,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       return NextResponse.json({
+        organizationName: result.organization.name,
         logoUrl: result.organization.logoUrl,
         theme: result.organization.theme,
         themeConfig: result.organization.themeConfigJson,

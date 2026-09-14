@@ -1,3 +1,4 @@
+import { priceAgentRunUsage } from "./run-usage-pricing";
 import { encryptValue } from "@/lib/crypto";
 import {
   projectToolMessagePayload,
@@ -125,8 +126,17 @@ export async function completeAgentRun(input: {
       );
 
     if (input.usage) {
+      const pricing = await priceAgentRunUsage(tx, {
+        modelId: input.usage.modelId,
+        providerId: input.usage.providerId,
+        inputTokens,
+        outputTokens,
+      });
       await tx.insert(usageEvents).values({
+        ...pricing,
         workspaceId: input.usage.workspaceId,
+        billingWorkspaceId:
+          input.usage.billingWorkspaceId ?? input.usage.workspaceId,
         userId: input.usage.userId,
         providerId: input.usage.providerId ?? null,
         modelId: input.usage.modelId ?? null,

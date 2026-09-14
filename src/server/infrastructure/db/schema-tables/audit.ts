@@ -33,6 +33,16 @@ export const auditEvents = pgTable(
       .defaultNow(),
   },
   (t) => [
+    index("audit_events_organization_created_idx").on(
+      t.organizationId,
+      t.createdAt,
+    ),
+    index("audit_events_created_id_idx").on(t.createdAt, t.id),
+    index("audit_events_workspace_created_id_idx").on(
+      t.workspaceId,
+      t.createdAt,
+      t.id,
+    ),
     index("audit_events_actor").on(t.actorPrincipalType, t.actorPrincipalId),
     index("audit_events_resource").on(t.resourceType, t.resourceId),
     index("audit_events_workspace").on(t.workspaceId),

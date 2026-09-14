@@ -21,6 +21,7 @@ export const usageEvents = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     workspaceId: uuid(WORKSPACE_ID_COLUMN),
+    billingWorkspaceId: uuid("billing_workspace_id"),
     userId: uuid(USER_ID_COLUMN),
     providerId: uuid("provider_id"),
     modelId: uuid("model_id"),
@@ -38,6 +39,16 @@ export const usageEvents = pgTable(
       .defaultNow(),
   },
   (t) => [
+    index("usage_events_billing_created_idx").on(
+      t.billingWorkspaceId,
+      t.createdAt,
+    ),
+    index("usage_events_created_id_idx").on(t.createdAt, t.id),
+    index("usage_events_workspace_created_id_idx").on(
+      t.workspaceId,
+      t.createdAt,
+      t.id,
+    ),
     index("usage_events_workspace").on(t.workspaceId),
     index("usage_events_user").on(t.userId),
   ],

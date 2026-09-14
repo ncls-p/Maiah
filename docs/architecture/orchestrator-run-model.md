@@ -88,6 +88,11 @@ active reservation, so concurrent runs cannot individually pass a stale quota
 check. Child runs consume the root reservation instead of reserving the same
 budget again.
 
+Model prices and currency are captured in each run’s terminal usage event using
+that run’s own tokens, including known partial usage on failure. The root tree
+reservation is never priced again as local model consumption. Historical unpriced
+events remain unpriced rather than being repriced with current rates.
+
 Terminal status, token reservation settlement and the corresponding usage event
 are written in one database transaction. A successful run therefore cannot be
 reported as failed only because telemetry was written afterward, and quota

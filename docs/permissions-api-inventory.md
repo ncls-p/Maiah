@@ -2,7 +2,7 @@
 
 Inventaire exhaustif des fichiers de routes. Cette table distingue les permissions nommées présentes dans la route et ses fichiers de gestionnaires voisins, des contrôles délégués à leurs modules. Elle ne remplace pas les conditions de propriété et de visibilité décrites dans le modèle d’accès.
 
-**135 routes.** Une route peut exposer plusieurs méthodes ; leur manifeste exact est vérifié par `npm run openapi:check`.
+**139 routes.** Une route peut exposer plusieurs méthodes ; leur manifeste exact est vérifié par `npm run openapi:check`.
 
 | Route | Permissions nommées | Contrôles / adaptateurs | Sources à examiner |
 | --- | --- | --- | --- |
@@ -17,6 +17,9 @@ Inventaire exhaustif des fichiers de routes. Cette table distingue les permissio
 | /api/admin/users/[userId] | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute, requireAdminApiSession | [Source](../src/app/api/admin/users/[userId]/route.ts)<br>@/lib/route-handler<br>@/modules/admin/auth<br>@/modules/admin/use-cases<br>@/modules/workspace/use-cases |
 | /api/admin/users | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute, requireAdminApiSession | [Source](../src/app/api/admin/users/route.ts)<br>@/lib/route-handler<br>@/modules/admin/auth<br>@/modules/admin/use-cases<br>@/modules/workspace/use-cases |
 | /api/admin/workflow-builder | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute, requireAdminApiSession | [Source](../src/app/api/admin/workflow-builder/route.ts)<br>@/lib/route-handler<br>@/modules/admin/auth<br>@/modules/workflows/builder-settings |
+| /api/analytics/audit | Contrôle délégué / session / propriété / accès public selon le gestionnaire | Voir gestionnaire et modules | [Source](../src/app/api/analytics/audit/route.ts)<br>@/modules/analytics/route |
+| /api/analytics/scopes | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/app/api/analytics/scopes/route.ts)<br>@/lib/route-handler<br>@/modules/analytics/scope |
+| /api/analytics/usage | Contrôle délégué / session / propriété / accès public selon le gestionnaire | Voir gestionnaire et modules | [Source](../src/app/api/analytics/usage/route.ts)<br>@/modules/analytics/route |
 | /api/anthropic/v1/messages | models.invoke | Voir gestionnaire et modules | [Source](../src/app/api/anthropic/v1/messages/route.ts)<br>@/modules/anthropic-proxy/auth<br>@/modules/anthropic-proxy/contracts<br>@/modules/anthropic-proxy/service<br>@/modules/openai-proxy/errors |
 | /api/anthropic/v1/models/[...model] | models.view | Voir gestionnaire et modules | [Source](../src/app/api/anthropic/v1/models/[...model]/route.ts)<br>@/modules/anthropic-proxy/auth<br>@/modules/anthropic-proxy/model-catalog |
 | /api/anthropic/v1/models | models.view | Voir gestionnaire et modules | [Source](../src/app/api/anthropic/v1/models/route.ts)<br>@/modules/anthropic-proxy/auth<br>@/modules/anthropic-proxy/model-catalog |
@@ -141,3 +144,4 @@ Inventaire exhaustif des fichiers de routes. Cette table distingue les permissio
 | /api/workspace/workflows/[workflowId]/runs | workflows.view, workflows.execute | handleRoute, requireResourcePermissionAsync | [Source](../src/app/api/workspace/workflows/[workflowId]/runs/route.ts)<br>@/lib/route-handler<br>@/modules/workflows/contracts<br>@/modules/workflows/use-cases |
 | /api/workspace/workflows | workflows.view, workflows.create | handleRoute, requireRequestPermissionScopeAsync, requireWorkspaceMemberAsync, requireWorkspacePermissionAsync, hasResourcePermissionForRequest | [Source](../src/app/api/workspace/workflows/route.ts)<br>@/lib/route-handler<br>@/modules/auth/workspace-access<br>@/modules/workflows/contracts<br>@/modules/workflows/use-cases |
 | /api/workspaces | workspaces.get | handleRoute, requireWorkspaceMemberAsync, requireWorkspacePermissionAsync | [Source](../src/app/api/workspaces/route.ts)<br>@/lib/route-handler<br>@/modules/workspace/use-cases |
+| src/modules/analytics | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/modules/analytics/route.ts)<br>@/lib/route-handler |
