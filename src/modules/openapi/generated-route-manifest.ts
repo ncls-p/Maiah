@@ -2805,7 +2805,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     summary: "Create or execute workspace · workflows · {workflowId} · agentic",
     tag: "workflows",
     auth: ["session", "apiKey"],
-    permissions: ["workflows.update"],
+    permissions: ["workflows.execute", "workflows.update"],
     pathParameters: ["workflowId"],
     queryParameters: [],
     bodyKind: "json",

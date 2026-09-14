@@ -1,12 +1,9 @@
 "use client";
 
-import { Link } from "@/i18n/navigation";
-import { CalendarClockIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ChatAgent } from "@/components/chat/chat-types";
-import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
 import { ScheduledTaskManager } from "@/components/scheduled-tasks/scheduled-task-manager";
 import { Button } from "@/components/ui/button";
@@ -81,16 +78,6 @@ export default function ScheduledTasksPage() {
             {t("retry")}
           </Button>
         </div>
-      ) : agents.length === 0 ? (
-        <PageEmptyState
-          icon={CalendarClockIcon}
-          title={t("noAssistants.title")}
-          description={t("noAssistants.description")}
-        >
-          <Button asChild>
-            <Link href="/agents">{t("noAssistants.cta")}</Link>
-          </Button>
-        </PageEmptyState>
       ) : (
         <ScheduledTaskManager workspaceId={workspaceId} agents={agents} />
       )}

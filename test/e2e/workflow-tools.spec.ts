@@ -22,7 +22,7 @@ test("tool contracts open in full screen with highlighted JSON on desktop and mo
  await expand.click();full=page.getByRole("dialog").last();
  await expect.poll(async()=>Math.round((await full.boundingBox())!.width)).toBe(390);
  await page.screenshot({path:"output/playwright/workflow-tool-json-mobile.png"});
- await page.keyboard.press("Escape");await page.keyboard.press("Escape");
+ await page.keyboard.press("Escape");await expect(expand).toBeFocused();await page.keyboard.press("Escape");
  await expect(inspect).toBeFocused();
 });
 
@@ -44,7 +44,7 @@ test("direct tools use typed variables, execute by API and can be scheduled with
  ],edges:[{id:"next",source:"trigger",target:"calculate"}]};
  const saved=await page.request.patch(`/api/workspace/workflows/${workflow.id}`,{data:{workspaceId,definition}});expect(saved.ok()).toBeTruthy();
  await page.goto(`/en/workflows/${workflow.id}`);
- await page.getByText("Calculate",{exact:true}).click();
+ await page.getByTestId("rf__node-calculate").getByText("Calculate",{exact:true}).click();
  await expect(page.getByRole("button",{name:"Variable",exact:true})).toHaveAttribute("aria-pressed","true");
  await expect(page.getByText('Example from starting data: "6 * 7"',{exact:true})).toBeVisible();
  await page.screenshot({path:"output/playwright/workflow-direct-tool-desktop.png"});
@@ -57,6 +57,21 @@ test("direct tools use typed variables, execute by API and can be scheduled with
  },{timeout:30000}).toBe("completed");
  const detail=await (await page.request.get(`/api/workspace/workflow-runs/${run.id}?workspaceId=${workspaceId}`)).json();
  expect(JSON.stringify(detail.run.outputJson)).toContain("42");
+ const parentCreated=await page.request.post("/api/workspace/workflows",{data:{workspaceId,name:`Parent E2E ${Date.now()}`}});
+ expect(parentCreated.status()).toBe(201);
+ const parent=(await parentCreated.json()).workflow;
+ const parentDefinition={...definition,nodes:[definition.nodes[0],{id:"child",type:"workflow.run",label:"Child calculation",position:{x:390,y:100},parameters:{workflowId:workflow.id,input:"{{input}}",outputPath:"childResult"},settings}],edges:[{id:"child-edge",source:"trigger",target:"child"}]};
+ expect((await page.request.patch(`/api/workspace/workflows/${parent.id}`,{data:{workspaceId,definition:parentDefinition}})).ok()).toBeTruthy();
+ await page.goto(`/en/workflows/${parent.id}`);
+ await page.getByText("Child calculation",{exact:true}).click();
+ await expect(page.getByRole("combobox",{name:"Child workflow",exact:true})).toContainText(workflow.name);
+ expect((await page.request.post(`/api/workspace/workflows/${parent.id}/publish`,{data:{workspaceId}})).ok()).toBeTruthy();
+ const parentRunResponse=await page.request.post(`/api/workspace/workflows/${parent.id}/runs`,{data:{workspaceId,input:{expression:"7*8"},idempotencyKey:`parent-${parent.id}`}});
+ expect(parentRunResponse.status()).toBe(202);const parentRun=(await parentRunResponse.json()).run;
+ await expect.poll(async()=> (await (await page.request.get(`/api/workspace/workflow-runs/${parentRun.id}?workspaceId=${workspaceId}`)).json()).run.status,{timeout:30000}).toBe("completed");
+ const parentDetail=(await (await page.request.get(`/api/workspace/workflow-runs/${parentRun.id}?workspaceId=${workspaceId}`)).json()).run;
+ expect(JSON.stringify(parentDetail.outputJson)).toContain("56");
+ expect(parentDetail.childRunsStarted).toBe(1);
  await page.goto("/en/scheduled-tasks");
  await page.getByRole("button",{name:/Create automation|Create task|Create scheduled task/i}).first().click();
  await page.getByRole("combobox",{name:"Run",exact:true}).click();

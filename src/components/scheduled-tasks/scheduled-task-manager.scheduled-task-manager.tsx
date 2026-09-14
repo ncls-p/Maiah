@@ -37,7 +37,7 @@ export function useScheduledTaskManagerController({
   const [timeOfDay, setTimeOfDay] = useState("08:00");
   const [intervalMinutes, setIntervalMinutes] = useState("1440");
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
-  const [target, setTarget] = useState<"assistant" | "workflow">("assistant");
+  const [target, setTarget] = useState<"assistant" | "workflow">(agents.length ? "assistant" : "workflow");
   const [workflowId, setWorkflowId] = useState("");
   const [workflowInput, setWorkflowInput] = useState<unknown>({});
   const [workflows, setWorkflows] = useState<
@@ -122,7 +122,7 @@ export function useScheduledTaskManagerController({
 
   function openCreateEditor() {
     setEditingTask(null);
-    setTarget("assistant");
+    setTarget(agents.length ? "assistant" : "workflow");
     setWorkflowId("");
     setWorkflowInput({});
     setTitle(t("defaults.title"));
