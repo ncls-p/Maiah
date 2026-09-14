@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkflowCallFields } from "./workflow-call-fields";
 import { WorkflowToolFields } from "./workflow-tool-fields";
 import {
   WorkflowValueField,
@@ -226,6 +227,14 @@ export function WorkflowNodeFields({
 
   return (
     <div className="flex flex-col gap-5">
+      {catalogItem.type === "workflow.run" ? (
+        <WorkflowCallFields
+          key={nodeId}
+          nodeId={nodeId}
+          parameters={parameters}
+          onChange={onChange}
+        />
+      ) : null}
       {catalogItem.type === "tool.call" ? (
         <WorkflowToolFields
           key={nodeId}

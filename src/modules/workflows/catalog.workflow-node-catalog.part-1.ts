@@ -4,6 +4,19 @@ import {
 } from "./catalog.workflow-node-field-option";
 export const WORKFLOW_NODE_CATALOGPart1 = [
   {
+    type: "workflow.run",
+    label: "Exécuter un workflow",
+    description:
+      "Transmet les données à un workflow publié, attend son résultat et poursuit la chaîne.",
+    category: "integration",
+    defaultParameters: {
+      workflowId: "",
+      input: "{{input}}",
+      outputPath: "workflowResult",
+    },
+    fields: [outputPathField],
+  },
+  {
     type: "tool.call",
     label: "Appeler un outil",
     description:

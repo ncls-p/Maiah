@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
 import {
@@ -18,7 +18,10 @@ import {
   WorkflowNotFoundError,
 } from "./use-cases.workflow-not-found-error";
 
-export async function processWorkflowRun(runId: string) {
+export async function processWorkflowRun(
+  runId: string,
+  options: { signal?: AbortSignal } = {},
+) {
   const [record] = await db
     .select({ run: workflowRuns, version: workflowVersions })
     .from(workflowRuns)
@@ -36,7 +39,12 @@ export async function processWorkflowRun(runId: string) {
       version: record.version.version,
       definition: record.version.definitionJson,
     });
-    if (definition.nodes.some((node) => node.type === "tool.call")) {
+    if (
+      record.run.parentRunId ||
+      definition.nodes.some(
+        (node) => node.type === "tool.call" || node.type === "workflow.run",
+      )
+    ) {
       // A queue redelivery must not replay an external action with an unknown outcome.
       if (record.run.status !== "queued") return record.run;
       const [claimed] = await db
@@ -74,7 +82,7 @@ export async function processWorkflowRun(runId: string) {
     const result = await runtime.run(
       blueprint,
       { input: record.run.inputJson ?? null },
-      { strict: true, concurrency: 4 },
+      { strict: true, concurrency: 4, signal: options.signal },
     );
     const completed = result.status === "completed";
     const failure =
@@ -120,7 +128,9 @@ export async function listQueuedWorkflowRunIds() {
   const rows = await db
     .select({ id: workflowRuns.id })
     .from(workflowRuns)
-    .where(eq(workflowRuns.status, "queued"))
+    .where(
+      and(eq(workflowRuns.status, "queued"), isNull(workflowRuns.parentRunId)),
+    )
     .limit(500);
   return rows.map(({ id }) => id);
 }

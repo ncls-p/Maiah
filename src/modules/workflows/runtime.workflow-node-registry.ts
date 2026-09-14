@@ -1,3 +1,7 @@
+import {
+  runNestedWorkflow,
+  nestedWorkflowParametersSchema,
+} from "./runtime.nested-workflow";
 import { runTool } from "./runtime.tool-call";
 import { workflowToolParametersSchema } from "./tool-contracts";
 import { isWorkflowSecretReference } from "./agentic-history";
@@ -54,6 +58,7 @@ export const WORKFLOW_NODE_REGISTRY = {
   "code.execute": executeCode,
   "agent.run": runAgent,
   "tool.call": runTool,
+  "workflow.run": runNestedWorkflow,
 } as const;
 
 export function hasCycle(definition: WorkflowDefinition) {
@@ -79,6 +84,13 @@ export function hasCycle(definition: WorkflowDefinition) {
 
 export function assertNodeParameters(node: WorkflowNode) {
   const params = node.parameters;
+  if (node.type === "workflow.run") {
+    nestedWorkflowParametersSchema.parse(params);
+    if (node.settings.maxRetries !== 0)
+      throw new Error(
+        "Nested workflow retries are disabled; inspect the child run before starting another execution.",
+      );
+  }
   if (node.type === "tool.call") {
     workflowToolParametersSchema.parse(params);
     if (node.settings.maxRetries !== 0)

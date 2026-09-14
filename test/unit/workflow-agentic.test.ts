@@ -132,6 +132,6 @@ describe("workflow agentic mode", () => {
     expect(catalog.some((item) => item.type === "agent.run")).toBe(true);
     expect(catalog.some((item) => item.type === "code.execute")).toBe(true);
     expect(catalog.some((item) => item.type === "debug.snapshot")).toBe(true);
-    expect(catalog).toHaveLength(22);
+    expect(catalog).toHaveLength(23);
   });
 });

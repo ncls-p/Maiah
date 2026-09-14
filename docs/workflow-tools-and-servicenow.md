@@ -59,3 +59,7 @@ Les packages `full`, `service_desk` et `catalog_builder` incluent les nouveaux o
 ## Inspection
 
 La page des outils affiche leur description complète, leurs schémas déclarés et la règle d’approbation. Les entrées et sorties d’appels, dans les conversations et dans les étapes de workflow, s’ouvrent en plein écran avec coloration JSON et copie. La fenêtre conserve les protections d’affichage existantes ; elle ne donne pas accès aux secrets de connexion.
+
+## Chaining workflows
+
+Use **Run a workflow** (`workflow.run`) to select a published workflow, pass fixed JSON or typed variables, and wait for its completion. The output field (default `workflowResult`) contains `workflowId`, `runId`, and `output`, indexed by child step ID. Subsequent nodes can reference this result. Execution keeps the initiating user's identity and checks the child's execution permission. Child runs retain `parentRunId` for tracing, propagate failure and cancellation, and run inline to avoid queue starvation. Circular calls are rejected; a chain allows at most five workflow levels and twenty child runs. Automatic retries are disabled to avoid repeating writes with uncertain outcomes.

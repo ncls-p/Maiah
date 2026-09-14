@@ -24,6 +24,7 @@ import {
   TimerIcon,
   WebhookIcon,
   WrenchIcon,
+  WorkflowIcon,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -40,6 +41,7 @@ export const workflowNodeIconByType: Record<WorkflowNodeType, LucideIcon> = {
   "trigger.manual": PlayIcon,
   "agent.run": BotIcon,
   "tool.call": WrenchIcon,
+  "workflow.run": WorkflowIcon,
   "http.request": WebhookIcon,
   "code.execute": Code2Icon,
   "data.set": ListPlusIcon,

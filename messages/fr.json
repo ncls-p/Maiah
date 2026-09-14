@@ -4096,7 +4096,8 @@
       "date": {
         "now": "Date actuelle"
       },
-      "tool.call": "Appeler un outil"
+      "tool.call": "Appeler un outil",
+      "workflow.run": "Exécuter un workflow"
     },
     "nodeDescriptions": {
       "trigger": {
@@ -4142,7 +4143,8 @@
       "date": {
         "now": "Ajoute la date ou l’horodatage courant."
       },
-      "tool.call": "Outil Maiah ou MCP, avec des champs et des variables, sans assistant."
+      "tool.call": "Outil Maiah ou MCP, avec des champs et des variables, sans assistant.",
+      "workflow.run": "Appeler un autre workflow publié et réutiliser son résultat."
     },
     "assistantToolsHint": "L’assistant utilise ses instructions, outils, compétences et bases de connaissances configurés. Les connexions sont celles de l’utilisateur qui lance le workflow.",
     "variables": {
@@ -4170,6 +4172,17 @@
       "connection": "Connexion",
       "defaultConnection": "Connexion par défaut de l’utilisateur",
       "connectionUnavailable": "La connexion enregistrée est indisponible. Choisissez-en une autre."
+    },
+    "chaining": {
+      "loading": "Chargement des workflows…",
+      "failed": "Impossible de charger les workflows.",
+      "retry": "Réessayer",
+      "workflow": "Workflow à exécuter",
+      "select": "Sélectionner un workflow publié",
+      "hint": "Exécute avec les droits de l’utilisateur et attend la fin du workflow enfant. Les appels circulaires sont refusés.",
+      "unavailable": "Publiez un workflow accessible avant de le sélectionner.",
+      "input": "Données à transmettre",
+      "result": "Le champ résultat contient le runId enfant et sa sortie output (par identifiant d’étape). Un échec enfant fait aussi échouer cette étape."
     }
   },
   "scheduledTasks": {

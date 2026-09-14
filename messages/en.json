@@ -4096,7 +4096,8 @@
       "date": {
         "now": "Current date"
       },
-      "tool.call": "Call a tool"
+      "tool.call": "Call a tool",
+      "workflow.run": "Run a workflow"
     },
     "nodeDescriptions": {
       "trigger": {
@@ -4142,7 +4143,8 @@
       "date": {
         "now": "Adds the current date or timestamp."
       },
-      "tool.call": "Maiah or MCP tool with fields and variables, without an assistant."
+      "tool.call": "Maiah or MCP tool with fields and variables, without an assistant.",
+      "workflow.run": "Call another published workflow and reuse its result."
     },
     "assistantToolsHint": "The assistant uses its saved instructions, tools, skills and knowledge bases. Connections belong to the user starting the workflow.",
     "variables": {
@@ -4170,6 +4172,17 @@
       "connection": "Connexion",
       "defaultConnection": "User’s default connection",
       "connectionUnavailable": "The saved connection is unavailable. Choose another one."
+    },
+    "chaining": {
+      "loading": "Loading workflows…",
+      "failed": "Could not load workflows.",
+      "retry": "Retry",
+      "workflow": "Child workflow",
+      "select": "Select a published workflow",
+      "hint": "Runs as the initiating user and waits for the child to finish. Circular calls are rejected.",
+      "unavailable": "Publish an accessible workflow before selecting it.",
+      "input": "Data to send",
+      "result": "The result field contains the child runId and output (indexed by step ID). A child failure also fails this step."
     }
   },
   "scheduledTasks": {

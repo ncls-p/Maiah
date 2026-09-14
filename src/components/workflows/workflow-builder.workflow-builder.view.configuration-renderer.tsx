@@ -111,7 +111,9 @@ export function useWorkflowConfigurationRenderer(
                 </FieldLabel>
                 <Input
                   id={`workflow-retries-${suffix}`}
-                  disabled={selectedNode.data.workflowType === "tool.call"}
+                  disabled={["tool.call", "workflow.run"].includes(
+                    selectedNode.data.workflowType,
+                  )}
                   type="number"
                   min={0}
                   max={5}
@@ -132,7 +134,9 @@ export function useWorkflowConfigurationRenderer(
                 </FieldLabel>
                 <Input
                   id={`workflow-retry-delay-${suffix}`}
-                  disabled={selectedNode.data.workflowType === "tool.call"}
+                  disabled={["tool.call", "workflow.run"].includes(
+                    selectedNode.data.workflowType,
+                  )}
                   type="number"
                   min={0}
                   max={60000}

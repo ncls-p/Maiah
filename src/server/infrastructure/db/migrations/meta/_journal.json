@@ -484,6 +484,13 @@
       "when": 1789372800004,
       "tag": "0068_scheduled_workflows",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1789372800005,
+      "tag": "0069_chained_workflows",
+      "breakpoints": true
     }
   ]
 }
