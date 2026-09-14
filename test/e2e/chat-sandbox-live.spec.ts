@@ -89,7 +89,9 @@ test("shows sandbox code incrementally before showToUser arrives and reopens exe
       inputTextDelta: '{"language":"python","code":"print(41)',
     },
   ]);
-  const liveCode = page.locator("pre").filter({ hasText: "print(41)" });
+  const liveCode = page
+    .locator("pre")
+    .filter({ hasText: /^print\(41\)(?:\nprint\(42\))?$/ });
   await expect(liveCode).toBeVisible();
   await expect(
     page.getByText("Writing python code…", { exact: true }),

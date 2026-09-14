@@ -203,11 +203,11 @@ test("keeps every specialist tool collapsed while showing explicitly published v
     });
     await source.click();
     await expect(
-      page.locator("pre").filter({ hasText: "make_chart()" }),
+      page.locator("pre").filter({ hasText: /^make_chart\(\)$/ }),
     ).toBeVisible();
     await source.click();
     await expect(
-      page.locator("pre").filter({ hasText: "make_chart()" }),
+      page.locator("pre").filter({ hasText: /^make_chart\(\)$/ }),
     ).not.toBeVisible();
     await expect(page.getByText("web search", { exact: true })).toBeVisible();
     await activate(
