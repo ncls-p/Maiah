@@ -63,9 +63,23 @@ test("PowerPoint preview, indexed text, download and original re-extraction", as
       "vérifier la validation qualité",
     );
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    const indexedUrl = rawUrl!.replace("/raw?", "?").replace("&download=1", "");
+    const reindexResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PATCH" &&
+        response.url().endsWith(indexedUrl),
+    );
     await page
       .getByRole("button", { name: `Reindex ${title}`, exact: true })
       .click();
+    expect((await reindexResponse).ok()).toBeTruthy();
+    // The old 100% progress can remain visible until the next UI poll.
+    // The read endpoint only exposes chunks once the worker has finished.
+    await expect
+      .poll(async () => (await page.request.get(indexedUrl)).status(), {
+        timeout: 60_000,
+      })
+      .toBe(200);
     await expect(
       page.getByRole("progressbar", {
         name: `Processing progress for ${title}`,
