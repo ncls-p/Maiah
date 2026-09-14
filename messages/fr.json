@@ -4096,8 +4096,12 @@
       "date": {
         "now": "Date actuelle"
       },
-      "tool.call": "Appeler un outil",
-      "workflow.run": "Exécuter un workflow"
+      "tool": {
+        "call": "Appeler un outil"
+      },
+      "workflow": {
+        "run": "Exécuter un workflow"
+      }
     },
     "nodeDescriptions": {
       "trigger": {
@@ -4143,8 +4147,12 @@
       "date": {
         "now": "Ajoute la date ou l’horodatage courant."
       },
-      "tool.call": "Outil Maiah ou MCP, avec des champs et des variables, sans assistant.",
-      "workflow.run": "Appeler un autre workflow publié et réutiliser son résultat."
+      "tool": {
+        "call": "Outil Maiah ou MCP, avec des champs et des variables, sans assistant."
+      },
+      "workflow": {
+        "run": "Appeler un autre workflow publié et réutiliser son résultat."
+      }
     },
     "assistantToolsHint": "L’assistant utilise ses instructions, outils, compétences et bases de connaissances configurés. Les connexions sont celles de l’utilisateur qui lance le workflow.",
     "variables": {

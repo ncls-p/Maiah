@@ -4096,8 +4096,12 @@
       "date": {
         "now": "Current date"
       },
-      "tool.call": "Call a tool",
-      "workflow.run": "Run a workflow"
+      "tool": {
+        "call": "Call a tool"
+      },
+      "workflow": {
+        "run": "Run a workflow"
+      }
     },
     "nodeDescriptions": {
       "trigger": {
@@ -4143,8 +4147,12 @@
       "date": {
         "now": "Adds the current date or timestamp."
       },
-      "tool.call": "Maiah or MCP tool with fields and variables, without an assistant.",
-      "workflow.run": "Call another published workflow and reuse its result."
+      "tool": {
+        "call": "Maiah or MCP tool with fields and variables, without an assistant."
+      },
+      "workflow": {
+        "run": "Call another published workflow and reuse its result."
+      }
     },
     "assistantToolsHint": "The assistant uses its saved instructions, tools, skills and knowledge bases. Connections belong to the user starting the workflow.",
     "variables": {

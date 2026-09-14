@@ -110,6 +110,12 @@ test("direct tools use typed variables, execute by API and can be scheduled with
   );
   expect(saved.ok()).toBeTruthy();
   await page.goto(`/en/workflows/${workflow.id}`);
+  await expect(
+    page.getByRole("button", { name: /^Call a tool Maiah/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Run a workflow Call another/ }),
+  ).toBeVisible();
   await page
     .getByTestId("rf__node-calculate")
     .getByText("Calculate", { exact: true })
