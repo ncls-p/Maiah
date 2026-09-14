@@ -1,6 +1,34 @@
 name: ai-hub-dev
 
 services:
+  document-converter:
+    image: gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-routes=true
+      - --libreoffice-deny-list=.*
+      - --api-download-from-deny-list=.*
+      - --webhook-deny-list=.*
+      - --api-timeout=60s
+      - --api-body-limit=70MB
+      - --libreoffice-max-queue-size=4
+    ports:
+      - "127.0.0.1:${AI_HUB_DEV_DOCUMENT_CONVERTER_PORT:-13000}:3000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: "1.0"
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   postgres:
     image: pgvector/pgvector:pg16
     ports:

@@ -220,6 +220,7 @@ describe("processDocumentIngestion", () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeDoc]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c) // Q1 .where → chains to limit (already resolved)
+      .mockReturnValueOnce(dbModule._c) // knowledge base configuration
       .mockResolvedValueOnce([{ id: "chunk-1" }]); // Q2 chunks
 
     await processDocumentIngestion("doc-1");
@@ -233,6 +234,7 @@ describe("processDocumentIngestion", () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeDoc]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c) // chains to limit
+      .mockReturnValueOnce(dbModule._c) // knowledge base configuration
       .mockResolvedValueOnce([]); // no chunks
 
     await processDocumentIngestion("doc-1");

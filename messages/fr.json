@@ -1713,7 +1713,10 @@
     "renameDocument": "Renommer le document",
     "renameDescription": "Modifiez le nom du fichier sans changer son contenu ni son indexation.",
     "renameFailed": "Le document n’a pas pu être renommé.",
-    "originalUnavailable": "Le fichier original n’a pas été conservé pour ce document. Cette vue contient uniquement le texte extrait. Réimportez le fichier original pour pouvoir le prévisualiser et le télécharger."
+    "originalUnavailable": "Le fichier original n’a pas été conservé pour ce document. Cette vue contient uniquement le texte extrait. Réimportez le fichier original pour pouvoir le prévisualiser et le télécharger.",
+    "documentPreviewMode": "Mode de prévisualisation",
+    "documentOriginal": "Original",
+    "documentIndexedText": "Texte indexé"
   },
   "tools": {
     "title": "Outils & intégrations",

@@ -56,6 +56,7 @@ export async function ingestTextDocument(input: {
   mimeType?: string;
   originalBytes?: Uint8Array;
   originalMimeType?: string;
+  extractionWarning?: string;
   canManageGlobal?: boolean;
 }) {
   const knowledgeBase = await getKnowledgeBase(
@@ -92,6 +93,7 @@ export async function ingestTextDocument(input: {
           workspaceId: input.workspaceId,
           knowledgeBaseId: input.knowledgeBaseId,
           title: input.title,
+          extractionWarning: input.extractionWarning,
           sourceType: input.sourceType ?? "text",
           mimeType: input.mimeType ?? "text/plain",
           status: "processing",

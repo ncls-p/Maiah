@@ -11,6 +11,7 @@ import {
 import { embedMany } from "ai";
 import { eq, inArray } from "drizzle-orm";
 import { effectiveRagConfig } from "./use-cases.create-knowledge-base-input";
+import { reextractDocumentSource } from "./reextract-document-source";
 
 export async function processDocumentIngestion(documentId: string) {
   const [document] = await db
@@ -21,17 +22,21 @@ export async function processDocumentIngestion(documentId: string) {
 
   if (!document || document.status !== "processing") return;
 
-  const chunks = await db
-    .select()
-    .from(documentChunks)
-    .where(eq(documentChunks.documentId, documentId));
-
   const [knowledgeBase] = await db
     .select()
     .from(knowledgeBases)
     .where(eq(knowledgeBases.id, document.knowledgeBaseId))
     .limit(1);
   const config = await effectiveRagConfig(knowledgeBase?.ragConfigJson);
+  if (document.sourceExtractionPending) {
+    const result = await reextractDocumentSource(document, config);
+    if (!result) return;
+    document.extractionWarning = result.extractionWarning;
+  }
+  const chunks = await db
+    .select()
+    .from(documentChunks)
+    .where(eq(documentChunks.documentId, documentId));
   const embeddingSelection = await resolveEmbeddingModel(
     document.workspaceId,
     config,
@@ -114,9 +119,14 @@ export async function processDocumentIngestion(documentId: string) {
       processingStage: chunks.length > 0 ? "ready" : "failed",
       errorMessage:
         chunks.length > 0
-          ? embeddingSkipped
-            ? "Embedding model unavailable; indexed for keyword search only"
-            : null
+          ? [
+              document.extractionWarning,
+              embeddingSkipped
+                ? "Embedding model unavailable; indexed for keyword search only"
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" ") || null
           : "No chunks generated",
       updatedAt: new Date(),
     })

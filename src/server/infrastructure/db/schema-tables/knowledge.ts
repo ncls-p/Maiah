@@ -79,6 +79,10 @@ export const documents = pgTable(
     title: varchar("title", { length: 512 }).notNull(),
     sourceType: documentSourceEnum("source_type").notNull(),
     objectStorageKey: text("object_storage_key"),
+    sourceExtractionPending: boolean("source_extraction_pending")
+      .notNull()
+      .default(false),
+    extractionWarning: text("extraction_warning"),
     mimeType: varchar("mime_type", { length: 128 }),
     status: documentStatusEnum(STATUS_COLUMN).notNull().default("pending"),
     processingProgress: integer("processing_progress").notNull().default(0),

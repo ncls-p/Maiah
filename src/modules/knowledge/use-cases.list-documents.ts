@@ -299,6 +299,7 @@ async function requeueDocumentForIngestion(
     .update(documents)
     .set({
       status: "processing",
+      sourceExtractionPending: Boolean(document.objectStorageKey),
       processingProgress: Math.min(document.processingProgress, 20),
       processingStage: "queued",
       errorMessage: null,

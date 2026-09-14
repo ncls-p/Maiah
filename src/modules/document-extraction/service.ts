@@ -12,6 +12,8 @@ import {
 } from "@/modules/document-extraction/visual-ocr";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";
+import { presentationVisualCandidates } from "./presentation-visual-candidates";
+import { presentationExtension } from "./presentation-format";
 
 function normalizedMimeType(value?: string) {
   return value?.toLowerCase().split(";", 1)[0] ?? "";
@@ -32,7 +34,32 @@ export async function extractDocument(
   let candidates: VisualCandidate[] = [];
 
   if (config.extraction.ocr.enabled) {
-    if (anydoc?.format === "pdf") {
+    if (anydoc && presentationExtension(input.fileName, input.mimeType)) {
+      try {
+        const visual = await presentationVisualCandidates(
+          input,
+          config.extraction.ocr.maxVisualPages,
+        );
+        candidates = visual.candidates;
+        if (visual.limited)
+          warnings.push(
+            "Presentation visual extraction reached the configured slide or image-size limit.",
+          );
+      } catch {
+        warnings.push(
+          "Slide rendering unavailable; OCR is limited to embedded images. Retry extraction when the presentation converter is available.",
+        );
+        candidates = anydoc.imageAssets
+          .filter((asset) => isSupportedOcrImage(asset.mediaType))
+          .slice(0, config.extraction.ocr.maxVisualPages)
+          .map((asset) => ({
+            sourceKind: "asset" as const,
+            sourceRef: asset.originPart || `asset:${asset.id}`,
+            mediaType: asset.mediaType,
+            data: new Uint8Array(asset.data),
+          }));
+      }
+    } else if (anydoc?.format === "pdf") {
       candidates = await inspectPdfVisualCandidates({
         bytes: input.bytes,
         minimumTextCharactersPerPage:
