@@ -2007,7 +2007,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     auth: ["session", "apiKey"],
     permissions: ["knowledgeBases.viewAllowed"],
     pathParameters: ["knowledgeBaseId", "documentId"],
-    queryParameters: ["download", "preview", "workspaceId"],
+    queryParameters: ["download", "page", "preview", "workspaceId"],
     bodyKind: "none",
     responseKind: "stream",
   },

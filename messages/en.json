@@ -1716,7 +1716,10 @@
     "originalUnavailable": "The original file was not retained for this document. This view contains extracted text only. Upload the original file again to preview and download it.",
     "documentPreviewMode": "Preview mode",
     "documentOriginal": "Original",
-    "documentIndexedText": "Indexed text"
+    "documentIndexedText": "Indexed text",
+    "previousSlide": "Previous slide",
+    "nextSlide": "Next slide",
+    "slidePosition": "Slide {current} of {total}"
   },
   "tools": {
     "title": "Tools & integrations",

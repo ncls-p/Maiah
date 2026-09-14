@@ -2,7 +2,12 @@
 /* eslint-disable @next/next/no-img-element -- Preview the original local blob without image transformation. */
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { DownloadIcon, FileIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DownloadIcon,
+  FileIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,12 +33,15 @@ export function OriginalDocumentPreview({
   mimeType: string | null;
 }) {
   const t = useTranslations("knowledge");
-  const [source, setSource] = useState<{ url: string; text?: string } | null>(
-    null,
-  );
+  const [source, setSource] = useState<{
+    url: string;
+    text?: string;
+    pages?: number;
+  } | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [indexedText, setIndexedText] = useState(false);
+  const [slidePage, setSlidePage] = useState(1);
   const isPdf = mimeType === "application/pdf";
   const isPresentation = Boolean(presentationExtension(title, mimeType));
   const isImage = [
@@ -49,7 +57,7 @@ export function OriginalDocumentPreview({
   const previewUrl = indexedText
     ? url.replace("/raw?", "?")
     : isPresentation
-      ? `${url}&preview=pdf`
+      ? `${url}&preview=slide&page=${slidePage}`
       : url;
   useEffect(() => {
     if (!open || !native) return;
@@ -79,7 +87,12 @@ export function OriginalDocumentPreview({
         const text = isText ? await blob.text() : undefined;
         if (controller.signal.aborted) return;
         objectUrl = URL.createObjectURL(blob);
-        setSource({ url: objectUrl, text });
+        setSource({
+          url: objectUrl,
+          text,
+          pages:
+            Number(response.headers.get("X-Presentation-Pages")) || undefined,
+        });
       })
       .catch(() => {
         if (!controller.signal.aborted) setError(true);
@@ -149,7 +162,44 @@ export function OriginalDocumentPreview({
               <Spinner />
               {t("documentPreviewLoading")}
             </div>
-          ) : !indexedText && (isPdf || isPresentation) ? (
+          ) : !indexedText && isPresentation ? (
+            <div className="grid gap-3">
+              <img
+                src={source.url}
+                alt={t("slidePosition", {
+                  current: slidePage,
+                  total: source.pages ?? 1,
+                })}
+                className="mx-auto max-h-[60svh] max-w-full rounded-xl border object-contain"
+              />
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("previousSlide")}
+                  disabled={slidePage <= 1}
+                  onClick={() => setSlidePage((page) => page - 1)}
+                >
+                  <ChevronLeftIcon />
+                </Button>
+                <span className="text-sm tabular-nums" aria-live="polite">
+                  {t("slidePosition", {
+                    current: slidePage,
+                    total: source.pages ?? 1,
+                  })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("nextSlide")}
+                  disabled={slidePage >= (source.pages ?? 1)}
+                  onClick={() => setSlidePage((page) => page + 1)}
+                >
+                  <ChevronRightIcon />
+                </Button>
+              </div>
+            </div>
+          ) : !indexedText && isPdf ? (
             <iframe
               src={source.url}
               title={title}
