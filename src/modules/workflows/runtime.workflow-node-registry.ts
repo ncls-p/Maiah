@@ -1,3 +1,5 @@
+import { runTool } from "./runtime.tool-call";
+import { workflowToolParametersSchema } from "./tool-contracts";
 import { isWorkflowSecretReference } from "./agentic-history";
 import { type WorkflowDefinition, type WorkflowNode } from "./contracts";
 import {
@@ -51,6 +53,7 @@ export const WORKFLOW_NODE_REGISTRY = {
   "http.request": httpRequest,
   "code.execute": executeCode,
   "agent.run": runAgent,
+  "tool.call": runTool,
 } as const;
 
 export function hasCycle(definition: WorkflowDefinition) {
@@ -76,6 +79,13 @@ export function hasCycle(definition: WorkflowDefinition) {
 
 export function assertNodeParameters(node: WorkflowNode) {
   const params = node.parameters;
+  if (node.type === "tool.call") {
+    workflowToolParametersSchema.parse(params);
+    if (node.settings.maxRetries !== 0)
+      throw new Error(
+        `Node '${node.label}': automatic retries are disabled for direct tool calls to prevent duplicate external actions.`,
+      );
+  }
   if (node.type === "agent.run") {
     if (
       typeof params.agentId !== "string" ||

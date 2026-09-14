@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -12,6 +13,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { workflows, workflowRuns } from "./workflows";
 import { agents } from "./agents";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
@@ -298,8 +300,10 @@ export const scheduledTasks = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: CASCADE_ACTION }),
     agentId: uuid("agent_id")
-      .notNull()
       .references(() => agents.id, { onDelete: CASCADE_ACTION }),
+    workflowId: uuid("workflow_id").references(() => workflows.id, { onDelete: CASCADE_ACTION }),
+    workflowInputJson: jsonb("workflow_input_json"),
+    lastWorkflowRunId: uuid("last_workflow_run_id").references(() => workflowRuns.id, { onDelete: SET_NULL_ACTION }),
     conversationId: uuid("conversation_id").references(() => conversations.id, {
       onDelete: SET_NULL_ACTION,
     }),
@@ -324,6 +328,7 @@ export const scheduledTasks = pgTable(
       .defaultNow(),
   },
   (t) => [
+    check("scheduled_tasks_one_target", sql`num_nonnulls(${t.agentId}, ${t.workflowId}) = 1`),
     index("scheduled_tasks_due").on(t.enabled, t.nextRunAt),
     index("scheduled_tasks_workspace_user").on(t.workspaceId, t.userId),
   ],

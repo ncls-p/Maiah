@@ -2,35 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import { requireAdminApiSession } from "@/modules/admin/auth";
+import { requireOrganizationSettingsScope } from "@/modules/organization/settings-scope";
 import {
   getWorkflowBuilderAdminState,
   setWorkflowBuilderConfig,
 } from "@/modules/workflows/builder-settings";
 
-const querySchema = z.object({
-  workspaceId: z.uuid(),
-});
-
 const updateSchema = z.object({
-  workspaceId: z.uuid(),
   agentId: z.uuid().nullable(),
 });
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireAdminApiSession();
+    const auth = await requireOrganizationSettingsScope(req);
     if (!auth.ok) return auth.response;
 
-    const parsed = querySchema.safeParse({
-      workspaceId: req.nextUrl.searchParams.get("workspaceId"),
-    });
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-    }
-
     return NextResponse.json(
-      await getWorkflowBuilderAdminState(parsed.data.workspaceId),
+      await getWorkflowBuilderAdminState(auth.organizationId),
     );
   } catch {
     return NextResponse.json(
@@ -44,7 +32,7 @@ export async function PATCH(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const auth = await requireAdminApiSession();
+      const auth = await requireOrganizationSettingsScope(req);
       if (!auth.ok) return auth.response;
 
       const parsed = updateSchema.safeParse(await req.json());
@@ -58,10 +46,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(
         await setWorkflowBuilderConfig({
           ...parsed.data,
+          organizationId: auth.organizationId,
           updatedById: session.user.id,
         }),
       );
     },
-    { logLabel: "Failed to update workflow builder config" },
+    {
+      allowApiKey: false,
+      logLabel: "Failed to update workflow builder config",
+    },
   );
 }

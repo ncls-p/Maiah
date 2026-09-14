@@ -9,7 +9,10 @@ let queue: Queue<{ runId: string }> | null = null;
 type WorkflowQueueClient = Pick<Queue<{ runId: string }>, "add" | "getJob">;
 
 export type WorkflowRunRecoveryResult =
-  "enqueued" | "retried" | "scheduled" | "completed";
+  | "enqueued"
+  | "retried"
+  | "scheduled"
+  | "completed";
 
 export function workflowQueueConnection(): ConnectionOptions {
   const url = new URL(env.DRAGONFLY_URL);

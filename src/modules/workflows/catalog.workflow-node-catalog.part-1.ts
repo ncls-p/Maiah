@@ -4,6 +4,20 @@ import {
 } from "./catalog.workflow-node-field-option";
 export const WORKFLOW_NODE_CATALOGPart1 = [
   {
+    type: "tool.call",
+    label: "Appeler un outil",
+    description:
+      "Exécute un outil Maiah ou MCP avec des paramètres fixes ou des variables, sans assistant.",
+    category: "integration",
+    defaultParameters: {
+      source: "builtin",
+      toolId: "",
+      arguments: {},
+      outputPath: "toolResult",
+    },
+    fields: [outputPathField],
+  },
+  {
     type: "trigger.manual",
     label: "Déclencheur API",
     description: "Reçoit le JSON envoyé lors du lancement.",
@@ -14,7 +28,8 @@ export const WORKFLOW_NODE_CATALOGPart1 = [
   {
     type: "agent.run",
     label: "Exécuter un assistant",
-    description: "Confie une étape à un assistant Maiah.",
+    description:
+      "Confie une étape à un assistant Maiah avec ses outils configurés et les connexions de l’utilisateur initiateur.",
     category: "ai",
     defaultParameters: {
       agentId: "",

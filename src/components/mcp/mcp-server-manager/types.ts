@@ -36,6 +36,8 @@ export interface McpServer {
 }
 
 export interface McpTool {
+  inputSchemaJson?: Record<string, unknown> | null;
+  outputSchemaJson?: Record<string, unknown> | null;
   id: string;
   name: string;
   description: string | null;

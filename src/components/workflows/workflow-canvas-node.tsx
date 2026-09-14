@@ -23,6 +23,7 @@ import {
   TextCursorInputIcon,
   TimerIcon,
   WebhookIcon,
+  WrenchIcon,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -38,6 +39,7 @@ export type WorkflowCanvasNodeType = Node<WorkflowCanvasData, "workflow">;
 export const workflowNodeIconByType: Record<WorkflowNodeType, LucideIcon> = {
   "trigger.manual": PlayIcon,
   "agent.run": BotIcon,
+  "tool.call": WrenchIcon,
   "http.request": WebhookIcon,
   "code.execute": Code2Icon,
   "data.set": ListPlusIcon,
@@ -57,6 +59,33 @@ export const workflowNodeIconByType: Record<WorkflowNodeType, LucideIcon> = {
   "logic.stop": CircleStopIcon,
   "debug.snapshot": BugIcon,
   "date.now": CalendarClockIcon,
+};
+
+export const workflowCategoryColors = {
+  trigger: {
+    icon: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    surface: "border-emerald-500/35 bg-emerald-500/5",
+  },
+  ai: {
+    icon: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+    surface: "border-violet-500/35 bg-violet-500/5",
+  },
+  integration: {
+    icon: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+    surface: "border-sky-500/35 bg-sky-500/5",
+  },
+  data: {
+    icon: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+    surface: "border-cyan-500/35 bg-cyan-500/5",
+  },
+  logic: {
+    icon: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    surface: "border-amber-500/35 bg-amber-500/5",
+  },
+  code: {
+    icon: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+    surface: "border-rose-500/35 bg-rose-500/5",
+  },
 };
 
 function nodeSummary(data: WorkflowCanvasData, category: string) {
@@ -87,10 +116,11 @@ export function WorkflowCanvasNode({
     <div
       className={cn(
         "relative min-w-52 rounded-2xl border bg-card p-3 shadow-[var(--surface-shadow)] transition-[border-color,box-shadow,transform] duration-150",
+        workflowCategoryColors[category].surface,
         isCondition && "pr-14",
         selected
           ? "border-foreground/45 shadow-lg ring-4 ring-foreground/5"
-          : "border-border/80 hover:border-foreground/25",
+          : "hover:shadow-md",
       )}
     >
       {!isTrigger ? (
@@ -104,13 +134,7 @@ export function WorkflowCanvasNode({
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl",
-            category === "ai"
-              ? "bg-primary/10 text-primary"
-              : category === "logic"
-                ? "bg-accent text-accent-foreground"
-                : category === "integration"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "bg-muted text-foreground",
+            workflowCategoryColors[category].icon,
           )}
         >
           <Icon aria-hidden="true" />

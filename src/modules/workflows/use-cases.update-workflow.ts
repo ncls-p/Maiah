@@ -121,7 +121,7 @@ export async function createWorkflowRun(input: {
   useLatestDraft?: boolean;
   versionNumber?: number;
   idempotencyKey?: string;
-  trigger?: "api" | "agent";
+  trigger?: "api" | "agent" | "scheduled";
 }) {
   const workflow = await requireWorkflow(
     input.workflowId,

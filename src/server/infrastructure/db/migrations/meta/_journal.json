@@ -470,6 +470,20 @@
       "when": 1789372800002,
       "tag": "0066_document_source_extraction",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789372800003,
+      "tag": "0067_organization_workflow_builder",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1789372800004,
+      "tag": "0068_scheduled_workflows",
+      "breakpoints": true
     }
   ]
 }

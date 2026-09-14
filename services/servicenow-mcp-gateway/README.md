@@ -90,3 +90,7 @@ url: http://servicenow-mcp-gateway:8080/sse
 For host-based local testing, use `http://127.0.0.1:18080/sse`.
 
 In Maiah, open **Tools → MCP → Tool connections**, provision the ServiceNow connector if needed, then let users create their own encrypted connections with `config.instanceUrl` and `secrets.username/password`.
+
+## Catalogue and record forms
+
+The gateway adds catalogue discovery, static form preparation, ordering, record producers, generic inherited table forms and REQ/RITM reads. See [the Maiah workflow and ServiceNow guide](../../docs/workflow-tools-and-servicenow.md) for the supported flow and limitations. Run contracts against the installed upstream package with `python -m unittest discover -s tests -v`.

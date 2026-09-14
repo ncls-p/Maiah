@@ -16,7 +16,7 @@ export type OpaToolApprovalInput = {
   conversationId?: string;
   messageId?: string;
   userId: string;
-  agentVersionId: string;
+  agentVersionId?: string;
 };
 
 function configuredOpaUrl() {

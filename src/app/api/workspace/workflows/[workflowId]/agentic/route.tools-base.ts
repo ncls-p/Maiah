@@ -30,6 +30,16 @@ export function createWorkflowBaseTools({
   userId,
 }: ToolContext) {
   return {
+    list_workflow_tools: tool({
+      description:
+        "Discover accessible direct workflow tools, including MCP, with their IDs and parameter schemas. Use these for tool.call nodes; never invent tool IDs.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { listWorkflowTools } =
+          await import("@/modules/workflows/tool-catalog");
+        return { tools: await listWorkflowTools(workspaceId, userId) };
+      },
+    }),
     web_search: tool({
       description:
         "Search the live web for current, external, or implementation information. Use this whenever the automatic research is insufficient and cite useful result URLs in the final Markdown response.",

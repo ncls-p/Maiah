@@ -1,3 +1,4 @@
+import { ScheduledTaskInputError } from "@/modules/scheduled-tasks/use-cases.scheduled-task-frequency";
 import {
   handleRoute,
   requireResourcePermissionAsync,
@@ -13,10 +14,12 @@ const paramsSchema = z.object({ taskId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z.object({
   workspaceId: z.uuid(),
-  agentId: z.uuid().optional(),
+  agentId: z.uuid().nullable().optional(),
+  workflowId: z.uuid().nullable().optional(),
+  workflowInput: z.json().optional(),
   conversationId: z.uuid().nullable().optional(),
   title: z.string().trim().min(1).max(255).optional(),
-  prompt: z.string().trim().min(1).max(8_000).optional(),
+  prompt: z.string().trim().max(8_000).optional(),
   frequency: z.enum(["daily", "interval"]).optional(),
   timezone: z.string().trim().min(1).max(64).optional(),
   timeOfDay: z
@@ -73,7 +76,7 @@ export async function PATCH(
       );
       return NextResponse.json({ task });
     },
-    { logLabel: "Failed to update scheduled task" },
+    { logLabel: "Failed to update scheduled task", expectedError: error => error instanceof ScheduledTaskInputError ? NextResponse.json({error:error.message},{status:error.status}) : null },
   );
 }
 

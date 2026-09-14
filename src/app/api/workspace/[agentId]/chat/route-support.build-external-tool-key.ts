@@ -62,7 +62,7 @@ export function createCustomToolExecute(
     conversationId?: string;
     messageId?: string;
     userId: string;
-    agentVersionId: string;
+    agentVersionId?: string;
   },
   customTool: { id: string; name: string },
   binding: { riskLevel: string | null; requireApproval: boolean },

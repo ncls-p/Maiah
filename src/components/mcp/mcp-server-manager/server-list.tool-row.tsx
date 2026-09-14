@@ -3,6 +3,7 @@
 import { Share2, ShieldAlert, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { ToolDetails } from "@/components/tools/tool-details";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,13 @@ export function ToolRow({
         </Badge>
       ) : null}
       <div className="flex shrink-0 items-center gap-2">
+        <ToolDetails
+          name={tool.name}
+          description={tool.description}
+          inputSchema={tool.inputSchemaJson}
+          outputSchema={tool.outputSchemaJson}
+          requireApproval={isApprovalForced}
+        />
         <Button
           size="icon-sm"
           variant="ghost"

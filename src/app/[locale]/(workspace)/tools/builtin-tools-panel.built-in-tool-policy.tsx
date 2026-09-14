@@ -33,6 +33,7 @@ import {
 } from "@/modules/tool/builtin-tools-catalog";
 
 export type BuiltInToolPolicy = BuiltInToolSummary & {
+  inputSchemaJson?: Record<string, unknown> | null;
   enabled: boolean;
   requireApproval: boolean;
   configured: boolean;

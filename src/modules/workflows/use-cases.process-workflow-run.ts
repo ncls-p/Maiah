@@ -36,10 +36,23 @@ export async function processWorkflowRun(runId: string) {
       version: record.version.version,
       definition: record.version.definitionJson,
     });
-    await db
-      .update(workflowRuns)
-      .set({ status: "running", startedAt: new Date(), error: null })
-      .where(eq(workflowRuns.id, runId));
+    if (definition.nodes.some((node) => node.type === "tool.call")) {
+      // A queue redelivery must not replay an external action with an unknown outcome.
+      if (record.run.status !== "queued") return record.run;
+      const [claimed] = await db
+        .update(workflowRuns)
+        .set({ status: "running", startedAt: new Date(), error: null })
+        .where(
+          and(eq(workflowRuns.id, runId), eq(workflowRuns.status, "queued")),
+        )
+        .returning();
+      if (!claimed) return record.run;
+    } else {
+      await db
+        .update(workflowRuns)
+        .set({ status: "running", startedAt: new Date(), error: null })
+        .where(eq(workflowRuns.id, runId));
+    }
     let failureDetail: string | null = null;
     const eventBus = createWorkflowEventBus((event) => {
       if (event.type === "node:error") {

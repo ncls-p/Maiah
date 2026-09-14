@@ -23,6 +23,7 @@ type CreateWorkflowInput = {
   userId: string;
   name: string;
   description?: string | null;
+  definition?: WorkflowDefinition;
 };
 
 export type UpdateWorkflowInput = {
@@ -147,7 +148,9 @@ export async function getWorkflowDetail(
 }
 
 export async function createWorkflow(input: CreateWorkflowInput) {
-  const definition = createStarterDefinition();
+  const definition = input.definition
+    ? workflowDefinitionSchema.parse(input.definition)
+    : createStarterDefinition();
   return db.transaction(async (tx) => {
     const [workflow] = await tx
       .insert(workflows)

@@ -23,7 +23,7 @@ export type GateToolExecution = (input: {
   toolRequiresApproval?: boolean;
 }) => Promise<ToolGateResult>;
 
-export function createToolExecutionContext(input: BuildBoundToolsInput) {
+export function createToolExecutionContext(input: Omit<BuildBoundToolsInput, "agentVersionId"> & { agentVersionId?: string }) {
   let executedToolCallCount = 0;
 
   function reserveToolCall() {

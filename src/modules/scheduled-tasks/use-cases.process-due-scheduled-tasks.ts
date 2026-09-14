@@ -14,6 +14,7 @@ import {
 } from "@/server/infrastructure/db/schema";
 import {
   assertAgentInWorkspace,
+  assertScheduledTarget,
   ensureConversationForTask,
 } from "./use-cases.assert-agent-in-workspace";
 import {
@@ -81,6 +82,28 @@ async function insertMessage(input: {
 }
 
 async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
+  if (task.workflowId) {
+    await assertScheduledTarget({
+      ...task,
+      workflowInput: task.workflowInputJson,
+    });
+    const { createWorkflowRun } = await import("@/modules/workflows/use-cases");
+    const run = await createWorkflowRun({
+      workflowId: task.workflowId,
+      workspaceId: task.workspaceId,
+      userId: task.userId,
+      payload: task.workflowInputJson,
+      trigger: "scheduled",
+      useLatestDraft: false,
+      idempotencyKey: `schedule:${task.id}:${task.nextRunAt.toISOString()}`,
+    });
+    await db
+      .update(scheduledTasks)
+      .set({ lastWorkflowRunId: run.id, updatedAt: new Date() })
+      .where(eq(scheduledTasks.id, task.id));
+    return;
+  }
+  if (!task.agentId) throw new Error("Agent not found");
   const agent = await assertAgentInWorkspace(
     task.agentId,
     task.workspaceId,
@@ -156,7 +179,7 @@ export async function processDueScheduledTasks(now = new Date()) {
       intervalMinutes: task.intervalMinutes,
       from: now,
     });
-    await db
+    const claim = db
       .update(scheduledTasks)
       .set({
         lastRunAt: now,
@@ -165,13 +188,27 @@ export async function processDueScheduledTasks(now = new Date()) {
         nextRunAt,
         updatedAt: new Date(),
       })
-      .where(eq(scheduledTasks.id, task.id));
+      .where(
+        and(
+          eq(scheduledTasks.id, task.id),
+          task.workflowId
+            ? eq(scheduledTasks.nextRunAt, task.nextRunAt)
+            : undefined,
+        ),
+      );
+    if (task.workflowId) {
+      const [claimed] = await claim.returning({ id: scheduledTasks.id });
+      if (!claimed) continue;
+    } else await claim;
 
     try {
       await runScheduledTask(task);
       await db
         .update(scheduledTasks)
-        .set({ lastStatus: "success", updatedAt: new Date() })
+        .set({
+          lastStatus: task.workflowId ? "running" : "success",
+          updatedAt: new Date(),
+        })
         .where(eq(scheduledTasks.id, task.id));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

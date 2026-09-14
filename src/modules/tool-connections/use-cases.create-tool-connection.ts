@@ -1,3 +1,7 @@
+import {
+  validateServiceNowConnection,
+  serviceNowSecretsForAuth,
+} from "./service-now-auth";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { toolConnections } from "@/server/infrastructure/db/schema";
@@ -13,6 +17,7 @@ import {
   canManageConnection,
   canViewConnection,
   encryptRecord,
+  jsonRecord,
 } from "./use-cases.mcp-tool-source";
 
 export async function createToolConnection(input: CreateToolConnectionInput) {
@@ -30,6 +35,12 @@ export async function createToolConnection(input: CreateToolConnectionInput) {
   if (!connector || !connector.enabled)
     throw new Error("Tool connector not found");
 
+  if (connector.key === "servicenow") validateServiceNowConnection(input);
+  const secrets =
+    connector.key === "servicenow"
+      ? serviceNowSecretsForAuth(input.config?.authType, input.secrets ?? {})
+      : input.secrets;
+
   const connectionSeed = {
     workspaceId: input.workspaceId,
     connectorId: input.connectorId,
@@ -45,7 +56,7 @@ export async function createToolConnection(input: CreateToolConnectionInput) {
         ...connectionSeed,
         label: input.label,
         configJson: input.config ?? null,
-        encryptedSecretsJson: await encryptRecord(input.secrets),
+        encryptedSecretsJson: await encryptRecord(secrets),
         isDefault: input.isDefault ?? false,
         status: "active",
       })
@@ -122,13 +133,35 @@ export async function updateToolConnection(input: UpdateToolConnectionInput) {
     throw new Error("Not allowed to manage this tool connection");
   }
 
+  let secrets = input.secrets;
+  if (input.config !== undefined || input.secrets !== undefined) {
+    const connector = await getToolConnector(
+      existing.connectorId,
+      input.workspaceId,
+      input.userId,
+      input.canManageWorkspaceConnections,
+    );
+    if (!connector) throw new Error("Tool connector not found");
+    if (connector.key === "servicenow") {
+      const config =
+        input.config === undefined
+          ? jsonRecord(existing.configJson)
+          : input.config;
+      validateServiceNowConnection({
+        config,
+        secrets,
+        previousAuthType: jsonRecord(existing.configJson).authType,
+        hasExistingSecrets: Boolean(existing.encryptedSecretsJson),
+      });
+      if (secrets !== undefined)
+        secrets = serviceNowSecretsForAuth(config?.authType, secrets ?? {});
+    }
+  }
   const updates = {
     label: input.label,
     configJson: input.config === undefined ? undefined : input.config,
     encryptedSecretsJson:
-      input.secrets === undefined
-        ? undefined
-        : await encryptRecord(input.secrets),
+      input.secrets === undefined ? undefined : await encryptRecord(secrets),
     isDefault: input.isDefault,
     status: input.status,
     updatedAt: new Date(),

@@ -7,7 +7,6 @@ import { RagSettings } from "@/components/admin/rag-settings";
 import { RegistrationSettings } from "@/components/admin/registration-settings";
 import { SystemHealthCard } from "@/components/admin/system-health-card";
 import { UsageImpactSettings } from "@/components/admin/usage-impact-settings";
-import { WorkflowBuilderSettings } from "@/components/admin/workflow-builder-settings";
 import { WorkspacePage } from "@/components/workspace-page";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getRegistrationSetting } from "@/modules/admin/use-cases";
@@ -47,7 +46,6 @@ export default async function AdminSettingsPage() {
             </div>
             <RagSettings initialState={platformSettings[2]} />
             <AssistantGovernanceSettings />
-            <WorkflowBuilderSettings />
           </>
         ) : null}
       </div>

@@ -1,12 +1,18 @@
+export class ScheduledTaskInputError extends Error {
+  constructor(message: string, readonly status = 400) { super(message); }
+}
+
 export type ScheduledTaskFrequency = "daily" | "interval";
 
 export type ScheduledTaskInput = {
   workspaceId: string;
   userId: string;
-  agentId: string;
+  agentId?: string | null;
+  workflowId?: string | null;
+  workflowInput?: unknown;
   conversationId?: string | null;
   title: string;
-  prompt: string;
+  prompt?: string;
   frequency: ScheduledTaskFrequency;
   timezone?: string;
   timeOfDay?: string | null;
@@ -17,6 +23,8 @@ export type ScheduledTaskInput = {
 export type UpdateScheduledTaskInput = Partial<
   Pick<
     ScheduledTaskInput,
+    | "workflowId"
+    | "workflowInput"
     | "agentId"
     | "conversationId"
     | "title"
@@ -33,17 +41,19 @@ export const MAX_DUE_TASKS_PER_TICK = 10;
 
 function assertValidTimeOfDay(value: string | null | undefined) {
   if (!value || !/^\d{2}:\d{2}$/.test(value)) {
-    throw new Error("timeOfDay must use HH:mm format");
+    throw new ScheduledTaskInputError("timeOfDay must use HH:mm format");
   }
   const [hour = 0, minute = 0] = value.split(":").map(Number);
-  if (hour > 23 || minute > 59) throw new Error("timeOfDay is invalid");
+  if (hour > 23 || minute > 59) throw new ScheduledTaskInputError("timeOfDay is invalid");
 }
 
 export function normalizeTaskInput(input: ScheduledTaskInput) {
   const title = input.title.trim();
-  const prompt = input.prompt.trim();
-  if (!title) throw new Error("Title is required");
-  if (!prompt) throw new Error("Prompt is required");
+  const prompt = input.prompt?.trim() ?? "";
+  if (Boolean(input.agentId) === Boolean(input.workflowId))
+    throw new ScheduledTaskInputError("Select exactly one assistant or workflow");
+  if (!title) throw new ScheduledTaskInputError("Title is required");
+  if (!input.workflowId && !prompt) throw new ScheduledTaskInputError("Prompt is required");
 
   if (input.frequency === "daily") {
     assertValidTimeOfDay(input.timeOfDay);
@@ -58,7 +68,7 @@ export function normalizeTaskInput(input: ScheduledTaskInput) {
 
   const intervalMinutes = input.intervalMinutes ?? 0;
   if (!Number.isInteger(intervalMinutes) || intervalMinutes < 5) {
-    throw new Error("intervalMinutes must be at least 5");
+    throw new ScheduledTaskInputError("intervalMinutes must be at least 5");
   }
 
   return {

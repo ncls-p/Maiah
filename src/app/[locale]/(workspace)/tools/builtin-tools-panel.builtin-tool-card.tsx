@@ -3,6 +3,7 @@
 import { MoreHorizontalIcon, ShieldCheckIcon, WrenchIcon } from "lucide-react";
 import { useState } from "react";
 
+import { ToolDetails } from "@/components/tools/tool-details";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -60,6 +61,12 @@ export function BuiltinToolCard({
             {tool.description}
           </p>
         </div>
+        <ToolDetails
+          name={tool.name}
+          description={tool.description}
+          inputSchema={tool.inputSchemaJson}
+          requireApproval={tool.requireApproval}
+        />
         <Switch
           checked={tool.enabled}
           disabled={!canManage || pending}

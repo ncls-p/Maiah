@@ -1,3 +1,6 @@
+import { WorkflowVariablesContext } from "./workflow-value-field";
+import { workflowVariables } from "./workflow-variable-options";
+import { workflowDefinition } from "./workflow-builder.node-types";
 import { SlidersHorizontalIcon, Trash2Icon } from "lucide-react";
 
 import { AdvancedSection } from "@/components/ui/advanced-section";
@@ -57,13 +60,24 @@ export function useWorkflowConfigurationRenderer(
             />
           </Field>
         </FieldGroup>
-        <WorkflowNodeFields
-          nodeId={`${selectedNode.id}-${suffix}`}
-          catalogItem={catalogItem}
-          parameters={selectedNode.data.parameters}
-          agents={agents}
-          onChange={updateParameters}
-        />
+        <WorkflowVariablesContext
+          value={workflowVariables(
+            workflowDefinition(
+              model.nodes,
+              model.edges,
+              model.workflow.definition.defaultInput,
+            ),
+            selectedNode.id,
+          )}
+        >
+          <WorkflowNodeFields
+            nodeId={`${selectedNode.id}-${suffix}`}
+            catalogItem={catalogItem}
+            parameters={selectedNode.data.parameters}
+            agents={agents}
+            onChange={updateParameters}
+          />
+        </WorkflowVariablesContext>
         <AdvancedSection
           label={t("expertSettings")}
           hint={t("expertSettingsHint")}
@@ -97,6 +111,7 @@ export function useWorkflowConfigurationRenderer(
                 </FieldLabel>
                 <Input
                   id={`workflow-retries-${suffix}`}
+                  disabled={selectedNode.data.workflowType === "tool.call"}
                   type="number"
                   min={0}
                   max={5}
@@ -117,6 +132,7 @@ export function useWorkflowConfigurationRenderer(
                 </FieldLabel>
                 <Input
                   id={`workflow-retry-delay-${suffix}`}
+                  disabled={selectedNode.data.workflowType === "tool.call"}
                   type="number"
                   min={0}
                   max={60000}

@@ -22,6 +22,7 @@ export const workflowNodeTypeSchema = z.enum([
   "http.request",
   "code.execute",
   "agent.run",
+  "tool.call",
 ]);
 
 export type WorkflowNodeType = z.infer<typeof workflowNodeTypeSchema>;

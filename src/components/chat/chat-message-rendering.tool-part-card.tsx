@@ -39,6 +39,7 @@ import {
   isCodeWorkspaceArtifactOutput,
 } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
+import { ToolPayloadViewer } from "@/components/tools/tool-payload-viewer";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -57,7 +58,6 @@ import {
   COMPACT_ICON_CLASS,
   GHOST_VARIANT,
   OUTLINE_VARIANT,
-  formatExpandedToolValue,
 } from "./chat-message-rendering.rich-editor";
 import {
   ToolCardHeader,
@@ -264,14 +264,6 @@ export const ToolPartCard = memo(function ToolPartCard({
     status,
     t,
   ]);
-  const inputText = useMemo(
-    () => formatExpandedToolValue(displayInput, open),
-    [displayInput, open],
-  );
-  const outputText = useMemo(
-    () => formatExpandedToolValue(parsed.output, open),
-    [open, parsed.output],
-  );
 
   let specializedContent: React.ReactNode = null;
   if (fileArtifact) {
@@ -387,6 +379,20 @@ export const ToolPartCard = memo(function ToolPartCard({
           compact
         />
         <div className="bg-background/15 p-2">{specializedContent}</div>
+        <details className="border-t p-2.5">
+          <summary className="cursor-pointer text-muted-foreground">
+            {t("showActionDetails")}
+          </summary>
+          {displayInput !== undefined ? (
+            <ToolPayloadViewer label={t("actionInput")} value={displayInput} />
+          ) : null}
+          {parsed.output !== undefined ? (
+            <ToolPayloadViewer
+              label={t("actionOutput")}
+              value={parsed.output}
+            />
+          ) : null}
+        </details>
       </section>
     );
   }
@@ -502,25 +508,17 @@ export const ToolPartCard = memo(function ToolPartCard({
                 {summaryText}
               </p>
             ) : null}
-            {inputText ? (
-              <div>
-                <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/55">
-                  {t("actionInput")}
-                </div>
-                <pre className="max-h-24 overflow-auto rounded-lg bg-muted/20 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground">
-                  {inputText}
-                </pre>
-              </div>
+            {displayInput !== undefined ? (
+              <ToolPayloadViewer
+                label={t("actionInput")}
+                value={displayInput}
+              />
             ) : null}
-            {outputText ? (
-              <div>
-                <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/55">
-                  {t("actionOutput")}
-                </div>
-                <pre className="max-h-32 overflow-auto rounded-lg bg-muted/20 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground">
-                  {outputText}
-                </pre>
-              </div>
+            {parsed.output !== undefined ? (
+              <ToolPayloadViewer
+                label={t("actionOutput")}
+                value={parsed.output}
+              />
             ) : null}
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { ScheduledTaskInputError } from "@/modules/scheduled-tasks/use-cases.scheduled-task-frequency";
 import {
   handleRoute,
   requireRequestPermissionScopeAsync,
@@ -19,10 +20,12 @@ const querySchema = z.object({ workspaceId: z.uuid() });
 
 const createSchema = z.object({
   workspaceId: z.uuid(),
-  agentId: z.uuid(),
+  agentId: z.uuid().nullable().optional(),
+  workflowId: z.uuid().nullable().optional(),
+  workflowInput: z.json().optional(),
   conversationId: z.uuid().nullable().optional(),
   title: z.string().trim().min(1).max(255),
-  prompt: z.string().trim().min(1).max(8_000),
+  prompt: z.string().trim().max(8_000).optional(),
   frequency: z.enum(["daily", "interval"]),
   timezone: z.string().trim().min(1).max(64).optional(),
   timeOfDay: z
@@ -121,6 +124,6 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({ task }, { status: 201 });
     },
-    { logLabel: "Failed to create scheduled task" },
+    { logLabel: "Failed to create scheduled task", expectedError: error => error instanceof ScheduledTaskInputError ? NextResponse.json({error:error.message},{status:error.status}) : null },
   );
 }

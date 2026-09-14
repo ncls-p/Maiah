@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  serviceNowSecretKeys,
+  serviceNowSecretsForAuth,
+} from "@/modules/tool-connections/service-now-auth";
+
+import {
   ConnectionFormState,
   FieldValue,
   JsonRecord,
@@ -49,6 +54,33 @@ export function schemaFields(schema: JsonSchemaObject | null) {
   }));
 }
 
+export function connectionSecretFields(
+  connector: ToolConnector,
+  form: ConnectionFormState,
+) {
+  const fields = schemaFields(connector.secretSchema);
+  if (connector.key !== "servicenow") return fields;
+  return serviceNowSecretKeys(form.config.authType).map((key) => ({
+    key,
+    property: fields.find((field) => field.key === key)?.property ?? {
+      type: key === "username" || key === "clientId" ? "string" : "password",
+    },
+    required: true,
+  }));
+}
+
+export function canReuseConnectionSecrets(
+  connector: ToolConnector,
+  form: ConnectionFormState,
+) {
+  return Boolean(
+    form.id &&
+    form.hasExistingSecrets &&
+    (connector.key !== "servicenow" ||
+      (form.initialAuthType ?? "basic") === (form.config.authType ?? "basic")),
+  );
+}
+
 export function validateForm(
   connector: ToolConnector,
   form: ConnectionFormState,
@@ -65,15 +97,19 @@ export function validateForm(
     }
   }
 
+  const activeSecrets =
+    connector.key === "servicenow"
+      ? serviceNowSecretsForAuth(form.config.authType, form.secrets)
+      : form.secrets;
   const secretValues = Object.fromEntries(
-    Object.entries(form.secrets).filter(([, value]) => value.trim()),
+    Object.entries(activeSecrets).filter(([, value]) => value.trim()),
   );
   const isRotatingSecrets = Object.keys(secretValues).length > 0;
   const mustProvideSecrets =
-    !form.id || !form.hasExistingSecrets || isRotatingSecrets;
+    !canReuseConnectionSecrets(connector, form) || isRotatingSecrets;
   if (!mustProvideSecrets) return null;
 
-  for (const { key, required } of schemaFields(connector.secretSchema)) {
+  for (const { key, required } of connectionSecretFields(connector, form)) {
     if (!required) continue;
     if (!form.secrets[key]?.trim()) return `${humanizeKey(key)} is required`;
   }
@@ -86,10 +122,12 @@ export function buildConnectionPayload(
   form: ConnectionFormState,
 ) {
   const config = serializeConfig(connector.configSchema, form.config);
+  const activeSecrets =
+    connector.key === "servicenow"
+      ? serviceNowSecretsForAuth(form.config.authType, form.secrets)
+      : form.secrets;
   const secretValues = Object.fromEntries(
-    Object.entries(form.secrets)
-      .map(([key, value]) => [key, value.trim()] as const)
-      .filter(([, value]) => value),
+    Object.entries(activeSecrets).filter(([, value]) => value),
   );
   return {
     workspaceId,

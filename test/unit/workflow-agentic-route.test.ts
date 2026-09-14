@@ -1,3 +1,9 @@
+vi.mock("@/modules/workflows/builder-capabilities", () => ({
+  buildWorkflowBuilderCapabilities: vi.fn(async () => ({
+    tools: {},
+    system: "",
+  })),
+}));
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -58,6 +64,7 @@ vi.mock("@/modules/agent/use-cases", () => ({
 }));
 
 vi.mock("@/modules/workflows/builder-settings", () => ({
+  getOrganizationWorkflowBuilderAgent: mocks.getAgentById,
   getConfiguredWorkflowBuilderAgentId:
     mocks.getConfiguredWorkflowBuilderAgentId,
 }));
