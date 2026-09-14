@@ -1,3 +1,4 @@
+import { buildWorkflowBuilderCapabilities } from "@/modules/workflows/builder-capabilities";
 import { applyUsageLimits } from "@/modules/usage/limited-language-model";
 import { stepCountIs, streamText } from "ai";
 import { NextRequest, NextResponse } from "next/server";
@@ -10,7 +11,6 @@ import {
 import { createRuntimeDeadline } from "@/modules/agent/runtime-policy";
 import {
   getActiveVersion,
-  getAgentById,
   getAgentDefaultPreferences,
   listAgents,
   resolveProviderForVersion,
@@ -26,7 +26,10 @@ import {
   getWorkflowAgentHistory,
 } from "@/modules/workflows/agentic-history";
 import { getWorkflowAgentTodoList } from "@/modules/workflows/agentic-todo-list";
-import { getConfiguredWorkflowBuilderAgentId } from "@/modules/workflows/builder-settings";
+import {
+  getOrganizationWorkflowBuilderAgent,
+  getConfiguredWorkflowBuilderAgentId,
+} from "@/modules/workflows/builder-settings";
 import { getWorkflowDetail } from "@/modules/workflows/use-cases";
 import { getAdapter } from "@/server/infrastructure/providers";
 
@@ -48,7 +51,10 @@ async function resolveBuilderAgent(input: {
   const { workspaceId, userId, availableAgents, configuredBuilderAgentId } =
     input;
   let agent = configuredBuilderAgentId
-    ? await getAgentById(configuredBuilderAgentId, workspaceId)
+    ? await getOrganizationWorkflowBuilderAgent(
+        configuredBuilderAgentId,
+        workspaceId,
+      )
     : null;
   let version = agent ? await getActiveVersion(agent.id) : null;
   let provider = version ? await resolveProviderForVersion(version) : null;
@@ -205,14 +211,24 @@ export async function POST(
         workflow.latestVersion,
         availableAgentIds,
       );
-      const system = createWorkflowAgentSystemPrompt({
-        draft: state.draft,
-        availableAgents,
-        currentTodoList,
-        initialWebResearch: research,
-        initialWebResearchOk: Boolean(research?.ok),
-        initialWebResearchError,
+      const capabilities = await buildWorkflowBuilderCapabilities({
+        workspaceId,
+        userId: session.user.id,
+        version: builder.version,
       });
+      const system = [
+        capabilities.system,
+        createWorkflowAgentSystemPrompt({
+          draft: state.draft,
+          availableAgents,
+          currentTodoList,
+          initialWebResearch: research,
+          initialWebResearchOk: Boolean(research?.ok),
+          initialWebResearchError,
+        }),
+      ]
+        .filter(Boolean)
+        .join("\n\n");
       const adapter = getAdapter(builder.provider.providerKind);
       const model = await applyUsageLimits(
         adapter.createChatModel(
@@ -243,13 +259,16 @@ export async function POST(
           : undefined,
         abortSignal: deadline.signal,
         stopWhen: stepCountIs(24),
-        tools: createWorkflowAgentTools({
-          state,
-          workflowId,
-          workspaceId,
-          userId: session.user.id,
-          latestVersion: workflow.latestVersion,
-        }),
+        tools: {
+          ...capabilities.tools,
+          ...createWorkflowAgentTools({
+            state,
+            workflowId,
+            workspaceId,
+            userId: session.user.id,
+            latestVersion: workflow.latestVersion,
+          }),
+        },
       });
       const stream = createWorkflowAgentStream({
         result,

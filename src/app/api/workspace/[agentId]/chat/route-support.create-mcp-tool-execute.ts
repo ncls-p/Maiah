@@ -11,6 +11,7 @@ export function createMcpToolExecute(
     userId: string;
     conversationId?: string;
     messageId?: string;
+    connectionId?: string;
   },
   mcpTool: { id: string; name: string; mcpServerId: string },
   binding: { riskLevel: string | null; requireApproval: boolean },
@@ -70,6 +71,7 @@ export function createMcpToolExecute(
         workspaceId: input.workspaceId,
         userId: input.userId,
         toolInput,
+        connectionId: input.connectionId,
       });
       await logToolInvocation({
         workspaceId: input.workspaceId,

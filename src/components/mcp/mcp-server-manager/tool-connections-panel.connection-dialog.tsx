@@ -27,7 +27,11 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-import { schemaFields } from "./tool-connections-panel.initial-values";
+import {
+  schemaFields,
+  connectionSecretFields,
+  canReuseConnectionSecrets,
+} from "./tool-connections-panel.initial-values";
 import {
   ConnectionFormState,
   FieldValue,
@@ -58,9 +62,13 @@ export function ConnectionDialog({
 }) {
   const t = useTranslations("mcp.toolConnections");
   const configSchema = connector?.configSchema ?? null;
-  const secretSchema = connector?.secretSchema ?? null;
   const configFields = schemaFields(configSchema);
-  const secretFields = schemaFields(secretSchema);
+  const secretFields =
+    connector && form ? connectionSecretFields(connector, form) : [];
+  const reuseSecrets = Boolean(
+    connector && form && canReuseConnectionSecrets(connector, form),
+  );
+  const isServiceNow = connector?.key === "servicenow";
   const editing = Boolean(form?.id);
 
   function updateForm(patch: Partial<ConnectionFormState>) {
@@ -73,6 +81,9 @@ export function ConnectionDialog({
     onFormChangeAction({
       ...form,
       config: { ...form.config, [key]: value },
+      ...(isServiceNow && key === "authType" && value !== form.config.authType
+        ? { secrets: {} }
+        : {}),
     });
   }
 
@@ -97,7 +108,13 @@ export function ConnectionDialog({
                   name: connector?.name ?? t("toolFallback"),
                 })}
           </DialogTitle>
-          <DialogDescription>{t("dialogDescription")}</DialogDescription>
+          <DialogDescription>
+            {t(
+              isServiceNow
+                ? "serviceNowDialogDescription"
+                : "dialogDescription",
+            )}
+          </DialogDescription>
         </DialogHeader>
 
         {form && connector ? (
@@ -149,17 +166,19 @@ export function ConnectionDialog({
                     {t("configurationDescription")}
                   </p>
                 </div>
-                {configFields.map(({ key, property, required }) => (
-                  <SchemaFieldControl
-                    key={key}
-                    id={`tool-connection-config-${key}`}
-                    fieldKey={key}
-                    property={property}
-                    required={required}
-                    value={form.config[key]}
-                    onChangeAction={(value) => updateConfig(key, value)}
-                  />
-                ))}
+                {configFields
+                  .filter(({ key }) => !isServiceNow || key !== "toolPackage")
+                  .map(({ key, property, required }) => (
+                    <SchemaFieldControl
+                      key={key}
+                      id={`tool-connection-config-${key}`}
+                      fieldKey={key}
+                      property={property}
+                      required={required}
+                      value={form.config[key]}
+                      onChangeAction={(value) => updateConfig(key, value)}
+                    />
+                  ))}
               </div>
             ) : null}
 
@@ -168,9 +187,13 @@ export function ConnectionDialog({
                 <div>
                   <p className="font-medium">{t("secrets")}</p>
                   <p className="text-sm text-muted-foreground">
-                    {editing && form.hasExistingSecrets
+                    {reuseSecrets
                       ? t("secretsExistingDescription")
-                      : t("secretsDescription")}
+                      : t(
+                          isServiceNow
+                            ? "serviceNowSecretsDescription"
+                            : "secretsDescription",
+                        )}
                   </p>
                 </div>
                 {secretFields.map(({ key, property, required }) => (
@@ -178,20 +201,43 @@ export function ConnectionDialog({
                     key={key}
                     id={`tool-connection-secret-${key}`}
                     fieldKey={key}
-                    property={{ ...property, type: "password" }}
-                    required={
-                      required && (!editing || !form.hasExistingSecrets)
+                    property={
+                      isServiceNow
+                        ? property
+                        : { ...property, type: "password" }
                     }
+                    required={required && !reuseSecrets}
                     value={form.secrets[key] ?? ""}
                     placeholder={
-                      editing && form.hasExistingSecrets
-                        ? t("secretSavedPlaceholder")
-                        : undefined
+                      reuseSecrets ? t("secretSavedPlaceholder") : undefined
                     }
                     onChangeAction={(value) => updateSecret(key, String(value))}
                   />
                 ))}
               </div>
+            ) : null}
+
+            {isServiceNow ? (
+              <details className="rounded-xl border p-4">
+                <summary className="cursor-pointer font-medium">
+                  {t("advancedOptions")}
+                </summary>
+                <div className="mt-4 flex flex-col gap-4">
+                  {configFields
+                    .filter(({ key }) => key === "toolPackage")
+                    .map(({ key, property, required }) => (
+                      <SchemaFieldControl
+                        key={key}
+                        id={`tool-connection-config-${key}`}
+                        fieldKey={key}
+                        property={property}
+                        required={required}
+                        value={form.config[key]}
+                        onChangeAction={(value) => updateConfig(key, value)}
+                      />
+                    ))}
+                </div>
+              </details>
             ) : null}
 
             <Field

@@ -38,6 +38,7 @@ import { createBuiltinToolExecute } from "./route-support.create-builtin-tool-ex
 import { createMcpToolExecute } from "./route-support.create-mcp-tool-execute";
 import { registerKnowledgeTools } from "./route-support.knowledge-tools";
 import { createToolExecutionContext } from "./route-support.tool-execution-context";
+import { WORKFLOW_TOOL_SUMMARIES } from "@/modules/workflows/assistant-tool-contracts";
 
 export type BuildBoundToolsInput = {
   agentVersionId: string;
@@ -47,6 +48,7 @@ export type BuildBoundToolsInput = {
   userId: string;
   maxToolCalls: number;
   nonInteractive?: boolean;
+  includeWorkflowTools?: boolean;
   approvalPolicy?: AiHubToolApprovalPolicy | null;
   hasSkills?: boolean;
   disabledToolKeys?: ReadonlySet<string>;
@@ -76,6 +78,20 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     bindings.map((binding) => `${binding.toolSource}:${binding.toolId}`),
   );
   const runtimeBindings = [...bindings];
+  // Workflow capabilities are available to every assistant without per-agent setup.
+  for (const tool of input.includeWorkflowTools === false ? [] : WORKFLOW_TOOL_SUMMARIES) {
+    if (boundKeys.has(`builtin:${tool.id}`)) continue;
+    runtimeBindings.push({
+      id: crypto.randomUUID(),
+      agentVersionId: input.agentVersionId,
+      toolSource: "builtin",
+      toolId: tool.id,
+      requireApproval: false,
+      riskLevel: null,
+      createdAt: new Date(),
+    });
+    boundKeys.add(`builtin:${tool.id}`);
+  }
   for (const tool of input.enabledTools ?? []) {
     if (boundKeys.has(`${tool.source}:${tool.id}`)) continue;
     runtimeBindings.push({

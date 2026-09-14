@@ -88,15 +88,20 @@ export async function cloneWorkflowsAndAccess(context: WorkspaceCloneContext) {
     .from(scheduledTasks)
     .where(eq(scheduledTasks.workspaceId, input.sourceWorkspaceId));
   for (const source of sourceTasks) {
-    const agentId = agentMap.get(source.agentId);
-    if (!agentId) continue;
+    const agentId = source.agentId ? agentMap.get(source.agentId) : null;
+    const workflowId = source.workflowId
+      ? workflowMap.get(source.workflowId)
+      : null;
+    if (!agentId && !workflowId) continue;
     const id = randomUUID();
     scheduledTaskMap.set(source.id, id);
     await tx.insert(scheduledTasks).values({
       ...source,
       id,
       workspaceId: input.targetWorkspaceId,
-      agentId,
+      agentId: agentId ?? null,
+      workflowId: workflowId ?? null,
+      lastWorkflowRunId: null,
       conversationId: null,
       enabled: false,
       lastRunAt: null,

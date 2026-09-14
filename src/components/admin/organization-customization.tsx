@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { OrganizationBrandingCard } from "@/app/[locale]/(workspace)/admin/settings/organization-branding-card";
 import { ChatAutomationSettings } from "./chat-automation-settings";
+import { WorkflowBuilderSettings } from "./workflow-builder-settings";
 import { SidebarNavigationSettings } from "./sidebar-navigation-settings";
 
 import { organizationLabels } from "@/components/iam/organization-labels";
@@ -86,6 +87,7 @@ export function OrganizationCustomization() {
             <>
               <ChatAutomationSettings />
               <SidebarNavigationSettings />
+              <WorkflowBuilderSettings />
             </>
           ) : (
             <p className="text-sm text-muted-foreground">{t("readOnly")}</p>

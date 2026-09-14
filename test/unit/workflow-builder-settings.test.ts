@@ -38,6 +38,12 @@ type DbModule = {
   _chain: Chain;
 };
 
+vi.mock("@/modules/organization/workspace-organization", () => ({
+  organizationIdForWorkspace: vi
+    .fn()
+    .mockResolvedValue("11111111-1111-4111-8111-111111111111"),
+}));
+
 vi.mock("@/server/infrastructure/db", () => {
   const chain = makeChain();
   return {
@@ -192,7 +198,7 @@ describe("workflow builder settings", () => {
 
     await expect(
       setWorkflowBuilderConfig({
-        workspaceId,
+        organizationId: workspaceId,
         agentId: null,
         updatedById: "user-1",
       }),
@@ -210,7 +216,7 @@ describe("workflow builder settings", () => {
 
     await expect(
       setWorkflowBuilderConfig({
-        workspaceId,
+        organizationId: workspaceId,
         agentId: readyAgentId,
         updatedById: "user-1",
       }),
@@ -223,7 +229,7 @@ describe("workflow builder settings", () => {
     dbModule._chain.orderBy.mockResolvedValueOnce([]);
     await expect(
       setWorkflowBuilderConfig({
-        workspaceId,
+        organizationId: workspaceId,
         agentId: readyAgentId,
         updatedById: "user-1",
       }),
@@ -237,7 +243,7 @@ describe("workflow builder settings", () => {
     ]);
     await expect(
       setWorkflowBuilderConfig({
-        workspaceId,
+        organizationId: workspaceId,
         agentId: unavailableAgentId,
         updatedById: "user-1",
       }),

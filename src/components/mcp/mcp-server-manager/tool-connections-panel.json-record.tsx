@@ -8,7 +8,10 @@ export type FieldValue = string | boolean;
 type ToolConnectorKind = "mcp" | "builtin" | "custom";
 export type ToolConnectionOwnerType = "user" | "workspace";
 export type ToolConnectionStatus =
-  "active" | "invalid" | "expired" | "disabled";
+  | "active"
+  | "invalid"
+  | "expired"
+  | "disabled";
 
 export interface SchemaProperty {
   type?: string;
@@ -66,6 +69,7 @@ export interface ConnectionFormState {
   isDefault: boolean;
   status: ToolConnectionStatus;
   hasExistingSecrets: boolean;
+  initialAuthType?: FieldValue;
 }
 
 export interface ToolConnectionsPanelProps {

@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/server/infrastructure/db";
@@ -8,9 +8,13 @@ import {
   aiModels,
   aiProviders,
   appSettings,
+  workspaces,
 } from "@/server/infrastructure/db/schema";
 
-const WORKFLOW_BUILDER_SETTING_PREFIX = "workflowBuilder:";
+import { organizationIdForWorkspace } from "@/modules/organization/workspace-organization";
+import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
+
+const WORKFLOW_BUILDER_SETTING_PREFIX = "workflowBuilder:organization:";
 
 const workflowBuilderConfigSchema = z.object({
   agentId: z.uuid().nullable().default(null),
@@ -18,8 +22,8 @@ const workflowBuilderConfigSchema = z.object({
 
 export type WorkflowBuilderConfig = z.infer<typeof workflowBuilderConfigSchema>;
 
-function settingKey(workspaceId: string) {
-  return `${WORKFLOW_BUILDER_SETTING_PREFIX}${workspaceId}`;
+function settingKey(organizationId: string) {
+  return `${WORKFLOW_BUILDER_SETTING_PREFIX}${organizationId}`;
 }
 
 function parseConfig(value: unknown): WorkflowBuilderConfig {
@@ -28,22 +32,61 @@ function parseConfig(value: unknown): WorkflowBuilderConfig {
 }
 
 export async function getWorkflowBuilderConfig(
-  workspaceId: string,
+  organizationId: string,
 ): Promise<WorkflowBuilderConfig> {
   const [row] = await db
     .select({ valueJson: appSettings.valueJson })
     .from(appSettings)
-    .where(eq(appSettings.key, settingKey(workspaceId)))
+    .where(eq(appSettings.key, settingKey(organizationId)))
     .limit(1);
 
   return parseConfig(row?.valueJson);
 }
 
 export async function getConfiguredWorkflowBuilderAgentId(workspaceId: string) {
-  return (await getWorkflowBuilderConfig(workspaceId)).agentId;
+  const organizationId = await organizationIdForWorkspace(workspaceId);
+  return organizationId
+    ? (await getWorkflowBuilderConfig(organizationId)).agentId
+    : null;
 }
 
-async function listWorkflowBuilderAgents(workspaceId: string) {
+function builderAgentAvailability(organizationId: string) {
+  return or(
+    eq(workspaces.organizationId, organizationId),
+    resourceAvailabilityCondition({
+      type: "agent",
+      id: agents.id,
+      workspaceId: agents.workspaceId,
+      activeWorkspaceId: "00000000-0000-0000-0000-000000000000",
+      activeOrganizationId: organizationId,
+      visibility: agents.visibility,
+    }),
+  );
+}
+
+export async function getOrganizationWorkflowBuilderAgent(
+  agentId: string,
+  workspaceId: string,
+) {
+  const organizationId = await organizationIdForWorkspace(workspaceId);
+  if (!organizationId) return null;
+  const [row] = await db
+    .select({ agent: agents })
+    .from(agents)
+    .leftJoin(workspaces, eq(agents.workspaceId, workspaces.id))
+    .where(
+      and(
+        eq(agents.id, agentId),
+        isNull(agents.archivedAt),
+        isNull(workspaces.archivedAt),
+        builderAgentAvailability(organizationId),
+      ),
+    )
+    .limit(1);
+  return row?.agent ?? null;
+}
+
+async function listWorkflowBuilderAgents(organizationId: string) {
   const rows = await db
     .select({
       id: agents.id,
@@ -61,6 +104,7 @@ async function listWorkflowBuilderAgents(workspaceId: string) {
       modelCapabilities: aiModels.capabilitiesJson,
     })
     .from(agents)
+    .leftJoin(workspaces, eq(agents.workspaceId, workspaces.id))
     .leftJoin(agentVersions, eq(agents.activeVersionId, agentVersions.id))
     .leftJoin(aiProviders, eq(agentVersions.providerId, aiProviders.id))
     .leftJoin(
@@ -70,7 +114,13 @@ async function listWorkflowBuilderAgents(workspaceId: string) {
         eq(aiModels.providerId, aiProviders.id),
       ),
     )
-    .where(and(eq(agents.workspaceId, workspaceId), isNull(agents.archivedAt)))
+    .where(
+      and(
+        builderAgentAvailability(organizationId),
+        isNull(agents.archivedAt),
+        isNull(workspaces.archivedAt),
+      ),
+    )
     .orderBy(asc(agents.name));
 
   return rows.map((row) => {
@@ -103,24 +153,26 @@ async function listWorkflowBuilderAgents(workspaceId: string) {
   });
 }
 
-export async function getWorkflowBuilderAdminState(workspaceId: string) {
+export async function getWorkflowBuilderAdminState(organizationId: string) {
   const [config, availableAgents] = await Promise.all([
-    getWorkflowBuilderConfig(workspaceId),
-    listWorkflowBuilderAgents(workspaceId),
+    getWorkflowBuilderConfig(organizationId),
+    listWorkflowBuilderAgents(organizationId),
   ]);
 
   return { config, availableAgents };
 }
 
 export async function setWorkflowBuilderConfig(input: {
-  workspaceId: string;
+  organizationId: string;
   agentId: string | null;
   updatedById: string;
 }) {
   const value = workflowBuilderConfigSchema.parse({ agentId: input.agentId });
 
   if (value.agentId) {
-    const availableAgents = await listWorkflowBuilderAgents(input.workspaceId);
+    const availableAgents = await listWorkflowBuilderAgents(
+      input.organizationId,
+    );
     const selectedAgent = availableAgents.find(
       (agent) => agent.id === value.agentId,
     );
@@ -137,7 +189,7 @@ export async function setWorkflowBuilderConfig(input: {
   await db
     .insert(appSettings)
     .values({
-      key: settingKey(input.workspaceId),
+      key: settingKey(input.organizationId),
       valueJson: value,
       updatedById: input.updatedById,
       updatedAt: new Date(),
@@ -151,5 +203,5 @@ export async function setWorkflowBuilderConfig(input: {
       },
     });
 
-  return getWorkflowBuilderConfig(input.workspaceId);
+  return getWorkflowBuilderConfig(input.organizationId);
 }

@@ -9,6 +9,24 @@
 none: []
 
 service_desk:
+  # Customer forms and ordering (gateway extensions)
+  - search_service_requests
+  - get_service_request
+  - search_catalogs
+  - search_catalog_items
+  - search_catalog_forms
+  - get_catalog_form
+  - prepare_catalog_form
+  - order_catalog_item
+  - submit_catalog_form
+  - add_catalog_item_to_cart
+  - get_catalog_cart
+  - checkout_catalog_cart
+  - search_record_forms
+  - get_record_form
+  - prepare_record_form
+  - submit_record_form
+  - search_form_records
   # Incident Management
   - create_incident
   - update_incident
@@ -16,7 +34,9 @@ service_desk:
   - resolve_incident
   - list_incidents
   - get_incident_by_number
-  # User Lookup
+  # User lifecycle
+  - create_user
+  - update_user
   - get_user
   - list_users
   # Knowledge Lookup
@@ -24,6 +44,24 @@ service_desk:
   - list_articles
 
 catalog_builder:
+  # Customer forms and ordering (gateway extensions)
+  - search_service_requests
+  - get_service_request
+  - search_catalogs
+  - search_catalog_items
+  - search_catalog_forms
+  - get_catalog_form
+  - prepare_catalog_form
+  - order_catalog_item
+  - submit_catalog_form
+  - add_catalog_item_to_cart
+  - get_catalog_cart
+  - checkout_catalog_cart
+  - search_record_forms
+  - get_record_form
+  - prepare_record_form
+  - submit_record_form
+  - search_form_records
   # Core Catalog
   - list_catalogs
   - list_catalog_items
@@ -147,6 +185,24 @@ system_administrator:
   - get_syslog_entry
 
 full:
+  # Customer forms and ordering (gateway extensions)
+  - search_service_requests
+  - get_service_request
+  - search_catalogs
+  - search_catalog_items
+  - search_catalog_forms
+  - get_catalog_form
+  - prepare_catalog_form
+  - order_catalog_item
+  - submit_catalog_form
+  - add_catalog_item_to_cart
+  - get_catalog_cart
+  - checkout_catalog_cart
+  - search_record_forms
+  - get_record_form
+  - prepare_record_form
+  - submit_record_form
+  - search_form_records
   # Incident Management
   - create_incident
   - update_incident

@@ -1,3 +1,4 @@
+import { JsonValueEditor } from "@/components/workflows/workflow-node-fields.agent-option";
 import { Loader2Icon, PlusIcon, SaveIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,14 @@ export function ScheduledTaskManagerSection1({
   model: ScheduledTaskManagerViewModel;
 }) {
   const {
+    target,
+    setTarget,
+    workflowId,
+    setWorkflowId,
+    workflowInput,
+    setWorkflowInput,
+    workflows,
+    workflowLoadError,
     agents,
     closeEditor,
     currentAgentId,
@@ -128,6 +137,62 @@ export function ScheduledTaskManagerSection1({
 
           <FieldGroup className="gap-4">
             <Field>
+              <FieldLabel>{t("fields.target")}</FieldLabel>
+              <Select
+                value={target}
+                onValueChange={(value) =>
+                  setTarget(value as "assistant" | "workflow")
+                }
+              >
+                <SelectTrigger aria-label={t("fields.target")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="assistant">
+                    {t("fields.assistant")}
+                  </SelectItem>
+                  <SelectItem value="workflow">
+                    {t("fields.workflow")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {target === "workflow" ? (
+              <>
+                <Field>
+                  <FieldLabel>{t("fields.workflow")}</FieldLabel>
+                  <Select value={workflowId} onValueChange={setWorkflowId}>
+                    <SelectTrigger aria-label={t("fields.workflow")}>
+                      <SelectValue placeholder={t("workflowPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workflows.map((workflow) => (
+                        <SelectItem key={workflow.id} value={workflow.id}>
+                          {workflow.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {workflowLoadError
+                      ? t("workflowLoadFailed")
+                      : t("workflowHint")}
+                  </p>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="scheduled-workflow-input">
+                    {t("fields.workflowInput")}
+                  </FieldLabel>
+                  <JsonValueEditor
+                    key={editingTask?.id ?? "new"}
+                    id="scheduled-workflow-input"
+                    value={workflowInput}
+                    onChange={(value) => setWorkflowInput(value ?? {})}
+                  />
+                </Field>
+              </>
+            ) : null}
+            <Field>
               <FieldLabel htmlFor="scheduled-task-title">
                 {t("fields.title")}
               </FieldLabel>
@@ -137,43 +202,47 @@ export function ScheduledTaskManagerSection1({
                 onChange={(event) => setTitle(event.target.value)}
               />
             </Field>
-            <Field>
-              <FieldLabel htmlFor="scheduled-task-prompt">
-                {t("fields.prompt")}
-              </FieldLabel>
-              <Textarea
-                id="scheduled-task-prompt"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                rows={5}
-              />
-            </Field>
+            {target === "assistant" ? (
+              <Field>
+                <FieldLabel htmlFor="scheduled-task-prompt">
+                  {t("fields.prompt")}
+                </FieldLabel>
+                <Textarea
+                  id="scheduled-task-prompt"
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  rows={5}
+                />
+              </Field>
+            ) : null}
             <div
               data-slot="scheduled-task-schedule-fields"
               className="grid min-w-0 gap-4 sm:grid-cols-2"
             >
-              <Field className="min-w-0 sm:col-span-2">
-                <FieldLabel>{t("fields.assistant")}</FieldLabel>
-                <Select value={currentAgentId} onValueChange={setAgentId}>
-                  <SelectTrigger
-                    aria-label={t("fields.assistant")}
-                    className="w-full min-w-0"
-                  >
-                    <SelectValue
-                      placeholder={t("fields.assistantPlaceholder")}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+              {target === "assistant" ? (
+                <Field className="min-w-0 sm:col-span-2">
+                  <FieldLabel>{t("fields.assistant")}</FieldLabel>
+                  <Select value={currentAgentId} onValueChange={setAgentId}>
+                    <SelectTrigger
+                      aria-label={t("fields.assistant")}
+                      className="w-full min-w-0"
+                    >
+                      <SelectValue
+                        placeholder={t("fields.assistantPlaceholder")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {agents.map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              ) : null}
               <Field className="min-w-0">
                 <FieldLabel>{t("fields.frequency")}</FieldLabel>
                 <Select
@@ -260,9 +329,11 @@ export function ScheduledTaskManagerSection1({
               saving ||
               loadError ||
               !workspaceId ||
-              !currentAgentId ||
+              (target === "assistant"
+                ? !currentAgentId
+                : !workflowId || workflowLoadError) ||
               !title.trim() ||
-              !prompt.trim()
+              (target === "assistant" && !prompt.trim())
             }
           >
             {saving ? (

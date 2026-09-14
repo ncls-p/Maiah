@@ -80,6 +80,7 @@ export interface UpsertToolConnectionRequirementInput {
 }
 
 export interface ResolveToolExecutionHeadersInput {
+  connectionId?: string;
   workspaceId: string;
   userId: string;
   toolSource: string;

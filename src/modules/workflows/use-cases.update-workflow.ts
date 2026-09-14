@@ -121,7 +121,9 @@ export async function createWorkflowRun(input: {
   useLatestDraft?: boolean;
   versionNumber?: number;
   idempotencyKey?: string;
-  trigger?: "api" | "agent";
+  trigger?: "api" | "agent" | "scheduled" | "workflow";
+  parentRunId?: string;
+  inline?: boolean;
 }) {
   const workflow = await requireWorkflow(
     input.workflowId,
@@ -160,6 +162,7 @@ export async function createWorkflowRun(input: {
       workflowVersionId: version.id,
       triggeredById: input.userId,
       trigger: input.trigger ?? "api",
+      parentRunId: input.parentRunId ?? null,
       inputJson: input.payload ?? null,
       idempotencyKey: input.idempotencyKey ?? null,
     })
@@ -175,6 +178,7 @@ export async function createWorkflowRun(input: {
     if (concurrentRun) return concurrentRun;
   }
   if (!run) throw new Error("Failed to create workflow run");
+  if (input.inline) return run;
   try {
     await enqueueWorkflowRun(run.id);
   } catch (error) {

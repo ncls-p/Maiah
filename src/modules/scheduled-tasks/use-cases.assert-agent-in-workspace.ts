@@ -5,9 +5,11 @@ import { db } from "@/server/infrastructure/db";
 import {
   conversations,
   scheduledTasks,
+  workflowRuns,
 } from "@/server/infrastructure/db/schema";
 import {
   ScheduledTaskInput,
+  ScheduledTaskInputError,
   UpdateScheduledTaskInput,
   computeNextRunAt,
   normalizeTaskInput,
@@ -35,29 +37,59 @@ export async function listScheduledTasks(
         inArray(scheduledTasks.id, directlyAccessibleIds),
       )
     : eq(scheduledTasks.userId, userId);
-  return db
+  const tasks = await db
     .select()
     .from(scheduledTasks)
     .where(
       and(eq(scheduledTasks.workspaceId, workspaceId), visibleTaskCondition),
     )
     .orderBy(asc(scheduledTasks.nextRunAt));
+  const runIds = tasks.flatMap((task) =>
+    task.lastWorkflowRunId ? [task.lastWorkflowRunId] : [],
+  );
+  if (!runIds.length) return tasks;
+  const runs = await db
+    .select({
+      id: workflowRuns.id,
+      status: workflowRuns.status,
+      error: workflowRuns.error,
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, workspaceId),
+        inArray(workflowRuns.id, runIds),
+      ),
+    );
+  return tasks.map((task) => {
+    const run = runs.find((run) => run.id === task.lastWorkflowRunId);
+    return run
+      ? {
+          ...task,
+          lastStatus:
+            run.status === "completed"
+              ? "success"
+              : run.status === "cancelled"
+                ? "failed"
+                : run.status,
+          lastError: run.error,
+        }
+      : task;
+  });
 }
 
 export async function createScheduledTask(input: ScheduledTaskInput) {
   const normalized = normalizeTaskInput(input);
-  await assertAgentInWorkspace(
-    normalized.agentId,
-    normalized.workspaceId,
-    normalized.userId,
-  );
+  await assertScheduledTarget(normalized);
   const nextRunAt = computeNextRunAt(normalized);
   const [task] = await db
     .insert(scheduledTasks)
     .values({
       workspaceId: normalized.workspaceId,
       userId: normalized.userId,
-      agentId: normalized.agentId,
+      agentId: normalized.agentId ?? null,
+      workflowId: normalized.workflowId ?? null,
+      workflowInputJson: normalized.workflowInput ?? null,
       conversationId: normalized.conversationId || null,
       title: normalized.title,
       prompt: normalized.prompt,
@@ -98,7 +130,13 @@ export async function updateScheduledTask(
   const merged = normalizeTaskInput({
     workspaceId,
     userId,
-    agentId: input.agentId ?? existing.agentId,
+    agentId: input.agentId === undefined ? existing.agentId : input.agentId,
+    workflowId:
+      input.workflowId === undefined ? existing.workflowId : input.workflowId,
+    workflowInput:
+      input.workflowInput === undefined
+        ? existing.workflowInputJson
+        : input.workflowInput,
     conversationId: input.conversationId ?? existing.conversationId,
     title: input.title ?? existing.title,
     prompt: input.prompt ?? existing.prompt,
@@ -108,13 +146,17 @@ export async function updateScheduledTask(
     intervalMinutes: input.intervalMinutes ?? existing.intervalMinutes,
     enabled: input.enabled ?? existing.enabled,
   });
-  await assertAgentInWorkspace(merged.agentId, workspaceId, userId);
+  await assertScheduledTarget(merged);
+  if (existing.userId !== userId)
+    await assertScheduledTarget({ ...merged, userId: existing.userId });
   const nextRunAt = computeNextRunAt(merged);
 
   const [task] = await db
     .update(scheduledTasks)
     .set({
-      agentId: merged.agentId,
+      agentId: merged.agentId ?? null,
+      workflowId: merged.workflowId ?? null,
+      workflowInputJson: merged.workflowInput ?? null,
       conversationId: merged.conversationId || null,
       title: merged.title,
       prompt: merged.prompt,
@@ -155,6 +197,8 @@ export async function ensureConversationForTask(
   task: typeof scheduledTasks.$inferSelect,
   agentVersionId: string | null,
 ) {
+  if (!task.agentId)
+    throw new Error("Workflow schedules do not create conversations");
   if (task.conversationId) {
     const [existing] = await db
       .select({ id: conversations.id })
@@ -190,4 +234,30 @@ export async function ensureConversationForTask(
     .where(eq(scheduledTasks.id, task.id));
 
   return conversation.id;
+}
+
+export async function assertScheduledTarget(input: ScheduledTaskInput) {
+  if (!input.workflowId) {
+    if (!input.agentId) throw new Error("Agent not found");
+    await assertAgentInWorkspace(
+      input.agentId,
+      input.workspaceId,
+      input.userId,
+    );
+    return;
+  }
+  const { hasResourcePermissionForRequest } =
+    await import("@/modules/auth/workspace-access");
+  const allowed = await hasResourcePermissionForRequest(
+    input.userId,
+    input.workspaceId,
+    "workflows.execute",
+    "workflow",
+    input.workflowId,
+  );
+  if (!allowed) throw new ScheduledTaskInputError("Missing permission: workflows.execute", 403);
+  const { getWorkflowDetail } = await import("@/modules/workflows/use-cases");
+  const workflow = await getWorkflowDetail(input.workflowId, input.workspaceId);
+  if (!workflow.activeVersion || workflow.status === "archived")
+    throw new ScheduledTaskInputError("Publish the workflow before scheduling it", 409);
 }

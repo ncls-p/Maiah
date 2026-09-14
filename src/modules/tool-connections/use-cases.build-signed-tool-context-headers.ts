@@ -17,6 +17,7 @@ import {
   SIGNATURE_HEADER,
   UserToolSetting,
   decryptRecord,
+  canViewConnection,
   jsonRecord,
 } from "./use-cases.mcp-tool-source";
 import {
@@ -38,14 +39,14 @@ async function findVisibleConnection(
         eq(toolConnections.workspaceId, workspaceId),
         eq(toolConnections.status, "active"),
         isNull(toolConnections.archivedAt),
-        or(
-          eq(toolConnections.ownerUserId, userId),
-          eq(toolConnections.ownerType, "workspace"),
-        ),
       ),
     )
     .limit(1);
-  return connection ?? null;
+  return connection &&
+    (connection.ownerType === "workspace" ||
+      (await canViewConnection(connection, userId)))
+    ? connection
+    : null;
 }
 
 async function findPreferredConnection(
@@ -53,13 +54,25 @@ async function findPreferredConnection(
   input: ResolveToolExecutionHeadersInput,
   settings: UserToolSetting | null,
 ) {
+  if (input.connectionId) {
+    const connection = await findVisibleConnection(
+      input.connectionId,
+      input.workspaceId,
+      input.userId,
+    );
+    if (!connection || connection.connectorId !== connectorId)
+      throw new Error(
+        "Selected tool connection is unavailable or incompatible",
+      );
+    return connection;
+  }
   if (settings?.connectionId) {
     const connection = await findVisibleConnection(
       settings.connectionId,
       input.workspaceId,
       input.userId,
     );
-    if (connection) return connection;
+    if (connection?.connectorId === connectorId) return connection;
   }
 
   const connections = await db
@@ -143,7 +156,11 @@ export async function resolveToolExecutionHeaders(
   input: ResolveToolExecutionHeadersInput,
 ) {
   const { connector, required } = await findConnectorForTool(input);
-  if (!connector) return {};
+  if (!connector) {
+    if (input.connectionId || required)
+      throw new Error("Tool connector is unavailable");
+    return {};
+  }
 
   const settings = await findUserToolSettings(input);
   if (settings && !settings.enabled) {
@@ -167,7 +184,9 @@ export async function resolveToolExecutionHeaders(
   const connectionSecrets = await decryptRecord(
     connection.encryptedSecretsJson,
   );
-  const settingsSecrets = await decryptRecord(settings?.encryptedSecretsJson);
+  const settingsSecrets = input.connectionId
+    ? {}
+    : await decryptRecord(settings?.encryptedSecretsJson);
   const now = Date.now();
   const payload = {
     version: 1,
@@ -197,4 +216,38 @@ export function toolContextHeaderNames() {
     context: CONTEXT_HEADER,
     signature: SIGNATURE_HEADER,
   } as const;
+}
+
+export async function listToolExecutionConnections(
+  input: ResolveToolExecutionHeadersInput,
+) {
+  const { connector } = await findConnectorForTool(input);
+  if (!connector) return [];
+  const candidates = await db
+    .select()
+    .from(toolConnections)
+    .where(
+      and(
+        eq(toolConnections.workspaceId, input.workspaceId),
+        eq(toolConnections.connectorId, connector.id),
+        eq(toolConnections.status, "active"),
+        isNull(toolConnections.archivedAt),
+      ),
+    );
+  const visible = await Promise.all(
+    candidates.map(async (connection) =>
+      connection.ownerType === "workspace" ||
+      (await canViewConnection(connection, input.userId))
+        ? {
+            id: connection.id,
+            label: connection.label,
+            isDefault: connection.isDefault,
+          }
+        : null,
+    ),
+  );
+  return visible.filter(
+    (connection): connection is NonNullable<typeof connection> =>
+      connection !== null,
+  );
 }

@@ -1,3 +1,4 @@
+import { ServiceNowConnectionValidationError } from "@/modules/tool-connections/service-now-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -106,11 +107,14 @@ export async function POST(req: NextRequest) {
       expectedError: (error) => {
         const msg =
           error instanceof Error ? error.message : "Internal server error";
-        const status = msg.includes("not found")
-          ? 404
-          : msg.includes("Only admins")
-            ? 403
-            : 500;
+        const status =
+          error instanceof ServiceNowConnectionValidationError
+            ? 400
+            : msg.includes("not found")
+              ? 404
+              : msg.includes("Only admins")
+                ? 403
+                : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

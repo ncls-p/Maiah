@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { useWorkspace } from "@/hooks/use-workspace";
+import { useSettingsOrganizationId } from "./organization-settings-context";
 import { Link } from "@/i18n/navigation";
 
 const AUTOMATIC = "__automatic__";
@@ -45,7 +45,7 @@ type AdminState = {
 export function WorkflowBuilderSettings() {
   const t = useTranslations("admin.settingsPage.workflowBuilder");
   const tPage = useTranslations("admin.settingsPage");
-  const { workspaceId } = useWorkspace();
+  const organizationId = useSettingsOrganizationId();
   const [state, setState] = useState<AdminState | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,12 +54,12 @@ export function WorkflowBuilderSettings() {
 
   const loadSettings = useCallback(
     async (signal?: AbortSignal) => {
-      if (!workspaceId) return;
+      if (!organizationId) return;
       setLoading(true);
       setLoadError(false);
       try {
         const res = await fetch(
-          `/api/admin/workflow-builder?workspaceId=${workspaceId}`,
+          `/api/admin/workflow-builder?organizationId=${organizationId}`,
           { signal },
         );
         if (!res.ok) throw new Error(tPage("loadFailed"));
@@ -77,16 +77,16 @@ export function WorkflowBuilderSettings() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [tPage, workspaceId],
+    [tPage, organizationId],
   );
 
   useEffect(() => {
-    if (!workspaceId) return;
+    if (!organizationId) return;
     const controller = new AbortController();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async settings bootstrap
     void loadSettings(controller.signal);
     return () => controller.abort();
-  }, [loadSettings, workspaceId]);
+  }, [loadSettings, organizationId]);
 
   const readyAgents = useMemo(
     () => state?.availableAgents.filter((agent) => agent.ready) ?? [],
@@ -97,14 +97,17 @@ export function WorkflowBuilderSettings() {
   );
 
   async function save() {
-    if (!workspaceId) return;
+    if (!organizationId) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/workflow-builder", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, agentId }),
-      });
+      const res = await fetch(
+        `/api/admin/workflow-builder?organizationId=${organizationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agentId }),
+        },
+      );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error || tPage("saveFailed"));
@@ -120,7 +123,7 @@ export function WorkflowBuilderSettings() {
     }
   }
 
-  if (loading || !workspaceId) {
+  if (loading || !organizationId) {
     return <SettingsSectionSkeleton rows={4} />;
   }
 
@@ -135,7 +138,7 @@ export function WorkflowBuilderSettings() {
     );
   }
 
-  const badge = selectedAgent
+  const badge = selectedAgent?.ready
     ? { label: t("statusReady"), tone: "success" as const }
     : agentId
       ? { label: t("statusUnavailable"), tone: "warning" as const }
@@ -169,76 +172,72 @@ export function WorkflowBuilderSettings() {
               <Link href="/agents">{t("configureAgents")}</Link>
             </Button>
           </div>
-        ) : (
-          <div className="space-y-4 rounded-xl border bg-background p-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">{t("agentLabel")}</p>
-              <Select
-                value={agentId ?? AUTOMATIC}
-                onValueChange={(value) =>
-                  setAgentId(value === AUTOMATIC ? null : value)
-                }
-                disabled={saving}
-              >
-                <SelectTrigger aria-label={t("agentLabel")}>
-                  <SelectValue placeholder={t("agentPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={AUTOMATIC}>{t("automatic")}</SelectItem>
-                  {state.availableAgents.map((agent) => (
-                    <SelectItem
-                      key={agent.id}
-                      value={agent.id}
-                      disabled={!agent.ready}
-                    >
-                      {agent.name}
-                      {agent.modelDisplayName
-                        ? ` · ${agent.modelDisplayName}`
-                        : ` · ${t("modelMissing")}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {agentId ? t("configuredHint") : t("automaticHint")}
-              </p>
-            </div>
-
-            {selectedAgent ? (
-              <div className="flex items-center gap-3 rounded-lg bg-muted/45 p-3">
-                <ModelLogo
-                  label={selectedAgent.name}
-                  size="md"
-                  className="rounded-full"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {selectedAgent.name}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {[
-                      selectedAgent.providerName,
-                      selectedAgent.modelDisplayName,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/agents/${selectedAgent.id}`}>
-                    <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-                    {t("openAgent")}
-                  </Link>
-                </Button>
-              </div>
-            ) : null}
+        ) : null}
+        <div className="space-y-4 rounded-xl border bg-background p-4">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{t("agentLabel")}</p>
+            <Select
+              value={agentId ?? AUTOMATIC}
+              onValueChange={(value) =>
+                setAgentId(value === AUTOMATIC ? null : value)
+              }
+              disabled={saving}
+            >
+              <SelectTrigger aria-label={t("agentLabel")}>
+                <SelectValue placeholder={t("agentPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={AUTOMATIC}>{t("automatic")}</SelectItem>
+                {state.availableAgents.map((agent) => (
+                  <SelectItem
+                    key={agent.id}
+                    value={agent.id}
+                    disabled={!agent.ready}
+                  >
+                    {agent.name}
+                    {agent.modelDisplayName
+                      ? ` · ${agent.modelDisplayName}`
+                      : ` · ${t("modelMissing")}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {agentId ? t("configuredHint") : t("automaticHint")}
+            </p>
           </div>
-        )}
+
+          {selectedAgent ? (
+            <div className="flex items-center gap-3 rounded-lg bg-muted/45 p-3">
+              <ModelLogo
+                label={selectedAgent.name}
+                size="md"
+                className="rounded-full"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">
+                  {selectedAgent.name}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {[selectedAgent.providerName, selectedAgent.modelDisplayName]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/agents/${selectedAgent.id}`}>
+                  <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
+                  {t("openAgent")}
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+        </div>
 
         <div className="flex justify-end border-t border-border/60 pt-4">
           <Button
             onClick={() => void save()}
-            disabled={saving || readyAgents.length === 0}
+            disabled={saving || (agentId !== null && !selectedAgent?.ready)}
           >
             {saving ? <Spinner data-icon="inline-start" /> : null}
             {t("save")}

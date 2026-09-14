@@ -30,6 +30,28 @@ export function createWorkflowBaseTools({
   userId,
 }: ToolContext) {
   return {
+    list_workflows: tool({
+      description: "List published workflows accessible to this user for workflow.run nodes. Never invent workflow IDs.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { listWorkflows } = await import("@/modules/workflows/use-cases");
+        const { hasResourcePermissionForRequest } = await import("@/modules/auth/workspace-access");
+        const rows = await listWorkflows(workspaceId);
+        const available = await Promise.all(rows.filter(row => row.id !== workflowId && row.activeVersion).map(async row =>
+          await hasResourcePermissionForRequest(userId, workspaceId, "workflows.execute", "workflow", row.id) ? {id: row.id, name: row.name, description: row.description} : null));
+        return {workflows: available.filter(Boolean)};
+      },
+    }),
+    list_workflow_tools: tool({
+      description:
+        "Discover accessible direct workflow tools, including MCP, with their IDs and parameter schemas. Use these for tool.call nodes; never invent tool IDs.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { listWorkflowTools } =
+          await import("@/modules/workflows/tool-catalog");
+        return { tools: await listWorkflowTools(workspaceId, userId) };
+      },
+    }),
     web_search: tool({
       description:
         "Search the live web for current, external, or implementation information. Use this whenever the automatic research is insufficient and cite useful result URLs in the final Markdown response.",

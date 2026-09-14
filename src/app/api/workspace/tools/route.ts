@@ -3,7 +3,10 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { listBuiltInTools } from "@/modules/tool/builtin-tools";
+import {
+  getBuiltInToolByName,
+  listBuiltInTools,
+} from "@/modules/tool/builtin-tools";
 import {
   listOrganizationBuiltInToolPolicies,
   updateOrganizationBuiltInToolPolicy,
@@ -55,6 +58,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         listBuiltInTools().map((tool) => ({
           ...tool,
+          inputSchemaJson: getBuiltInToolByName(tool.name)
+            ? z.toJSONSchema(getBuiltInToolByName(tool.name)!.inputSchema, {
+                io: "input",
+              })
+            : tool.inputSchemaJson,
           enabled: policiesByName.get(tool.name)?.enabled ?? true,
           requireApproval:
             policiesByName.get(tool.name)?.requireApproval ??

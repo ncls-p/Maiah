@@ -93,6 +93,28 @@ describe("chat route tool gating", () => {
     knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);
   });
 
+  it("makes workflow creation and execution available without any assistant tool bindings", async () => {
+    const { buildBoundTools } = await loadModules();
+    const { tools } = await buildBoundTools(buildInput());
+    expect(Object.keys(tools)).toEqual(
+      expect.arrayContaining([
+        "workflow_catalog",
+        "workflow_list",
+        "workflow_get",
+        "workflow_create",
+        "workflow_update",
+        "workflow_publish",
+        "workflow_run",
+        "workflow_run_status",
+      ]),
+    );
+    const specialized = await buildBoundTools({
+      ...buildInput(),
+      includeWorkflowTools: false,
+    });
+    expect(specialized.tools.workflow_create).toBeUndefined();
+  });
+
   it("does not auto-enable the document sandbox when the organization disabled it", async () => {
     organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
       new Map([

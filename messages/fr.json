@@ -2125,6 +2125,14 @@
         "agile_management": "Gestion agile",
         "system_administrator": "Administration système",
         "none": "Aucun outil"
+      },
+      "serviceNowDialogDescription": "Renseignez votre instance ServiceNow, puis choisissez votre mode de connexion.",
+      "serviceNowSecretsDescription": "Seuls les identifiants du mode choisi sont nécessaires. Ils sont chiffrés et ne sont pas affichés à l’assistant.",
+      "advancedOptions": "Options avancées",
+      "authTypes": {
+        "basic": "Identifiant et mot de passe",
+        "oauth": "OAuth 2.0",
+        "api_key": "Clé API"
       }
     }
   },
@@ -2613,12 +2621,12 @@
       },
       "workflowBuilder": {
         "title": "Assistant de construction des workflows",
-        "description": "Choisissez l’assistant utilisé pour créer et modifier les workflows en mode Agentique dans cet espace.",
+        "description": "Choisissez l’assistant utilisé par défaut pour créer et modifier les workflows depuis un prompt dans tous les projets de cette organisation.",
         "statusReady": "Configuré",
         "statusUnavailable": "Indisponible",
         "statusAutomatic": "Automatique",
         "toolsTitle": "Les outils de workflow sont intégrés",
-        "toolsDescription": "Maiah fournit automatiquement à cet assistant les actions sécurisées pour modifier, valider et enregistrer le workflow ouvert. Aucun MCP ni outil personnalisé n’est nécessaire.",
+        "toolsDescription": "Tous les assistants disposent des outils pour rechercher, créer, modifier, publier et lancer des workflows. Aucun outil à activer individuellement. Les étapes assistant utilisent leurs outils configurés et les connexions de l’utilisateur.",
         "emptyTitle": "Aucun assistant compatible",
         "emptyDescription": "Créez ou configurez un assistant avec une version active et un modèle prenant en charge les appels d’outils.",
         "configureAgents": "Configurer les assistants",
@@ -2626,7 +2634,7 @@
         "agentPlaceholder": "Choisir un assistant",
         "automatic": "Sélection automatique",
         "automaticHint": "Maiah essaie l’assistant préféré de l’utilisateur, puis le choix de l’organisation, puis le premier assistant opérationnel.",
-        "configuredHint": "Ce choix administrateur est prioritaire pour tous les utilisateurs de cet espace.",
+        "configuredHint": "Ce choix s’applique à toute l’organisation. Tous les assistants disposent aussi des outils de création et de lancement de workflows.",
         "modelMissing": "modèle à configurer",
         "openAgent": "Configurer",
         "save": "Enregistrer",
@@ -4087,6 +4095,12 @@
       },
       "date": {
         "now": "Date actuelle"
+      },
+      "tool": {
+        "call": "Appeler un outil"
+      },
+      "workflow": {
+        "run": "Exécuter un workflow"
       }
     },
     "nodeDescriptions": {
@@ -4132,7 +4146,51 @@
       },
       "date": {
         "now": "Ajoute la date ou l’horodatage courant."
+      },
+      "tool": {
+        "call": "Outil Maiah ou MCP, avec des champs et des variables, sans assistant."
+      },
+      "workflow": {
+        "run": "Appeler un autre workflow publié et réutiliser son résultat."
       }
+    },
+    "assistantToolsHint": "L’assistant utilise ses instructions, outils, compétences et bases de connaissances configurés. Les connexions sont celles de l’utilisateur qui lance le workflow.",
+    "variables": {
+      "mode": "Source de la valeur",
+      "fixed": "Valeur fixe",
+      "variable": "Variable",
+      "select": "Choisir une variable",
+      "path": "Chemin de la variable",
+      "runtimeValue": "La valeur sera résolue à l’exécution. Vous pouvez compléter le chemin pour accéder à un sous-champ.",
+      "preview": "Exemple depuis les données de départ : {value}",
+      "choose": "Choisir une valeur",
+      "insert": "Insérer une variable"
+    },
+    "directTools": {
+      "tool": "Outil",
+      "select": "Choisir un outil",
+      "search": "Rechercher un outil ou un serveur",
+      "loading": "Chargement des outils…",
+      "failed": "Impossible de charger les outils.",
+      "retry": "Réessayer",
+      "empty": "Aucun outil disponible.",
+      "unavailable": "L’outil enregistré est indisponible. Vérifiez ses droits ou choisissez un autre outil.",
+      "advanced": "Paramètres JSON avancés",
+      "approval": "Cet outil demande une approbation. Une règle autorisant son exécution en arrière-plan est nécessaire ; sinon cette étape sera refusée.",
+      "connection": "Connexion",
+      "defaultConnection": "Connexion par défaut de l’utilisateur",
+      "connectionUnavailable": "La connexion enregistrée est indisponible. Choisissez-en une autre."
+    },
+    "chaining": {
+      "loading": "Chargement des workflows…",
+      "failed": "Impossible de charger les workflows.",
+      "retry": "Réessayer",
+      "workflow": "Workflow à exécuter",
+      "select": "Sélectionner un workflow publié",
+      "hint": "Exécute avec les droits de l’utilisateur et attend la fin du workflow enfant. Les appels circulaires sont refusés.",
+      "unavailable": "Publiez un workflow accessible avant de le sélectionner.",
+      "input": "Données à transmettre",
+      "result": "Le champ résultat contient le runId enfant et sa sortie output (par identifiant d’étape). Un échec enfant fait aussi échouer cette étape."
     }
   },
   "scheduledTasks": {
@@ -4179,7 +4237,10 @@
       "frequency": "Fréquence",
       "time": "Heure",
       "minutes": "Intervalle en minutes",
-      "enabled": "Tâche active"
+      "enabled": "Tâche active",
+      "target": "À exécuter",
+      "workflow": "Workflow",
+      "workflowInput": "Données envoyées au workflow (JSON)"
     },
     "frequency": {
       "daily": "Tous les jours",
@@ -4207,7 +4268,8 @@
       "idle": "En attente",
       "running": "En cours",
       "success": "Réussie",
-      "failed": "Échec"
+      "failed": "Échec",
+      "queued": "En file d’attente"
     },
     "dailyAt": "Tous les jours à {time}",
     "intervalEvery": "Toutes les {minutes} minutes",
@@ -4229,7 +4291,11 @@
       "updateFailed": "Impossible de mettre à jour la tâche",
       "deleted": "Tâche supprimée",
       "deleteFailed": "Impossible de supprimer la tâche"
-    }
+    },
+    "workflowPlaceholder": "Choisir un workflow publié",
+    "workflowHint": "Chaque déclenchement utilise la version publiée et vos droits et connexions. Publiez le workflow pour le rendre disponible ici.",
+    "workflowLoadFailed": "Impossible de charger les workflows. Fermez puis rouvrez ce formulaire pour réessayer.",
+    "openWorkflow": "Voir le workflow et ses exécutions"
   },
   "resourcePackage": {
     "import": "Importer un JSON",
@@ -4409,5 +4475,21 @@
     "export": "Exporter les événements filtrés (CSV)",
     "exportTooLarge": "Plus de 10 000 événements : affinez la période ou les filtres avant de réessayer.",
     "quota": "Quota mensuel du projet : {used} / {limit} tokens · {remaining} restants (indépendant des filtres)."
+  },
+  "toolDetails": {
+    "expand": "Ouvrir {name} en plein écran",
+    "inspect": "Voir le fonctionnement de {name}",
+    "description": "Description et contrat transmis à l’assistant.",
+    "payloadDescription": "Données de cet appel. Faites défiler pour examiner le contenu complet.",
+    "copy": "Copier",
+    "copied": "Copié",
+    "failed": "Copie impossible. Sélectionnez le texte pour le copier.",
+    "inputSchema": "Paramètres d’entrée (JSON Schema)",
+    "outputSchema": "Résultat attendu (JSON Schema)",
+    "noDescription": "Aucune description fournie.",
+    "noInputSchema": "Aucun schéma d’entrée fourni.",
+    "noOutputSchema": "Aucun schéma de sortie déclaré. Le résultat réel est consultable dans les appels de la conversation.",
+    "approvalRequired": "Cet outil demande une approbation avant son exécution.",
+    "approvalPolicy": "La configuration de cet outil ne force pas d’approbation. Les règles de l’assistant et de l’organisation restent applicables."
   }
 }

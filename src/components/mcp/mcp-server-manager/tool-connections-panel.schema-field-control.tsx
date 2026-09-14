@@ -101,10 +101,12 @@ export function SchemaFieldControl({
             <SelectContent>
               {property.enum.map((option) => (
                 <SelectItem key={option} value={option}>
-                  {t.has(`packages.${option}`)
-                    ? t(`packages.${option}`)
-                    : (SERVICE_NOW_PACKAGE_LABELS[option] ??
-                      humanizeKey(option))}
+                  {fieldKey === "authType" && t.has(`authTypes.${option}`)
+                    ? t(`authTypes.${option}`)
+                    : t.has(`packages.${option}`)
+                      ? t(`packages.${option}`)
+                      : (SERVICE_NOW_PACKAGE_LABELS[option] ??
+                        humanizeKey(option))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -233,5 +235,10 @@ export function createFormFromConnection(
     isDefault: connection.isDefault,
     status: connection.status,
     hasExistingSecrets: connection.hasSecrets,
+    initialAuthType: String(
+      connection.config?.authType ??
+        connector.defaultConfig?.authType ??
+        "basic",
+    ),
   };
 }

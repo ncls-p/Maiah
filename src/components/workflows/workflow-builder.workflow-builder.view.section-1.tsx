@@ -1,3 +1,4 @@
+import { ToolPayloadViewer } from "@/components/tools/tool-payload-viewer";
 import { AlertCircleIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -81,24 +82,15 @@ export function WorkflowBuilderSection1({
                     </pre>
                   ) : null}
                   <div className="mt-3 grid gap-3">
-                    <div>
-                      <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                        {t("stepInput")}
-                      </p>
-                      <pre className="max-h-48 overflow-auto rounded-lg bg-muted p-3 text-[11px] leading-5">
-                        {JSON.stringify(step.inputJson, null, 2)}
-                      </pre>
-                    </div>
-                    {step.outputJson !== null &&
-                    step.outputJson !== undefined ? (
-                      <div>
-                        <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                          {t("stepOutput")}
-                        </p>
-                        <pre className="max-h-48 overflow-auto rounded-lg bg-muted p-3 text-[11px] leading-5">
-                          {JSON.stringify(step.outputJson, null, 2)}
-                        </pre>
-                      </div>
+                    <ToolPayloadViewer
+                      label={t("stepInput")}
+                      value={step.inputJson}
+                    />
+                    {step.outputJson !== undefined ? (
+                      <ToolPayloadViewer
+                        label={t("stepOutput")}
+                        value={step.outputJson}
+                      />
                     ) : null}
                   </div>
                 </div>

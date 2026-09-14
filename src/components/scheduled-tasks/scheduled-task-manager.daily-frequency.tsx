@@ -7,7 +7,10 @@ export type ScheduledTask = {
   id: string;
   title: string;
   prompt: string;
-  agentId: string;
+  agentId: string | null;
+  workflowId?: string | null;
+  workflowInputJson?: unknown;
+  lastWorkflowRunId?: string | null;
   conversationId: string | null;
   frequency: ScheduleFrequency;
   timezone: string;

@@ -37,6 +37,13 @@ export function useScheduledTaskManagerController({
   const [timeOfDay, setTimeOfDay] = useState("08:00");
   const [intervalMinutes, setIntervalMinutes] = useState("1440");
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
+  const [target, setTarget] = useState<"assistant" | "workflow">(agents.length ? "assistant" : "workflow");
+  const [workflowId, setWorkflowId] = useState("");
+  const [workflowInput, setWorkflowInput] = useState<unknown>({});
+  const [workflows, setWorkflows] = useState<
+    Array<{ id: string; name: string; activeVersion: number | null }>
+  >([]);
+  const [workflowLoadError, setWorkflowLoadError] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [pendingDeleteTask, setPendingDeleteTask] =
     useState<ScheduledTask | null>(null);
@@ -58,6 +65,7 @@ export function useScheduledTaskManagerController({
   const nextTask = tasks.find((task) => task.enabled) ?? null;
   const statusLabels = {
     idle: t("status.idle"),
+    queued: t("status.queued"),
     running: t("status.running"),
     success: t("status.success"),
     failed: t("status.failed"),
@@ -86,8 +94,37 @@ export function useScheduledTaskManagerController({
     };
   }, [loadTasks]);
 
+  useEffect(() => {
+    if (!workspaceId || !editorOpen) return;
+    let disposed = false;
+    fetchJson<{
+      workflows: Array<{
+        id: string;
+        name: string;
+        activeVersion: number | null;
+      }>;
+    }>(`/api/workspace/workflows?workspaceId=${workspaceId}`)
+      .then((result) => {
+        if (!disposed) {
+          setWorkflows(
+            result.workflows.filter((workflow) => workflow.activeVersion),
+          );
+          setWorkflowLoadError(false);
+        }
+      })
+      .catch(() => {
+        if (!disposed) setWorkflowLoadError(true);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [workspaceId, editorOpen]);
+
   function openCreateEditor() {
     setEditingTask(null);
+    setTarget(agents.length ? "assistant" : "workflow");
+    setWorkflowId("");
+    setWorkflowInput({});
     setTitle(t("defaults.title"));
     setPrompt(t("defaults.prompt"));
     setFrequency(DAILY_FREQUENCY);
@@ -105,7 +142,10 @@ export function useScheduledTaskManagerController({
     setFrequency(task.frequency);
     setTimeOfDay(task.timeOfDay ?? "08:00");
     setIntervalMinutes(String(task.intervalMinutes ?? 1440));
-    setAgentId(task.agentId);
+    setAgentId(task.agentId ?? "");
+    setTarget(task.workflowId ? "workflow" : "assistant");
+    setWorkflowId(task.workflowId ?? "");
+    setWorkflowInput(task.workflowInputJson ?? {});
     setEnabled(task.enabled);
     setEditorOpen(true);
   }
@@ -118,9 +158,9 @@ export function useScheduledTaskManagerController({
     const trimmedTitle = title.trim();
     const trimmedPrompt = prompt.trim();
     if (!workspaceId) return;
-    if (!currentAgentId) return;
+    if (target === "assistant" ? !currentAgentId : !workflowId) return;
     if (!trimmedTitle) return;
-    if (!trimmedPrompt) return;
+    if (target === "assistant" && !trimmedPrompt) return;
     setSaving(true);
     try {
       const endpoint = editingTask
@@ -131,10 +171,12 @@ export function useScheduledTaskManagerController({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId,
-          agentId: currentAgentId,
+          agentId: target === "assistant" ? currentAgentId : null,
+          workflowId: target === "workflow" ? workflowId : null,
+          workflowInput: target === "workflow" ? workflowInput : null,
           ...(editingTask ? {} : { conversationId: null }),
           title: trimmedTitle,
-          prompt: trimmedPrompt,
+          prompt: target === "assistant" ? trimmedPrompt : "",
           frequency,
           timezone: editingTask?.timezone ?? localTimeZone(),
           timeOfDay: frequency === DAILY_FREQUENCY ? timeOfDay : null,
@@ -218,6 +260,14 @@ export function useScheduledTaskManagerController({
 
   return {
     kind: "ready",
+    target,
+    setTarget,
+    workflowId,
+    setWorkflowId,
+    workflowInput,
+    setWorkflowInput,
+    workflows,
+    workflowLoadError,
     agents,
     closeEditor,
     currentAgentId,

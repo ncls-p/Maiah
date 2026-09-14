@@ -1,5 +1,12 @@
 "use client";
 
+import { WorkflowCallFields } from "./workflow-call-fields";
+import { WorkflowToolFields } from "./workflow-tool-fields";
+import {
+  WorkflowValueField,
+  WorkflowVariablesContext,
+} from "./workflow-value-field";
+import { useContext } from "react";
 import { SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -45,6 +52,7 @@ function FieldControl({
 }) {
   const t = useTranslations("workflows");
   const id = `workflow-${nodeId}-${field.key}`;
+  const variables = useContext(WorkflowVariablesContext);
 
   if (field.control === "select" || field.control === "agent") {
     const options =
@@ -88,15 +96,36 @@ function FieldControl({
   }
   if (field.control === "textarea" || field.control === "code") {
     return (
-      <Textarea
-        id={id}
-        value={String(value ?? "")}
-        onChange={(event) => onChange(event.target.value)}
-        className={
-          field.control === "code" ? "min-h-72 font-mono text-xs" : "min-h-32"
-        }
-        spellCheck={field.control !== "code"}
-      />
+      <div className="space-y-2">
+        <Textarea
+          id={id}
+          value={String(value ?? "")}
+          onChange={(event) => onChange(event.target.value)}
+          className={
+            field.control === "code" ? "min-h-72 font-mono text-xs" : "min-h-32"
+          }
+          spellCheck={field.control !== "code"}
+        />
+        {field.description === "templateHint" ? (
+          <Select
+            value=""
+            onValueChange={(path) =>
+              onChange(`${String(value ?? "")}{{${path}}}`)
+            }
+          >
+            <SelectTrigger aria-label={t("variables.insert")}>
+              <SelectValue placeholder={t("variables.insert")} />
+            </SelectTrigger>
+            <SelectContent>
+              {variables.map((variable) => (
+                <SelectItem key={variable.path} value={variable.path}>
+                  {variable.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+      </div>
     );
   }
   if (field.control === "json") {
@@ -123,6 +152,8 @@ function FieldControl({
       />
     );
   }
+  if (field.description === "templateHint")
+    return <WorkflowValueField id={id} value={value} onChange={onChange} />;
   return (
     <Input
       id={id}
@@ -196,6 +227,27 @@ export function WorkflowNodeFields({
 
   return (
     <div className="flex flex-col gap-5">
+      {catalogItem.type === "workflow.run" ? (
+        <WorkflowCallFields
+          key={nodeId}
+          nodeId={nodeId}
+          parameters={parameters}
+          onChange={onChange}
+        />
+      ) : null}
+      {catalogItem.type === "tool.call" ? (
+        <WorkflowToolFields
+          key={nodeId}
+          nodeId={nodeId}
+          parameters={parameters}
+          onChange={onChange}
+        />
+      ) : null}
+      {catalogItem.type === "agent.run" ? (
+        <p className="text-xs text-muted-foreground">
+          {t("assistantToolsHint")}
+        </p>
+      ) : null}
       <NodeFields
         nodeId={nodeId}
         fields={basicFields}

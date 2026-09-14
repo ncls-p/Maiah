@@ -35,9 +35,32 @@ import {
   workflowQueueConnection,
 } from "@/modules/workflows/queue";
 
+import { createTranslator } from "next-intl";
+import en from "../../messages/en.json";
+import fr from "../../messages/fr.json";
+
 describe("workflow no-code catalog", () => {
+  it("translates every node name and description in both languages", () => {
+    for (const [locale, messages] of [
+      ["en", en],
+      ["fr", fr],
+    ] as const) {
+      const t = createTranslator({
+        locale,
+        messages,
+        namespace: "workflows",
+        onError(error) {
+          throw error;
+        },
+      });
+      for (const node of WORKFLOW_NODE_CATALOG) {
+        expect(t(`nodes.${node.type}`)).not.toContain("workflows.");
+        expect(t(`nodeDescriptions.${node.type}`)).not.toContain("workflows.");
+      }
+    }
+  });
   it("declares one complete, unique entry for every supported node", () => {
-    expect(WORKFLOW_NODE_CATALOG).toHaveLength(21);
+    expect(WORKFLOW_NODE_CATALOG).toHaveLength(23);
     expect(new Set(WORKFLOW_NODE_CATALOG.map((item) => item.type)).size).toBe(
       WORKFLOW_NODE_CATALOG.length,
     );

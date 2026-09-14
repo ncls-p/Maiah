@@ -1,3 +1,4 @@
+import { Link } from "@/i18n/navigation";
 import {
   CalendarClockIcon,
   Loader2Icon,
@@ -168,6 +169,14 @@ export function ScheduledTaskManagerSection2({
                         date: formatNextRun(task.nextRunAt, locale),
                       })}
                     </p>
+                    {task.workflowId ? (
+                      <Link
+                        className="mt-2 inline-block text-xs text-primary underline"
+                        href={`/workflows/${task.workflowId}`}
+                      >
+                        {t("openWorkflow")}
+                      </Link>
+                    ) : null}
                     {task.lastError ? (
                       <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
                         {task.lastError}

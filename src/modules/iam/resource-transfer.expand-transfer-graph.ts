@@ -408,16 +408,30 @@ export async function expandTransferGraph(
           addResource(sets, "scheduled_task", task.id, "dependent") || changed;
     }
 
+    const selectedWorkflowIds = ids(sets, "workflow");
+    if (selectedWorkflowIds.length) {
+      const tasks = await db
+        .select({ id: scheduledTasks.id })
+        .from(scheduledTasks)
+        .where(inArray(scheduledTasks.workflowId, selectedWorkflowIds));
+      for (const task of tasks)
+        changed =
+          addResource(sets, "scheduled_task", task.id, "dependent") || changed;
+    }
     const taskIds = ids(sets, "scheduled_task");
     if (taskIds.length > 0) {
       const rows = await db
         .select({
           agentId: scheduledTasks.agentId,
+          workflowId: scheduledTasks.workflowId,
           conversationId: scheduledTasks.conversationId,
         })
         .from(scheduledTasks)
         .where(inArray(scheduledTasks.id, taskIds));
       for (const row of rows) {
+        changed =
+          addResource(sets, "workflow", row.workflowId, "dependency") ||
+          changed;
         changed =
           addResource(sets, "agent", row.agentId, "dependency") || changed;
         changed =

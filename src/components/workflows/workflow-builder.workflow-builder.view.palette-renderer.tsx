@@ -14,7 +14,10 @@ import {
 } from "@/modules/workflows/catalog";
 
 import type { WorkflowBuilderViewModel } from "./workflow-builder.workflow-builder.view";
-import { workflowNodeIconByType } from "./workflow-canvas-node";
+import {
+  workflowNodeIconByType,
+  workflowCategoryColors,
+} from "./workflow-canvas-node";
 export function useWorkflowPaletteRenderer(model: WorkflowBuilderViewModel) {
   const {
     addNode,
@@ -100,7 +103,9 @@ export function useWorkflowPaletteRenderer(model: WorkflowBuilderViewModel) {
                   onClick={() => addNode(item.type)}
                   className="group flex w-full items-start gap-3 rounded-xl border border-border/70 bg-background p-3 text-left transition-[background-color,border-color,scale] duration-150 ease-out hover:border-foreground/25 hover:bg-accent active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-foreground">
+                  <span
+                    className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${workflowCategoryColors[item.category].icon}`}
+                  >
                     <Icon aria-hidden="true" />
                   </span>
                   <span className="min-w-0">

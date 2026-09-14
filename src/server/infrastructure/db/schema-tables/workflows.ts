@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   index,
   integer,
   jsonb,
@@ -107,6 +108,11 @@ export const workflowRuns = pgTable(
     triggeredById: uuid("triggered_by_user_id").references(() => users.id, {
       onDelete: SET_NULL,
     }),
+    parentRunId: uuid("parent_run_id").references(
+      (): AnyPgColumn => workflowRuns.id,
+      { onDelete: SET_NULL },
+    ),
+    childRunsStarted: integer("child_runs_started").notNull().default(0),
     trigger: varchar("trigger", { length: 32 }).notNull().default("api"),
     status: workflowRunStatusEnum("status").notNull().default("queued"),
     inputJson: jsonb("input_json"),
