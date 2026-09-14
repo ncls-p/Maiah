@@ -1716,7 +1716,10 @@
     "originalUnavailable": "Le fichier original n’a pas été conservé pour ce document. Cette vue contient uniquement le texte extrait. Réimportez le fichier original pour pouvoir le prévisualiser et le télécharger.",
     "documentPreviewMode": "Mode de prévisualisation",
     "documentOriginal": "Original",
-    "documentIndexedText": "Texte indexé"
+    "documentIndexedText": "Texte indexé",
+    "previousSlide": "Diapositive précédente",
+    "nextSlide": "Diapositive suivante",
+    "slidePosition": "Diapositive {current} sur {total}"
   },
   "tools": {
     "title": "Outils & intégrations",

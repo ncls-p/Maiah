@@ -2,6 +2,7 @@ import "pdf-parse/worker";
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { PDFParse } from "pdf-parse";
+import { renderPresentationSlide } from "@/modules/document-extraction/presentation-slide";
 import { presentationPdf } from "@/modules/document-extraction/presentation-pdf";
 import { presentationVisualCandidates } from "@/modules/document-extraction/presentation-visual-candidates";
 
@@ -14,6 +15,12 @@ suite("private presentation converter", () => {
     };
     const bytes = await presentationPdf(input);
     expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe("%PDF-");
+    const slide = await renderPresentationSlide(bytes, 2);
+    expect(slide.total).toBe(2);
+    expect(Buffer.from(slide.bytes).subarray(1, 4).toString()).toBe("PNG");
+    await expect(renderPresentationSlide(bytes, 3)).rejects.toThrow(
+      "Slide not found",
+    );
     const parser = new PDFParse({ data: Buffer.from(bytes) });
     try {
       const text = await parser.getText();

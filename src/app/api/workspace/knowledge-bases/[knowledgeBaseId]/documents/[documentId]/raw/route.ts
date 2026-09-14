@@ -1,5 +1,6 @@
 import { originalDocumentDisposition } from "@/modules/knowledge/document-metadata";
 import { presentationPdf } from "@/modules/document-extraction/presentation-pdf";
+import { renderPresentationSlide } from "@/modules/document-extraction/presentation-slide";
 import { presentationExtension } from "@/modules/document-extraction/presentation-format";
 import {
   handleRoute,
@@ -68,9 +69,11 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     let bytes = await storage.download(document.objectStorageKey);
+    const slidePreview = req.nextUrl.searchParams.get("preview") === "slide";
     const preview =
-      req.nextUrl.searchParams.get("preview") === "pdf" &&
+      (req.nextUrl.searchParams.get("preview") === "pdf" || slidePreview) &&
       req.nextUrl.searchParams.get("download") !== "1";
+    let slideCount = 0;
     if (preview) {
       if (!presentationExtension(document.title, document.mimeType)) {
         return NextResponse.json(
@@ -84,7 +87,20 @@ export async function GET(
           mimeType: document.mimeType,
           bytes,
         });
-      } catch {
+        if (slidePreview) {
+          const slide = await renderPresentationSlide(
+            bytes,
+            Number(req.nextUrl.searchParams.get("page") ?? "1"),
+          );
+          bytes = slide.bytes;
+          slideCount = slide.total;
+        }
+      } catch (error) {
+        if (error instanceof RangeError)
+          return NextResponse.json(
+            { error: "Invalid slide number" },
+            { status: 400 },
+          );
         return NextResponse.json(
           {
             error:
@@ -100,15 +116,20 @@ export async function GET(
     return new Response(body, {
       headers: {
         "Content-Type": preview
-          ? "application/pdf"
+          ? slidePreview
+            ? "image/png"
+            : "application/pdf"
           : (document.mimeType ?? "application/octet-stream"),
         "Content-Length": String(bytes.byteLength),
         "Content-Disposition": preview
-          ? 'inline; filename="presentation.pdf"'
+          ? slidePreview
+            ? 'inline; filename="slide.png"'
+            : 'inline; filename="presentation.pdf"'
           : `${originalDocumentDisposition(document.mimeType, req.nextUrl.searchParams.get("download") === "1")}; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(document.title)}`,
         "Cache-Control": "no-store",
         "Content-Security-Policy": "default-src 'none'; sandbox",
         "X-Content-Type-Options": "nosniff",
+        ...(slideCount ? { "X-Presentation-Pages": String(slideCount) } : {}),
       },
     });
   });

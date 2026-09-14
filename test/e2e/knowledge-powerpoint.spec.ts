@@ -35,9 +35,36 @@ test("PowerPoint preview, indexed text, download and original re-extraction", as
     ).toHaveAttribute("aria-valuenow", "100", { timeout: 60_000 });
     await page.getByRole("button", { name: title, exact: true }).click();
     const dialog = page.getByRole("dialog", { name: title, exact: true });
-    await expect(dialog.locator("iframe")).toHaveAttribute("src", /^blob:/, {
-      timeout: 80_000,
+    const firstSlide = dialog.getByRole("img", {
+      name: "Slide 1 of 2",
+      exact: true,
     });
+    await expect(firstSlide).toBeVisible({ timeout: 80_000 });
+    await expect
+      .poll(() =>
+        firstSlide.evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    await dialog
+      .getByRole("button", { name: "Next slide", exact: true })
+      .click();
+    const secondSlide = dialog.getByRole("img", {
+      name: "Slide 2 of 2",
+      exact: true,
+    });
+    await expect(secondSlide).toBeVisible();
+    await expect
+      .poll(() =>
+        secondSlide.evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    await expect(
+      dialog.getByRole("button", { name: "Next slide", exact: true }),
+    ).toBeDisabled();
     const rawUrl = await dialog
       .getByRole("link", { name: "Download original" })
       .getAttribute("href");
