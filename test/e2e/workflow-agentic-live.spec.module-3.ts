@@ -10,14 +10,19 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
 }) => {
   const workspaces = (await (
     await page.request.get("/api/workspaces")
-  ).json()) as Array<{ workspace: { id: string }; isActive: boolean }>;
+  ).json()) as Array<{
+    workspace: { id: string; organizationId: string };
+    isActive: boolean;
+  }>;
   const workspaceId = (workspaces.find((row) => row.isActive) ?? workspaces[0])!
     .workspace.id;
-  const previousBuilderState = (await (
-    await page.request.get(
-      `/api/admin/workflow-builder?workspaceId=${workspaceId}`,
-    )
-  ).json()) as {
+  const organizationId = workspaces.find(
+    (row) => row.workspace.id === workspaceId,
+  )!.workspace.organizationId;
+  const settingsUrl = `/api/admin/workflow-builder?organizationId=${organizationId}`;
+  const previousResponse = await page.request.get(settingsUrl);
+  expect(previousResponse.ok()).toBe(true);
+  const previousBuilderState = (await previousResponse.json()) as {
     config: { agentId: string | null };
   };
 
@@ -76,15 +81,12 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
       }
     ).agent.id;
 
-    const builderSettingsResponse = await page.request.patch(
-      "/api/admin/workflow-builder",
-      {
-        data: {
-          workspaceId,
-          agentId,
-        },
+    const builderSettingsResponse = await page.request.patch(settingsUrl, {
+      data: {
+        workspaceId,
+        agentId,
       },
-    );
+    });
     expect(builderSettingsResponse.ok()).toBe(true);
 
     const workflowResponse = await page.request.post(
@@ -197,7 +199,7 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
         steps: [{ status: "completed" }, { status: "completed" }],
       });
   } finally {
-    await page.request.patch("/api/admin/workflow-builder", {
+    await page.request.patch(settingsUrl, {
       data: {
         workspaceId,
         agentId: previousBuilderState.config.agentId,
