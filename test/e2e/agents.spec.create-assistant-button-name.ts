@@ -103,6 +103,7 @@ test.describe("agents list page", () => {
         page.getByRole("menuitem", { name: /Delete/i }),
       ).toBeVisible();
       await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toBeHidden();
 
       const draggableRows = page.locator(
         '[data-slot="workspace-history-sidebar"] [draggable="true"]',
@@ -115,11 +116,31 @@ test.describe("agents list page", () => {
           await draggableRows.nth(1).getByRole("button").first().innerText()
         ).split("\n")[0]!;
 
-        await draggableRows.nth(1).dragTo(draggableRows.nth(0));
+        const reordered = page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/workspace/conversations/reorder") &&
+            response.request().method() === "POST",
+        );
+        await draggableRows
+          .nth(1)
+          .dragTo(draggableRows.nth(0), {
+            sourcePosition: { x: 8, y: 16 },
+            targetPosition: { x: 8, y: 16 },
+          });
+        expect((await reordered).ok()).toBe(true);
         await expect(draggableRows.nth(0)).toContainText(secondTitle);
-        await page.waitForTimeout(350);
-
-        await draggableRows.nth(1).dragTo(draggableRows.nth(0));
+        const restored = page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/workspace/conversations/reorder") &&
+            response.request().method() === "POST",
+        );
+        await draggableRows
+          .nth(1)
+          .dragTo(draggableRows.nth(0), {
+            sourcePosition: { x: 8, y: 16 },
+            targetPosition: { x: 8, y: 16 },
+          });
+        expect((await restored).ok()).toBe(true);
         await expect(draggableRows.nth(0)).toContainText(firstTitle);
       }
     }
@@ -128,7 +149,11 @@ test.describe("agents list page", () => {
   test("keeps assistant card menus focused on secondary actions", async ({
     page,
   }) => {
-    await ensureE2EAssistant();
+    const { workspaceId } = await ensureE2EAssistant();
+    const selection = await page.request.patch("/api/workspaces", {
+      data: { workspaceId },
+    });
+    expect(selection.ok()).toBe(true);
     await page.goto("/en/agents");
 
     const actionsButton = page

@@ -126,6 +126,7 @@ export async function getConversationMessages(conversationId: string) {
 
 export async function recordUsageEvent(input: {
   workspaceId: string;
+  billingWorkspaceId?: string;
   userId: string;
   providerId?: string;
   modelId?: string;
@@ -142,6 +143,7 @@ export async function recordUsageEvent(input: {
   try {
     await db.insert(usageEvents).values({
       workspaceId: input.workspaceId,
+      billingWorkspaceId: input.billingWorkspaceId ?? input.workspaceId,
       userId: input.userId,
       providerId: input.providerId || null,
       modelId: input.modelId || null,

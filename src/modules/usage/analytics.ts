@@ -1,3 +1,4 @@
+import { usageBillingWorkspace } from "./billing-scope";
 import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
@@ -29,7 +30,7 @@ const costCurrency = sql<string>`coalesce(${usageEvents.metadataJson}->>'currenc
 const costTotal = sql<string>`coalesce(sum(${costValue}), 0)::text`;
 
 function filtersFor(input: UsageAnalyticsInput): SQL[] {
-  const filters: SQL[] = [eq(usageEvents.workspaceId, input.workspaceId)];
+  const filters: SQL[] = [eq(usageBillingWorkspace, input.workspaceId)];
   if (input.operation) filters.push(eq(usageEvents.operation, input.operation));
   if (input.from) filters.push(gte(usageEvents.createdAt, input.from));
   if (input.to) filters.push(lte(usageEvents.createdAt, input.to));

@@ -1,3 +1,4 @@
+import { resolveUsageBillingWorkspace } from "@/modules/usage/billing-scope";
 import { generateImage } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -115,6 +116,10 @@ export async function generateWorkspaceImage(input: {
 
   await db.insert(usageEvents).values({
     workspaceId: input.workspaceId,
+    billingWorkspaceId: await resolveUsageBillingWorkspace(
+      input.workspaceId,
+      input.conversationId,
+    ),
     userId: input.userId,
     providerId: selected.provider.id,
     modelId: selected.model.id,

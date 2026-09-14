@@ -81,5 +81,26 @@ export async function getActiveOrganizationThemeForUser(userId: string) {
     const active = await organizationThemeForWorkspace(activeWorkspaceId);
     if (active) return active;
   }
-  return organizationThemeForUserMembership(userId);
+  const projectTheme = await organizationThemeForUserMembership(userId);
+  if (projectTheme) return projectTheme;
+  // An organization may be customized before its first project exists.
+  const [organization] = await db
+    .select({
+      theme: organizations.theme,
+      themeConfigJson: organizations.themeConfigJson,
+    })
+    .from(organizations)
+    .innerJoin(
+      organizationMembers,
+      eq(organizationMembers.organizationId, organizations.id),
+    )
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.status, "active"),
+      ),
+    )
+    .orderBy(organizations.createdAt, organizations.id)
+    .limit(1);
+  return organization ? toActiveOrganizationTheme(organization) : null;
 }

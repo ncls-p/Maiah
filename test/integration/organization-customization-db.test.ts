@@ -1,3 +1,5 @@
+import { getActiveOrganizationThemeForUser } from "@/modules/workspace/use-cases.active-organization-theme";
+import { updateOrganizationBranding } from "@/modules/organization/branding";
 import { getChatAutomationConfig } from "@/modules/chat/automation.chat-automation-config";
 import { afterAll, beforeAll, describe, it, expect, vi } from "vitest";
 vi.mock("server-only", () => ({}));
@@ -77,6 +79,36 @@ suite("organization customization scope and model revocation", () => {
     );
     await db.delete(organizations).where(eq(organizations.id, recipient));
     await f.cleanup();
+  });
+  it("keeps branding available to an organization owner before any project exists", async () => {
+    const result = await updateOrganizationBranding({
+      organizationId: recipient,
+      organizationName: "Renamed without a project",
+      userId: f.outsider,
+      logoUrl: null,
+      theme: "forest",
+      themeConfig: null,
+      heroConfig: null,
+    });
+    expect(result.status).toBe("updated");
+    if (result.status === "updated")
+      expect(result.organization.name).toBe("Renamed without a project");
+    expect(await getActiveOrganizationThemeForUser(f.outsider)).toEqual({
+      theme: "forest",
+      themeConfig: null,
+    });
+    expect(
+      (
+        await updateOrganizationBranding({
+          organizationId: recipient,
+          userId: f.member,
+          logoUrl: null,
+          theme: "ember",
+          themeConfig: null,
+          heroConfig: null,
+        })
+      ).status,
+    ).not.toBe("updated");
   });
   it("stores independent automation and navigation settings including an empty organization", async () => {
     const config = {

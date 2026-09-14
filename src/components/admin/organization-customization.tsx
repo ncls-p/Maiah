@@ -10,9 +10,15 @@ import { OrganizationBrandingCard } from "@/app/[locale]/(workspace)/admin/setti
 import { ChatAutomationSettings } from "./chat-automation-settings";
 import { SidebarNavigationSettings } from "./sidebar-navigation-settings";
 
+import { organizationLabels } from "@/components/iam/organization-labels";
 import { OrganizationSettingsContext } from "./organization-settings-context";
 
-type Organization = { id: string; name: string; canManageSettings: boolean };
+type Organization = {
+  id: string;
+  name: string;
+  canManageSettings: boolean;
+  projects: { id: string; name: string }[];
+};
 export function OrganizationCustomization() {
   const t = useTranslations("settings.organizationCustomization");
   const { workspaceId, workspaces } = useWorkspace();
@@ -61,7 +67,7 @@ export function OrganizationCustomization() {
           <GovernanceSelect
             label={t("organization")}
             value={organization?.id ?? ""}
-            options={rows}
+            options={organizationLabels(rows)}
             onChange={setSelectedId}
           />
         ) : (
@@ -73,7 +79,9 @@ export function OrganizationCustomization() {
           key={organization.id}
           value={organization.id}
         >
-          <OrganizationBrandingCard />
+          <OrganizationBrandingCard
+            onSaved={() => setRevision((value) => value + 1)}
+          />
           {organization.canManageSettings ? (
             <>
               <ChatAutomationSettings />

@@ -1,3 +1,4 @@
+vi.mock("@/server/domain/services/audit", () => ({ audit: { emit: vi.fn() } }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {

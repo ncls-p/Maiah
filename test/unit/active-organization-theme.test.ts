@@ -6,9 +6,16 @@ const mocks = vi.hoisted(() => {
     innerJoin: vi.fn(),
     leftJoin: vi.fn(),
     where: vi.fn(),
+    orderBy: vi.fn(),
     limit: vi.fn(),
   };
-  for (const method of ["from", "innerJoin", "leftJoin", "where"] as const) {
+  for (const method of [
+    "from",
+    "innerJoin",
+    "leftJoin",
+    "where",
+    "orderBy",
+  ] as const) {
     chain[method].mockReturnValue(chain);
   }
   return {
@@ -27,7 +34,13 @@ describe("getActiveOrganizationThemeForUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.select.mockReturnValue(mocks.chain);
-    for (const method of ["from", "innerJoin", "leftJoin", "where"] as const) {
+    for (const method of [
+      "from",
+      "innerJoin",
+      "leftJoin",
+      "where",
+      "orderBy",
+    ] as const) {
       mocks.chain[method].mockReturnValue(mocks.chain);
     }
   });
@@ -69,6 +82,16 @@ describe("getActiveOrganizationThemeForUser", () => {
     });
   });
 
+  it("uses an active organization membership when there is no project", async () => {
+    mocks.chain.limit
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ theme: "forest", themeConfigJson: null }]);
+    await expect(getActiveOrganizationThemeForUser("user-1")).resolves.toEqual({
+      theme: "forest",
+      themeConfig: null,
+    });
+  });
   it("returns null when the user has no visible organization", async () => {
     mocks.chain.limit.mockResolvedValue([]);
 

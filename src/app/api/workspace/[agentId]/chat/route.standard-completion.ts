@@ -236,6 +236,7 @@ export async function completeStandardChat(input: {
       .where(eq(conversations.id, conversation.id));
     await tx.insert(usageEvents).values({
       workspaceId: agent.workspaceId,
+      billingWorkspaceId: conversation.billingWorkspaceId ?? agent.workspaceId,
       userId: actorUserId,
       providerId: providerConfig.providerId,
       modelId: providerConfig.modelRecordId,

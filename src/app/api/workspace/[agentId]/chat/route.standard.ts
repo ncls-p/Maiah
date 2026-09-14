@@ -486,6 +486,8 @@ export async function runStandardChat(input: {
         if (!transitioned) return;
         await recordUsageEvent({
           workspaceId: agent.workspaceId,
+          billingWorkspaceId:
+            conversation.billingWorkspaceId ?? agent.workspaceId,
           userId: actorUserId,
           providerId: providerConfig.providerId,
           modelId: providerConfig.modelRecordId,

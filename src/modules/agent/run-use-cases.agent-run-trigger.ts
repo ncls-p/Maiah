@@ -22,6 +22,7 @@ export type AgentRunTerminalStatus =
 
 export type AgentRunUsageEvent = {
   workspaceId: string;
+  billingWorkspaceId?: string;
   userId: string;
   providerId?: string;
   modelId?: string;
