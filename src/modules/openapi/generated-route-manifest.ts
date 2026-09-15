@@ -2139,7 +2139,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     auth: ["session", "apiKey"],
     permissions: ["mcpServers.get"],
     pathParameters: ["serverId"],
-    queryParameters: ["workspaceId"],
+    queryParameters: ["includeConnections", "workspaceId"],
     bodyKind: "none",
     responseKind: "json",
   },

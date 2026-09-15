@@ -89,6 +89,7 @@ export async function prepareStandardChatConfig(input: {
         enabledTools: capabilityOverrides?.enabledTools,
         enabledSkillIds: new Set(enabledSkills.map((skill) => skill.id)),
         enabledKnowledgeIds: capabilityOverrides?.enabledKnowledgeIds,
+        mcpConnectionIds: capabilityOverrides?.mcpConnectionIds,
         enableDocumentExplorer:
           availableAttachments.some(
             (attachment) =>

@@ -126,6 +126,7 @@ export async function executeResolvedAgent(
             messageId: input.messageId ?? undefined,
             userId: input.userId,
             maxToolCalls: runtimeLimits.maxToolCalls,
+            mcpConnectionIds: input.mcpConnectionIds,
             approvalPolicy:
               (input.resolved.version.approvalPolicyJson as never) ?? null,
             hasSkills: Boolean(skillsPrompt),

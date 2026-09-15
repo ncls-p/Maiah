@@ -55,6 +55,7 @@ export async function executeMcpTool(input: {
   toolInput: unknown;
   userId?: string;
   connectionId?: string;
+  expectedInstanceUrl?: string;
 }) {
   const server = await getMcpServer(
     input.serverId,
@@ -87,6 +88,7 @@ export async function executeMcpTool(input: {
         toolId: input.toolId,
         mcpServerId: input.serverId,
         connectionId: input.connectionId,
+        expectedInstanceUrl: input.expectedInstanceUrl,
       })
     : {};
 

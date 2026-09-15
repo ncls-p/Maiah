@@ -59,7 +59,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const rows = await fetchWorkspaces();
+      const rows = [
+        ...new Map(
+          (await fetchWorkspaces()).map((project) => [project.id, project]),
+        ).values(),
+      ];
       setWorkspaces(rows);
       const storedWorkspaceId = window.localStorage.getItem(
         ACTIVE_WORKSPACE_STORAGE_KEY,

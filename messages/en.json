@@ -4325,9 +4325,9 @@
   },
   "governance": {
     "organizations": "Organizations",
-    "organizationsHint": "Create an organization on its own, then add projects when needed.",
+    "organizationsHint": "Create and manage your organizations.",
     "newOrganizationName": "New organization name",
-    "createOrganization": "Create organization only",
+    "createOrganization": "Create organization",
     "organization": "Organization",
     "projectCount": "{count} project(s)",
     "noProjects": "No projects. You can add one later.",
@@ -4491,5 +4491,18 @@
     "noOutputSchema": "No output schema declared. Inspect the actual result in conversation tool calls.",
     "approvalRequired": "This tool requires approval before execution.",
     "approvalPolicy": "This tool configuration does not force approval. Assistant and organization policies still apply."
+  },
+  "connectionSelection": {
+    "title": "ServiceNow connections",
+    "assistantHint": "Choose the connections available to this assistant. The model will see their names and target URLs.",
+    "conversationHint": "Choose connections for this conversation from those authorized for the assistant.",
+    "default": "Use my default connection",
+    "unknownUrl": "URL unavailable",
+    "empty": "No connections available.",
+    "none": "No connections selected: ServiceNow tools will be unavailable.",
+    "reset": "Use assistant selection",
+    "error": "Unable to load connections.",
+    "retry": "Retry",
+    "loading": "Loading connections…"
   }
 }

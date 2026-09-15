@@ -96,4 +96,27 @@ describe("explicit workflow MCP connection", () => {
       "connector",
     );
   });
+  it("refuses an instance URL change before decrypting credentials", async () => {
+    await expect(
+      resolveToolExecutionHeaders({
+        ...input,
+        expectedInstanceUrl: "https://original.service-now.com",
+      }),
+    ).rejects.toThrow("target changed");
+    expect(mocks.decrypt).not.toHaveBeenCalled();
+    mocks.limit.mockResolvedValue([
+      {
+        id: "selected",
+        connectorId: "connector",
+        ownerType: "workspace",
+        configJson: { instanceUrl: "https://original.service-now.com" },
+      },
+    ]);
+    await expect(
+      resolveToolExecutionHeaders({
+        ...input,
+        expectedInstanceUrl: "https://original.service-now.com",
+      }),
+    ).resolves.toBeDefined();
+  });
 });

@@ -130,6 +130,7 @@ export type InternalExecutionInput = {
   dryRun?: boolean;
   onProgress?: AgentToolProgressCallback;
   reasoningEffort?: ReasoningPreset;
+  mcpConnectionIds?: Record<string, string[]>;
 };
 
 export type ExecuteAgentInput = {
@@ -150,6 +151,7 @@ export type ExecuteAgentInput = {
   abortSignal?: AbortSignal;
   onProgress?: AgentToolProgressCallback;
   reasoningEffort?: ReasoningPreset;
+  mcpConnectionIds?: Record<string, string[]>;
 };
 
 export type AgentExecutionResult = {

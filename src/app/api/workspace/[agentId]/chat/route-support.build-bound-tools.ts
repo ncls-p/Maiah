@@ -1,4 +1,9 @@
 import {
+  getAssistantConnections,
+  getServerConnectionRestrictions,
+} from "@/modules/tool-connections/assistant-connections";
+import { routeConnectionTool } from "./route-support.connection-tool";
+import {
   chatTodoListInputSchema,
   createChatTodoList,
 } from "@/modules/chat/todo-list";
@@ -56,6 +61,7 @@ export type BuildBoundToolsInput = {
   enabledTools?: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
   enabledSkillIds?: ReadonlySet<string>;
   enabledKnowledgeIds?: string[];
+  mcpConnectionIds?: Record<string, string[]>;
   enableDocumentExplorer?: boolean;
   emitEvent?: (event: Record<string, unknown>) => void;
   onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
@@ -71,6 +77,8 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       additionalKnowledgeBaseIds: input.enabledKnowledgeIds,
     }),
   ]);
+  const serverConnectionRestrictions =
+    await getServerConnectionRestrictions(bindings);
   const enabledToolKeys = new Set(
     input.enabledTools?.map((tool) => `${tool.source}:${tool.id}`) ?? [],
   );
@@ -79,7 +87,9 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
   );
   const runtimeBindings = [...bindings];
   // Workflow capabilities are available to every assistant without per-agent setup.
-  for (const tool of input.includeWorkflowTools === false ? [] : WORKFLOW_TOOL_SUMMARIES) {
+  for (const tool of input.includeWorkflowTools === false
+    ? []
+    : WORKFLOW_TOOL_SUMMARIES) {
     if (boundKeys.has(`builtin:${tool.id}`)) continue;
     runtimeBindings.push({
       id: crypto.randomUUID(),
@@ -88,6 +98,7 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       toolId: tool.id,
       requireApproval: false,
       riskLevel: null,
+      connectionIds: null,
       createdAt: new Date(),
     });
     boundKeys.add(`builtin:${tool.id}`);
@@ -101,6 +112,7 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       toolId: tool.id,
       requireApproval: true,
       riskLevel: null,
+      connectionIds: null,
       createdAt: new Date(),
     });
   }
@@ -265,24 +277,39 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
         toolRequiresApproval: mcpTool.requireApproval,
       });
 
-      tools[toolKey] = {
+      const connections = await getAssistantConnections(
+        {
+          workspaceId: input.workspaceId,
+          userId: input.userId,
+          toolSource: "mcp",
+          toolId: mcpTool.id,
+          mcpServerId: mcpTool.mcpServerId,
+        },
+        boundKeys.has(`mcp:${binding.toolId}`)
+          ? binding.connectionIds
+          : serverConnectionRestrictions.get(mcpTool.mcpServerId),
+        input.mcpConnectionIds?.[mcpTool.mcpServerId],
+      );
+      if (connections?.length === 0) continue;
+      tools[toolKey] = routeConnectionTool(connections, schema, {
         description:
           mcpTool.description ??
           `MCP tool ${mcpTool.name} from connected server.`,
         inputSchema: jsonSchema(schema),
-        execute: createMcpToolExecute(
-          input,
-          mcpTool,
-          binding,
-          {
-            serverRequiresApproval: mcpContext.server.requireApproval,
-            toolRequiresApproval: mcpTool.requireApproval,
-          },
-          reserveToolCall,
-          toolLimitReachedResult,
-          gateToolExecution,
-        ),
-      };
+        execute: (connection) =>
+          createMcpToolExecute(
+            { ...input, ...connection },
+            mcpTool,
+            binding,
+            {
+              serverRequiresApproval: mcpContext.server.requireApproval,
+              toolRequiresApproval: mcpTool.requireApproval,
+            },
+            reserveToolCall,
+            toolLimitReachedResult,
+            gateToolExecution,
+          ),
+      });
       continue;
     }
 

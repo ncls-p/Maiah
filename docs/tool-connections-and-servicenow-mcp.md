@@ -202,3 +202,27 @@ Secrets schema:
   disallowed-host contexts.
 - Use `SERVICENOW_ALLOWED_HOST_SUFFIXES` to restrict allowed ServiceNow domains.
 - Keep write/admin ServiceNow tools approval-gated in agent tool bindings.
+
+## Connexions par assistant et conversation
+
+Les bindings MCP d’une version d’assistant peuvent enregistrer `connectionIds`.
+Une liste explicite autorise uniquement ces connexions ; une liste vide désactive
+les outils ServiceNow. Une valeur absente ou `null` conserve la connexion par
+défaut de l’utilisateur pour les configurations existantes. La sélection se fait
+sur la carte du serveur MCP dans les capacités de l’assistant.
+
+Le menu Capacités du chat permet de restreindre cette sélection pour la
+conversation. Les préférences utilisent le stockage local des autres capacités
+et sont envoyées dans `capabilityOverrides.mcpConnectionIds`, indexé par serveur.
+Le serveur intersecte cette sélection avec les bindings de l’assistant et les
+connexions encore accessibles à l’utilisateur. Les assistants délégués reçoivent
+la même restriction de conversation, appliquée à leurs propres bindings.
+
+Les outils ServiceNow exposent une enveloppe `{ connectionId, arguments }` et
+annoncent les noms et URL des instances disponibles. L’enveloppe est retirée
+avant l’appel MCP. Les approbations et diagnostics conservent la cible ; une
+connexion supprimée, inaccessible ou dont l’URL a changé ne déclenche aucun
+repli vers une autre instance. Aucun secret de connexion n’est exposé au modèle.
+
+Migration : `0070_assistant_connections.sql`. Le clonage des versions conserve
+les sélections ; le clonage de projet remappe les identifiants des connexions.

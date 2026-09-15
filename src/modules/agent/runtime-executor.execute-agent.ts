@@ -125,6 +125,7 @@ export async function executeAgent(
     dryRun: input.trigger === "dry_run",
     onProgress: input.onProgress,
     reasoningEffort: input.reasoningEffort,
+    mcpConnectionIds: input.mcpConnectionIds,
   });
 }
 

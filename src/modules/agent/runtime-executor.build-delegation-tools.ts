@@ -216,6 +216,7 @@ export async function buildDelegationTools(input: {
             parentRunId: input.runId,
             conversationId: input.execution.conversationId,
             messageId: input.execution.messageId,
+            mcpConnectionIds: input.execution.mcpConnectionIds,
             availableAttachments: selectedAttachments.filter(
               (attachment): attachment is NonNullable<typeof attachment> =>
                 Boolean(attachment),

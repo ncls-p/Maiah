@@ -12,6 +12,8 @@ export function createMcpToolExecute(
     conversationId?: string;
     messageId?: string;
     connectionId?: string;
+    connectionLabel?: string;
+    expectedInstanceUrl?: string;
   },
   mcpTool: { id: string; name: string; mcpServerId: string },
   binding: { riskLevel: string | null; requireApproval: boolean },
@@ -35,6 +37,15 @@ export function createMcpToolExecute(
 ): (toolInput: unknown) => Promise<unknown> {
   return async (toolInput: unknown) => {
     const startedAt = Date.now();
+    const invocationInput = input.connectionId
+      ? {
+          maiahConnectionRouting: 1,
+          connectionId: input.connectionId,
+          connectionLabel: input.connectionLabel,
+          instanceUrl: input.expectedInstanceUrl,
+          arguments: toolInput,
+        }
+      : toolInput;
     if (!reserveToolCall()) {
       await logToolInvocation({
         workspaceId: input.workspaceId,
@@ -44,7 +55,7 @@ export function createMcpToolExecute(
         toolId: mcpTool.id,
         toolName: mcpTool.name,
         riskLevel: binding.riskLevel,
-        input: toolInput,
+        input: invocationInput,
         status: "denied",
         latencyMs: Date.now() - startedAt,
         errorMessage: "Tool call limit reached",
@@ -57,7 +68,7 @@ export function createMcpToolExecute(
       toolId: mcpTool.id,
       toolName: mcpTool.name,
       riskLevel: binding.riskLevel,
-      toolInput,
+      toolInput: invocationInput,
       bindingRequiresApproval: binding.requireApproval,
       serverRequiresApproval: approvalConfig.serverRequiresApproval,
       toolRequiresApproval: approvalConfig.toolRequiresApproval,
@@ -72,6 +83,7 @@ export function createMcpToolExecute(
         userId: input.userId,
         toolInput,
         connectionId: input.connectionId,
+        expectedInstanceUrl: input.expectedInstanceUrl,
       });
       await logToolInvocation({
         workspaceId: input.workspaceId,
@@ -81,7 +93,7 @@ export function createMcpToolExecute(
         toolId: mcpTool.id,
         toolName: mcpTool.name,
         riskLevel: binding.riskLevel,
-        input: toolInput,
+        input: invocationInput,
         output,
         status: "success",
         latencyMs: Date.now() - startedAt,
@@ -96,7 +108,7 @@ export function createMcpToolExecute(
         toolId: mcpTool.id,
         toolName: mcpTool.name,
         riskLevel: binding.riskLevel,
-        input: toolInput,
+        input: invocationInput,
         status: "failed",
         latencyMs: Date.now() - startedAt,
         errorMessage: error instanceof Error ? error.message : String(error),

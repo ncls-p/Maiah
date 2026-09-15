@@ -56,7 +56,13 @@ export async function executeInvocation(
       toolId: invocation.toolId,
       workspaceId: invocation.workspaceId,
       userId,
-      toolInput: input,
+      toolInput: input?.maiahConnectionRouting === 1 ? input.arguments : input,
+      ...(input?.maiahConnectionRouting === 1
+        ? {
+            connectionId: input.connectionId,
+            expectedInstanceUrl: input.instanceUrl,
+          }
+        : {}),
     });
   } else {
     throw new InvocationExecutionError("Unsupported tool source", 400);

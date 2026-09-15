@@ -8,6 +8,7 @@ export type ChatCapabilityOverrides = {
   enabledTools: Array<{ source: ChatToolSource; id: string }>;
   enabledSkillIds: string[];
   enabledKnowledgeIds: string[];
+  mcpConnectionIds?: Record<string, string[]>;
 };
 
 const STORAGE_PREFIX = "maiah-chat-capabilities";
@@ -36,6 +37,16 @@ export function readChatCapabilityOverrides(
       window.localStorage.getItem(storageKey(agentId, conversationId)) ?? "{}",
     ) as Partial<ChatCapabilityOverrides>;
     return {
+      mcpConnectionIds:
+        value.mcpConnectionIds && typeof value.mcpConnectionIds === "object"
+          ? Object.fromEntries(
+              Object.entries(value.mcpConnectionIds).filter(
+                ([, ids]) =>
+                  Array.isArray(ids) &&
+                  ids.every((id) => typeof id === "string"),
+              ),
+            )
+          : undefined,
       disabledTools: Array.isArray(value.disabledTools)
         ? value.disabledTools.filter(
             (tool): tool is { source: ChatToolSource; id: string } =>

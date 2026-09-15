@@ -141,6 +141,7 @@ export function buildCapabilityBindings(input: {
         toolSource: "mcp" as const,
         toolId: tool.id,
         mcpServerId: tool.mcpServerId,
+        connectionIds: mcpBindings[tool.id]?.connectionIds,
         requireApproval:
           isMcpToolApprovalForced(tool, mcpServers) ||
           mcpBindings[tool.id]?.requireApproval,

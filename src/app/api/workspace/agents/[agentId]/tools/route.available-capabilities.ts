@@ -1,3 +1,4 @@
+import { getAssistantConnections } from "@/modules/tool-connections/assistant-connections";
 import { listKnowledgeBases } from "@/modules/knowledge/use-cases";
 import { listAgentSkills } from "@/modules/skills/use-cases";
 import {
@@ -16,7 +17,12 @@ import {
 } from "@/server/infrastructure/db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
 
-type Binding = { toolSource: string; toolId: string; requireApproval: boolean };
+type Binding = {
+  connectionIds?: string[] | null;
+  toolSource: string;
+  toolId: string;
+  requireApproval: boolean;
+};
 
 export async function listAvailableCapabilities(input: {
   workspaceId: string;
@@ -151,5 +157,49 @@ export async function listAvailableCapabilities(input: {
     description: item.description,
     attached: boundKnowledgeIds.has(item.id),
   }));
-  return { tools: [...builtin, ...custom, ...mcp], skills, knowledge };
+  const connectionGroups = await Promise.all(
+    visibleMcp.map(async (tool) => {
+      const binding = bindings.find(
+        (item) => item.toolSource === "mcp" && item.toolId === tool.id,
+      );
+      if (!binding) return null;
+      const connections = await getAssistantConnections(
+        {
+          workspaceId,
+          userId,
+          toolSource: "mcp",
+          toolId: tool.id,
+          mcpServerId: tool.serverId,
+        },
+        binding.connectionIds,
+      );
+      return connections
+        ? { serverId: tool.serverId, name: tool.serverName, connections }
+        : null;
+    }),
+  );
+  const byServer = new Map<
+    string,
+    NonNullable<(typeof connectionGroups)[number]>
+  >();
+  for (const group of connectionGroups) {
+    if (!group) continue;
+    const previous = byServer.get(group.serverId);
+    byServer.set(group.serverId, {
+      ...group,
+      connections: [
+        ...new Map(
+          [...(previous?.connections ?? []), ...group.connections].map(
+            (connection) => [connection.id, connection],
+          ),
+        ).values(),
+      ],
+    });
+  }
+  return {
+    tools: [...builtin, ...custom, ...mcp],
+    skills,
+    knowledge,
+    mcpConnections: [...byServer.values()],
+  };
 }

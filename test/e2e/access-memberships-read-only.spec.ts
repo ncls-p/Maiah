@@ -67,6 +67,7 @@ test("keeps membership and project management read-only without delegated permis
   );
   await page.context().clearCookies();
   await loginWithCredentials(page, e2eMember);
+  await page.request.patch("/api/workspaces", { data: { workspaceId } });
   await page.goto("/en/members");
   await page
     .getByRole("combobox", { name: "Active project", exact: true })

@@ -1,3 +1,4 @@
+import { listToolExecutionConnections } from "@/modules/tool-connections/use-cases.build-signed-tool-context-headers";
 import { logHandledError } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -104,9 +105,25 @@ export async function insertToolBindingsForVersion(
             throw new Error("MCP tool not found");
           }
 
+          if (binding.connectionIds?.length && workspaceId && options?.userId) {
+            const available = await listToolExecutionConnections({
+              workspaceId,
+              userId: options.userId,
+              toolSource: "mcp",
+              toolId: binding.toolId,
+              mcpServerId: binding.mcpServerId,
+            });
+            if (
+              binding.connectionIds.some(
+                (id) => !available.some((connection) => connection.id === id),
+              )
+            )
+              throw new Error("MCP connection not found");
+          }
           return {
             agentVersionId,
             toolSource: "mcp" as const,
+            connectionIds: binding.connectionIds ?? null,
             toolId: binding.toolId,
             requireApproval: binding.requireApproval ?? tool.requireApproval,
             riskLevel: "medium",
