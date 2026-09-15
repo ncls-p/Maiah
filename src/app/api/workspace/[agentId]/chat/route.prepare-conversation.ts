@@ -268,7 +268,10 @@ async function prepareChatConversationUnlocked(
         agentId,
         agentVersionId: version.id,
         userId: actorUserId,
-        title: content.slice(0, 100),
+        title: (
+          content ||
+          messageAttachments.map((attachment) => attachment.fileName).join(", ")
+        ).slice(0, 100),
         status: "active",
         isEphemeral: ephemeral,
         ephemeralTtlMinutes: retentionMinutes,

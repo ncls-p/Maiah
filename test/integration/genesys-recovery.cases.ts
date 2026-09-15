@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import {
   conversations,
+  conversationShares,
   genesysConnections,
   genesysDeliveries,
   workspaces,
@@ -45,6 +46,27 @@ type Context = {
   newConversation: () => Promise<string>;
 };
 export function registerGenesysRecoveryCases(getContext: () => Context) {
+  it("lets transcript recipients read an inactive handoff view without granting mutations", async () => {
+    const { f, newConversation } = getContext();
+    const id = await newConversation();
+    await db.insert(conversationShares).values({
+      conversationId: id,
+      sharedByUserId: f.owner,
+      sharedWithUserId: f.member,
+      canContinue: false,
+      continuationMode: "fork",
+    });
+    expect(await handoffView(f.member, id)).toEqual({
+      available: false,
+      session: null,
+    });
+    await expect(
+      requestHandoff(f.member, id, { reason: "help", summary: "context" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(handoffView(randomUUID(), id)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
   it("never automatically replays an ambiguous external effect", async () => {
     const { f, state, externalId, newConversation } = getContext();
     const id = await newConversation();

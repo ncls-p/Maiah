@@ -66,14 +66,8 @@ export function useComposerActions(c: ComposerActionsContext) {
   }
   function submitMessage() {
     const hasAttachments = c.attachments.length > 0;
-    const content =
-      c.input.trim() ||
-      (hasAttachments
-        ? c.attachments.every(({ kind }) => kind === "chat_image")
-          ? c.t("attachments.analyzeImage")
-          : c.t("attachments.analyzeFile")
-        : "");
-    if (!content || !c.canChat) return;
+    const content = c.input.trim();
+    if ((!content && !hasAttachments) || !c.canChat) return;
     if (c.sending && hasAttachments) {
       toast.error(c.t("attachments.waitForResponse"));
       return;

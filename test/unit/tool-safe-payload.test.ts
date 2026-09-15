@@ -95,6 +95,13 @@ describe("tool payload display projection", () => {
     ).not.toContain("hidden");
   });
 
+  it("removes the missing AWS error-type prefix while preserving the account access refusal", () => {
+    const reason =
+      "anthropic.claude-sonnet-5 is not available for this account.";
+    expect(
+      safeChatErrorMessage(new Error(`undefined: ${reason}`), "Failed"),
+    ).toBe(reason);
+  });
   it("keeps complete chat validation errors while redacting credentials", () => {
     const validationError = `${"validation error\n".repeat(100)}Bearer hidden`;
     const projected = safeChatErrorMessage(

@@ -9,6 +9,10 @@ import type {
   CodeWorkspaceArtifact,
   PendingToolApproval,
 } from "@/components/chat/chat-types";
+import {
+  chatFileAttachmentFromPartContent,
+  chatImageAttachmentFromPartContent,
+} from "@/components/chat/chat-message-rendering-utils";
 import { textFromMessage } from "@/components/chat/chat-types";
 import type { useChatStream } from "@/hooks/use-chat-stream";
 import { fetchJson } from "@/lib/api-client";
@@ -145,8 +149,17 @@ export function useMessageActions(c: Context) {
       .findLast((item) => item.role === "user");
     if (!precedingUserMessage) return;
     const content = textFromMessage(precedingUserMessage).trim();
-    if (!content) return;
+    const attachments = precedingUserMessage.parts
+      .filter((part) => part.type === "file")
+      .flatMap((part) => {
+        const attachment =
+          chatImageAttachmentFromPartContent(part.content) ??
+          chatFileAttachmentFromPartContent(part.content);
+        return attachment ? [attachment] : [];
+      });
+    if (!content && !attachments.length) return;
     await c.handleSubmit(content, {
+      attachments,
       resendFromMessageId: precedingUserMessage.id,
       regenerateAssistantMessageId: message.id,
       responseVersionConversationIds: message.branch?.conversationIds ?? [

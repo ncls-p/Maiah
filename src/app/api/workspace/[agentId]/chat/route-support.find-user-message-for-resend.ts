@@ -21,6 +21,8 @@ export async function findUserMessageForResend(input: {
     .limit(1);
 
   if (exactMatch) return exactMatch;
+  // Empty captions cannot identify a legacy message unambiguously.
+  if (!input.content.trim()) return null;
 
   // Backward compatibility for messages created before the client synced
   // server-side user message IDs. Those client-side UUIDs are valid UUIDs

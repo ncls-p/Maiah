@@ -1407,6 +1407,8 @@
       "archiveProvider": "Archiver la connexion",
       "models": "Modèles",
       "modelsForProvider": "Modèles disponibles pour {provider}",
+      "bedrockAccessNotice": "Le catalogue AWS ne garantit pas l’accès de ce compte à chaque modèle. Un refus « not available for this account » doit être vérifié dans la console Bedrock avec le même compte et la même région ; AWS peut demander une activation ou une autorisation supplémentaire.",
+      "bedrockAccessHelp": "Vérifier les conditions d’accès AWS",
       "modelsLoadedAutomatically": "La découverte affiche seulement le catalogue du fournisseur. Vous choisissez les modèles à rendre disponibles.",
       "selectProvider": "Sélectionnez une connexion pour gérer ses modèles.",
       "discoverModels": "Découvrir les modèles",

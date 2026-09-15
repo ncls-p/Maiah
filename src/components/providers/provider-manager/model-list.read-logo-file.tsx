@@ -108,6 +108,19 @@ function ModelsHeader({
         <p className="mt-1 text-xs text-muted-foreground">
           {t("modelsLoadedAutomatically")}
         </p>
+        {selectedProvider?.kind === "amazon-bedrock" && (
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {t("bedrockAccessNotice")}{" "}
+            <a
+              className="underline"
+              href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("bedrockAccessHelp")}
+            </a>
+          </p>
+        )}
       </div>
       <Button
         size="sm"

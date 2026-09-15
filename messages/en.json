@@ -1407,6 +1407,8 @@
       "archiveProvider": "Archive connection",
       "models": "Models",
       "modelsForProvider": "Models available for {provider}",
+      "bedrockAccessNotice": "The AWS catalog does not guarantee that this account can invoke every model. Check “not available for this account” errors in the Bedrock console using the same account and region; AWS may require additional activation or authorization.",
+      "bedrockAccessHelp": "Check AWS access requirements",
       "modelsLoadedAutomatically": "Discovery only lists the provider catalogue. You choose which models become available.",
       "selectProvider": "Select a connection to manage its models.",
       "discoverModels": "Discover models",

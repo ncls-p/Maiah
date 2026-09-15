@@ -43,13 +43,18 @@ export function useGenesysHandoff(
         );
         if (controller.signal.aborted) return;
         setSnapshot({ id: conversationId!, value });
-        setError((current) => (current === t("statusError") ? "" : current));
+        setError((current) =>
+          current.startsWith(t("statusError")) ? "" : current,
+        );
         const version = `${conversationId}:${value.session?.updatedAt ?? "ai"}`;
         if (versionRef.current && versionRef.current !== version)
           void reloadRef.current();
         versionRef.current = version;
-      } catch {
-        if (!controller.signal.aborted) setError(t("statusError"));
+      } catch (cause) {
+        if (!controller.signal.aborted)
+          setError(
+            `${t("statusError")}\n${cause instanceof Error ? cause.message : ""}`,
+          );
       } finally {
         if (!controller.signal.aborted)
           timer = setTimeout(() => void poll(), 3000);
@@ -62,7 +67,7 @@ export function useGenesysHandoff(
     };
   }, [conversationId, owner, t]);
   async function mutate(body: unknown) {
-    if (!conversationId || busyRef.current) return false;
+    if (!conversationId || !owner || busyRef.current) return false;
     busyRef.current = true;
     setPending(true);
     setError("");
@@ -82,8 +87,10 @@ export function useGenesysHandoff(
       setSnapshot({ id: conversationId, value });
       void reloadRef.current();
       return true;
-    } catch {
-      setError(t("actionError"));
+    } catch (cause) {
+      setError(
+        `${t("actionError")}\n${cause instanceof Error ? cause.message : ""}`,
+      );
       return false;
     } finally {
       busyRef.current = false;
@@ -111,13 +118,14 @@ export function useGenesysHandoff(
     return ok;
   }
   return {
-    state,
-    pending,
-    error,
+    state: owner ? state : null,
+    pending: owner && pending,
+    error: owner ? error : "",
     t,
     blocking:
-      Boolean(state?.session) || Boolean(conversationId && owner && !state),
+      owner && (Boolean(state?.session) || Boolean(conversationId && !state)),
     canSend: Boolean(
+      owner &&
       state?.session &&
       ["requested", "waiting", "human"].includes(state.session.state),
     ),

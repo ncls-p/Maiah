@@ -11,6 +11,7 @@ import {
   ensureE2EMember,
   ensureE2EUser,
   login,
+  loginWithCredentials,
 } from "./fixtures";
 import * as temporaryChat from "./temporary-chat-assertions";
 
@@ -34,7 +35,7 @@ async function createConversation(isEphemeral = false) {
        where a.id = $3 and u.email = 'e2e-admin@example.test'`,
       [id, workspaceId, agentId, `E2E sharing ${id.slice(0, 8)}`, isEphemeral],
     );
-    return { id, agentId };
+    return { id, agentId, workspaceId };
   } finally {
     await client.end();
   }
@@ -381,6 +382,79 @@ test("shares a conversation with continuation rules and a public link", async ({
       page.getByRole("button", { name: "Copy public link" }),
     ).toBeVisible();
   } finally {
+    await deleteConversation(conversation.id);
+  }
+});
+
+test("a recipient without the assistant can read a shared chat without a handoff error", async ({
+  browser,
+  page,
+}) => {
+  const conversation = await createConversation();
+  const client = new Client({ connectionString: databaseUrl() });
+  await client.connect();
+  const original = (
+    await client.query("select sharing_mode from agents where id = $1", [
+      conversation.agentId,
+    ])
+  ).rows[0];
+  const context = await browser.newContext();
+  try {
+    await client.query(
+      "update agents set sharing_mode = 'personal' where id = $1",
+      [conversation.agentId],
+    );
+    await page.goto(
+      `/en/chat?agentId=${conversation.agentId}&conversationId=${conversation.id}`,
+    );
+    await activate(page.getByRole("button", { name: "Share conversation" }));
+    await page.getByLabel("Workspace member email").fill(e2eMember.email);
+    await activate(page.getByRole("button", { name: "Share", exact: true }));
+    await expect(
+      page.getByText(e2eMember.email, { exact: false }),
+    ).toBeVisible();
+    const recipient = await context.newPage();
+    await loginWithCredentials(recipient, e2eMember);
+    await recipient.request.patch("/api/workspaces", {
+      data: { workspaceId: conversation.workspaceId },
+    });
+    const state = await recipient.request.get(
+      `/api/workspace/conversations/${conversation.id}/handoff`,
+    );
+    expect(state.status()).toBe(200);
+    expect(await state.json()).toEqual({ available: false, session: null });
+    const denied = await recipient.request.post(
+      `/api/workspace/conversations/${conversation.id}/handoff`,
+      { data: { action: "request", reason: "help", summary: "context" } },
+    );
+    expect(denied.status()).toBe(404);
+    await recipient.goto(
+      `/fr/chat?agentId=${conversation.agentId}&conversationId=${conversation.id}`,
+    );
+    await expect(
+      recipient.getByText("Actualisation du transfert indisponible.", {
+        exact: false,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      recipient.getByText(
+        "Cette conversation vous a été partagée en lecture seule.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await recipient.reload();
+    await expect(
+      recipient.getByText("Actualisation du transfert indisponible.", {
+        exact: false,
+      }),
+    ).toHaveCount(0);
+  } finally {
+    await context.close();
+    await client.query("update agents set sharing_mode = $2 where id = $1", [
+      conversation.agentId,
+      original.sharing_mode,
+    ]);
+    await client.end();
     await deleteConversation(conversation.id);
   }
 });

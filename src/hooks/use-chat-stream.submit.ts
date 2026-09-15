@@ -75,7 +75,7 @@ export function useChatSubmitHandler(input: {
     onBeforeSubmit,
   } = input;
   async function handleSubmit(content: string, options: SubmitOptions = {}) {
-    if (!content) return false;
+    if (!content.trim() && !options.attachments?.length) return false;
     if (!agentId) return false;
     if (!canChat) return false;
     if (sending) return false;

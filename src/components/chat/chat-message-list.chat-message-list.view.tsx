@@ -165,7 +165,10 @@ export function ChatMessageListView({
                 Boolean(onRegenerateAssistant) &&
                 isTerminalAssistant &&
                 Boolean(precedingUserMessage) &&
-                textFromMessage(precedingUserMessage!).trim().length > 0;
+                (textFromMessage(precedingUserMessage!).trim().length > 0 ||
+                  precedingUserMessage!.parts.some(
+                    (part) => part.type === "file",
+                  ));
               const canContinue =
                 Boolean(onContinueAssistant) &&
                 canContinueAssistantMessage(message, lastAssistantMessageId);

@@ -14,51 +14,61 @@ import {
 
 registerAiSdkDevTools();
 
-export const chatRequestSchema = z.object({
-  workspaceId: z.uuid().optional(),
-  content: z.string().trim().min(1).max(MAX_INPUT_CHARACTERS),
-  conversationId: z.uuid().nullable().optional(),
-  ephemeral: z.boolean().optional(),
-  ephemeralTtlMinutes: z
-    .number()
-    .int()
-    .refine(isEphemeralTtlMinutes)
-    .optional(),
-  resendFromMessageId: z.uuid().nullable().optional(),
-  regenerateAssistantMessageId: z.uuid().nullable().optional(),
-  continueFromMessageId: z.uuid().nullable().optional(),
-  codeWorkspaceId: z.uuid().optional(),
-  attachmentIds: z.array(z.uuid()).optional(),
-  imageAttachmentIds: z.array(z.uuid()).optional(),
-  reasoningEffort: reasoningPresetSchema.optional(),
-  capabilityOverrides: z
-    .object({
-      disabledTools: z
-        .array(
-          z.object({
-            source: z.enum(["builtin", "mcp", "custom"]),
-            id: z.string().trim().min(1).max(255),
-          }),
-        )
-        .max(256),
-      disabledSkillIds: z.array(z.uuid()).max(128),
-      enabledTools: z
-        .array(
-          z.object({
-            source: z.enum(["builtin", "mcp", "custom"]),
-            id: z.uuid(),
-          }),
-        )
-        .max(256)
-        .default([]),
-      enabledSkillIds: z.array(z.uuid()).max(128).default([]),
-      enabledKnowledgeIds: z.array(z.uuid()).max(128).default([]),
-      mcpConnectionIds: z
-        .record(z.uuid(), z.array(z.uuid()).max(32))
-        .optional(),
-    })
-    .optional(),
-});
+export const chatRequestSchema = z
+  .object({
+    workspaceId: z.uuid().optional(),
+    content: z.string().trim().max(MAX_INPUT_CHARACTERS),
+    conversationId: z.uuid().nullable().optional(),
+    ephemeral: z.boolean().optional(),
+    ephemeralTtlMinutes: z
+      .number()
+      .int()
+      .refine(isEphemeralTtlMinutes)
+      .optional(),
+    resendFromMessageId: z.uuid().nullable().optional(),
+    regenerateAssistantMessageId: z.uuid().nullable().optional(),
+    continueFromMessageId: z.uuid().nullable().optional(),
+    codeWorkspaceId: z.uuid().optional(),
+    attachmentIds: z.array(z.uuid()).optional(),
+    imageAttachmentIds: z.array(z.uuid()).optional(),
+    reasoningEffort: reasoningPresetSchema.optional(),
+    capabilityOverrides: z
+      .object({
+        disabledTools: z
+          .array(
+            z.object({
+              source: z.enum(["builtin", "mcp", "custom"]),
+              id: z.string().trim().min(1).max(255),
+            }),
+          )
+          .max(256),
+        disabledSkillIds: z.array(z.uuid()).max(128),
+        enabledTools: z
+          .array(
+            z.object({
+              source: z.enum(["builtin", "mcp", "custom"]),
+              id: z.uuid(),
+            }),
+          )
+          .max(256)
+          .default([]),
+        enabledSkillIds: z.array(z.uuid()).max(128).default([]),
+        enabledKnowledgeIds: z.array(z.uuid()).max(128).default([]),
+        mcpConnectionIds: z
+          .record(z.uuid(), z.array(z.uuid()).max(32))
+          .optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (value) =>
+      Boolean(
+        value.content ||
+        value.attachmentIds?.length ||
+        value.imageAttachmentIds?.length,
+      ),
+    { message: "A message or attachment is required", path: ["content"] },
+  );
 
 export const defaultMaxToolCalls = 20;
 export const defaultMaxOutputTokens = MAX_GENERATION_OUTPUT_TOKENS;

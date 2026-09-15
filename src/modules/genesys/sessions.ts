@@ -99,6 +99,10 @@ export async function handoffView(
   userId: string,
   conversationId: string,
 ): Promise<GenesysChatState> {
+  const access = await getConversationAccess(conversationId, userId);
+  if (!access) throw new GenesysError("NOT_FOUND", 404);
+  // Sharing a transcript grants reading access, never handoff controls.
+  if (access.role !== "owner") return { available: false, session: null };
   const conversation = await requireHandoffOwner(userId, conversationId);
   const session = await currentHandoff(conversationId);
   const deliveries = session

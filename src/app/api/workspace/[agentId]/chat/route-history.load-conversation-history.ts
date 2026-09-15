@@ -211,7 +211,7 @@ export async function loadConversationHistory(
             });
             textParts.push(
               [
-                `Attached image for visual analysis: ${attachment.metadata.fileName}`,
+                `Attached image: ${attachment.metadata.fileName}`,
                 `Attachment ID: ${imageAttachment.id}`,
                 `MIME type: ${attachment.metadata.mimeType}`,
                 `Sandbox path hint: ${sandboxAttachmentPathHint(imageAttachment.fileName)}`,

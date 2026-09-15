@@ -105,7 +105,7 @@ export function ChatPageView({ model }: { model: Model }) {
   } = model;
   const handoff = useGenesysHandoff(
     activeConversationId,
-    conversationIsOwner,
+    conversationIsOwner && !loadingMessages,
     reloadActualLatestMessages,
   );
   const sendMessage = handoff.blocking

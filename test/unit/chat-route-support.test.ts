@@ -94,6 +94,24 @@ describe("chat route tool gating", () => {
     knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);
   });
 
+  it("accepts files or images without a prompt but rejects truly empty messages", async () => {
+    const { chatRequestSchema } = await loadModules();
+    const id = "00000000-0000-4000-8000-000000000001";
+    expect(
+      chatRequestSchema.parse({ content: "  ", attachmentIds: [id] }).content,
+    ).toBe("");
+    expect(
+      chatRequestSchema.safeParse({ content: "", imageAttachmentIds: [id] })
+        .success,
+    ).toBe(true);
+    expect(
+      chatRequestSchema.safeParse({ content: "", attachmentIds: [] }).success,
+    ).toBe(false);
+    expect(
+      chatRequestSchema.safeParse({ content: "", attachmentIds: ["invalid"] })
+        .success,
+    ).toBe(false);
+  });
   it("accepts temporary-chat creation only as an explicit boolean", async () => {
     const { chatRequestSchema } = await loadModules();
     expect(

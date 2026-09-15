@@ -172,7 +172,9 @@ export function safeToolErrorMessage(error: unknown, fallback: string) {
 }
 
 export function safeChatErrorMessage(error: unknown, fallback: string) {
-  const message = error instanceof Error ? error.message : String(error ?? "");
+  const message = (
+    error instanceof Error ? error.message : String(error ?? "")
+  ).replace(/^(?:undefined|null):\s*/, "");
   const projected = projectString(
     message || fallback,
     Number.POSITIVE_INFINITY,
