@@ -188,6 +188,12 @@ export function useComposerActions(c: ComposerActionsContext) {
       return false;
     }
   }
+  async function submitFormAnswers(content: string) {
+    if (!c.canChat || c.sending || !c.activeConversationId) return false;
+    return c.handleSubmit(content, {
+      reasoningEffort: c.reasoningEffort ?? undefined,
+    });
+  }
   function submitSuggestion(content: string) {
     const trimmed = content.trim();
     if (!trimmed || !c.canChat) return;
@@ -242,6 +248,7 @@ export function useComposerActions(c: ComposerActionsContext) {
     uploadCodeWorkspace,
     uploadChatAttachment,
     submitSuggestion,
+    submitFormAnswers,
     setUserDefaultAgent,
     updateQueuedMessage,
     cancelQueuedMessage,

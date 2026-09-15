@@ -1,3 +1,4 @@
+import { stopForQuestionForm } from "@/modules/question-form/contracts";
 import { shouldStopForHandoff } from "@/modules/genesys/chat-stop";
 import { HANDOFF_TOOL } from "@/modules/genesys/contracts";
 import { encryptValue } from "@/lib/crypto";
@@ -225,6 +226,7 @@ export async function runStandardChat(input: {
       },
     },
     stopWhen: [
+      stopForQuestionForm,
       isStepCount(maxSteps),
       () => shouldStopForHandoff(conversation.id, availableToolNames),
     ],

@@ -1,3 +1,4 @@
+import { QUESTION_FORM_TOOL } from "@/modules/question-form/contracts";
 import { HANDOFF_TOOL } from "@/modules/genesys/contracts";
 import { BUILTIN_TOOL_SUMMARIESPart1 } from "./builtin-tools-catalog.builtin-tool-summaries.part-1";
 import { BUILTIN_TOOL_SUMMARIESPart2 } from "./builtin-tools-catalog.builtin-tool-summaries.part-2";
@@ -9,4 +10,5 @@ export const BUILTIN_TOOL_SUMMARIES: BuiltInToolSummary[] = [
   ...BUILTIN_TOOL_SUMMARIESPart2,
   ...WORKFLOW_TOOL_SUMMARIES,
   HANDOFF_TOOL,
+  QUESTION_FORM_TOOL,
 ];

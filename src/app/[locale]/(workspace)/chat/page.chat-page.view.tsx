@@ -94,6 +94,7 @@ export function ChatPageView({ model }: { model: Model }) {
     stopGeneration,
     submitMessage,
     submitSuggestion,
+    submitFormAnswers,
     t,
     updateCodingChatWidth,
     updateQueuedMessage,
@@ -130,268 +131,283 @@ export function ChatPageView({ model }: { model: Model }) {
     ? undefined
     : forkConversation;
   return (
-    <ChatLayout
-      agents={agents}
-      selectedAgent={selectedAgent}
-      selectedAgentId={selectedAgentId}
-      activeConversationId={activeConversationId}
-      conversationImpact={conversationImpact}
-      conversationIsOwner={conversationIsOwner}
-      organizationDefaultAgentId={organizationDefaultAgentId}
-      userDefaultAgentId={userDefaultAgentId}
-      isLoading={isLoading}
-      needsSetup={needsSetup}
-      canCreateAgent={canCreateAgent}
-      canRunSetup={canRunSetup}
-      onSelectAgent={selectAgent}
-      onSetUserDefaultAgent={(agentId: string | null) =>
-        void setUserDefaultAgent(agentId)
-      }
-      onSetupComplete={() => void reloadAgentContext()}
-      reasoningPresets={reasoningPresets}
-      reasoningEffort={reasoningEffort}
-      onReasoningEffortChange={setReasoningEffort}
+    <QuestionFormContext.Provider
+      value={{
+        conversationId: activeConversationId,
+        enabled:
+          canChat &&
+          conversationIsOwner &&
+          !conversationReadOnly &&
+          !sending &&
+          !handoff.blocking,
+        submit: submitFormAnswers,
+      }}
     >
-      <ChatContextBar quota={quota} />
-      <GenesysHandoffBanner
-        handoff={handoff}
-        sending={sending}
-        summary={messages
-          .filter((m) => m.role === "user")
-          .slice(-3)
-          .flatMap((m) =>
-            m.parts.filter((p) => p.type === "text").map((p) => p.content),
-          )
-          .join("\n")}
-      />
-      {effectiveEphemeral ? (
-        <ConversationRetentionBanner
-          temporary
-          ttlMinutes={effectiveEphemeralTtlMinutes}
-          expiresAt={ephemeralExpiresAt}
-          hasConversation={Boolean(activeConversationId)}
-          canConvert={conversationIsOwner}
-          converting={convertingTemporaryConversation}
-          extending={extendingTemporaryConversation}
-          onConvert={() => void makeConversationPersistent()}
-          onExtend={(ttlMinutes) =>
-            void extendTemporaryConversation(ttlMinutes)
-          }
+      <ChatLayout
+        agents={agents}
+        selectedAgent={selectedAgent}
+        selectedAgentId={selectedAgentId}
+        activeConversationId={activeConversationId}
+        conversationImpact={conversationImpact}
+        conversationIsOwner={conversationIsOwner}
+        organizationDefaultAgentId={organizationDefaultAgentId}
+        userDefaultAgentId={userDefaultAgentId}
+        isLoading={isLoading}
+        needsSetup={needsSetup}
+        canCreateAgent={canCreateAgent}
+        canRunSetup={canRunSetup}
+        onSelectAgent={selectAgent}
+        onSetUserDefaultAgent={(agentId: string | null) =>
+          void setUserDefaultAgent(agentId)
+        }
+        onSetupComplete={() => void reloadAgentContext()}
+        reasoningPresets={reasoningPresets}
+        reasoningEffort={reasoningEffort}
+        onReasoningEffortChange={setReasoningEffort}
+      >
+        <ChatContextBar quota={quota} />
+        <GenesysHandoffBanner
+          handoff={handoff}
+          sending={sending}
+          summary={messages
+            .filter((m) => m.role === "user")
+            .slice(-3)
+            .flatMap((m) =>
+              m.parts.filter((p) => p.type === "text").map((p) => p.content),
+            )
+            .join("\n")}
         />
-      ) : null}
-      {conversationReadOnly ? (
-        <div className="border-b bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
-          {t("share.readOnlyNotice")}
-        </div>
-      ) : null}
-      {codeWorkspaceArtifact ? (
-        <CodeWorkspaceModeBar
-          artifact={codeWorkspaceArtifact}
-          interfaceMode={interfaceMode}
-          onModeChange={chooseInterfaceMode}
-        />
-      ) : null}
-      {conversationLoadError ? (
-        <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4">
-          <Alert variant="destructive">
-            <AlertTitle>{t("errors.loadConversationFailed")}</AlertTitle>
-            <AlertDescription className="mt-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={retryConversationLoad}
-              >
-                {t("errors.retryConversationLoad")}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      ) : interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
-        // Below `lg` the workbench fills the screen and the composer stays
-        // docked underneath it; the conversation itself lives in Chat mode.
-        <section
-          data-slot="coding-workspace-layout"
-          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background lg:grid lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
-          style={
-            { "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties
-          }
-        >
-          <aside
-            className="flex min-h-0 shrink-0 flex-col bg-muted/10 lg:min-h-0 lg:flex-1"
-            id="coding-chat-panel"
+        {effectiveEphemeral ? (
+          <ConversationRetentionBanner
+            temporary
+            ttlMinutes={effectiveEphemeralTtlMinutes}
+            expiresAt={ephemeralExpiresAt}
+            hasConversation={Boolean(activeConversationId)}
+            canConvert={conversationIsOwner}
+            converting={convertingTemporaryConversation}
+            extending={extendingTemporaryConversation}
+            onConvert={() => void makeConversationPersistent()}
+            onExtend={(ttlMinutes) =>
+              void extendTemporaryConversation(ttlMinutes)
+            }
+          />
+        ) : null}
+        {conversationReadOnly ? (
+          <div className="border-b bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
+            {t("share.readOnlyNotice")}
+          </div>
+        ) : null}
+        {codeWorkspaceArtifact ? (
+          <CodeWorkspaceModeBar
+            artifact={codeWorkspaceArtifact}
+            interfaceMode={interfaceMode}
+            onModeChange={chooseInterfaceMode}
+          />
+        ) : null}
+        {conversationLoadError ? (
+          <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4">
+            <Alert variant="destructive">
+              <AlertTitle>{t("errors.loadConversationFailed")}</AlertTitle>
+              <AlertDescription className="mt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={retryConversationLoad}
+                >
+                  {t("errors.retryConversationLoad")}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
+          // Below `lg` the workbench fills the screen and the composer stays
+          // docked underneath it; the conversation itself lives in Chat mode.
+          <section
+            data-slot="coding-workspace-layout"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background lg:grid lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
+            style={
+              { "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties
+            }
           >
-            <div className="hidden border-b border-border/50 px-3 py-2 lg:block">
-              <p className="text-xs font-medium text-foreground">
-                {t("codingPanelTitle")}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {t("codingPanelDescription")}
-              </p>
-            </div>
-            <section className="hidden min-h-0 flex-1 overflow-hidden lg:block">
-              <div className="size-full min-h-0">
-                <ChatMessageList
-                  key={activeConversationId ?? "new-conversation"}
-                  messages={messages}
+            <aside
+              className="flex min-h-0 shrink-0 flex-col bg-muted/10 lg:min-h-0 lg:flex-1"
+              id="coding-chat-panel"
+            >
+              <div className="hidden border-b border-border/50 px-3 py-2 lg:block">
+                <p className="text-xs font-medium text-foreground">
+                  {t("codingPanelTitle")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("codingPanelDescription")}
+                </p>
+              </div>
+              <section className="hidden min-h-0 flex-1 overflow-hidden lg:block">
+                <div className="size-full min-h-0">
+                  <ChatMessageList
+                    key={activeConversationId ?? "new-conversation"}
+                    messages={messages}
+                    sending={sending}
+                    loading={loadingMessages}
+                    workspaceId={workspaceId ?? undefined}
+                    workspaceArtifactDisplay="summary"
+                    conversationId={activeConversationId}
+                    bottomRef={bottomRef}
+                    onEditMessage={ownerEditMessage}
+                    onDeleteMessage={ownerDeleteMessage}
+                    onRegenerateAssistant={ownerRegenerateResponse}
+                    onContinueAssistant={ownerContinueResponse}
+                    onForkMessage={availableForkConversation}
+                    onNavigateBranch={navigateConversationBranch}
+                    forkingMessageId={forkingMessageId}
+                    onJumpLatest={reloadActualLatestMessages}
+                    pendingApprovals={pendingApprovals}
+                    onApproveTool={approveToolInvocation}
+                    onRejectTool={rejectToolInvocation}
+                    onSuggestionClick={
+                      handoff.blocking ? undefined : submitSuggestion
+                    }
+                  />
+                </div>
+              </section>
+              {handoff.state?.session ? (
+                <GenesysChatComposer
+                  value={input}
+                  onChange={setInput}
+                  onSubmit={sendMessage}
+                  disabled={!handoff.canSend || handoff.pending}
+                />
+              ) : (
+                <ChatComposer
+                  input={input}
+                  maxInputCharacters={
+                    handoff.blocking ? 3000 : maxInputCharacters
+                  }
+                  canChat={
+                    (handoff.blocking ? handoff.canSend : canChat) &&
+                    !conversationLoadError &&
+                    !handoff.pending
+                  }
+                  needsSetup={needsSetup}
                   sending={sending}
-                  loading={loadingMessages}
-                  workspaceId={workspaceId ?? undefined}
-                  workspaceArtifactDisplay="summary"
-                  conversationId={activeConversationId}
-                  bottomRef={bottomRef}
-                  onEditMessage={ownerEditMessage}
-                  onDeleteMessage={ownerDeleteMessage}
-                  onRegenerateAssistant={ownerRegenerateResponse}
-                  onContinueAssistant={ownerContinueResponse}
-                  onForkMessage={availableForkConversation}
-                  onNavigateBranch={navigateConversationBranch}
-                  forkingMessageId={forkingMessageId}
-                  onJumpLatest={reloadActualLatestMessages}
-                  pendingApprovals={pendingApprovals}
-                  onApproveTool={approveToolInvocation}
-                  onRejectTool={rejectToolInvocation}
-                  onSuggestionClick={
-                    handoff.blocking ? undefined : submitSuggestion
+                  queuedMessages={queuedMessages}
+                  onInputChange={setInput}
+                  onSubmit={sendMessage}
+                  onStop={stopGeneration}
+                  onQueuedMessageChange={updateQueuedMessage}
+                  onQueuedMessageCancel={cancelQueuedMessage}
+                  onUploadCodeWorkspace={
+                    handoff.blocking ? undefined : uploadCodeWorkspace
+                  }
+                  onUploadChatAttachment={
+                    handoff.blocking ? undefined : uploadChatAttachment
+                  }
+                  attachments={attachments}
+                  todoList={latestTodoList}
+                  onRemoveAttachment={(attachmentId) =>
+                    setAttachments((current) =>
+                      current.filter(
+                        (attachment) => attachment.id !== attachmentId,
+                      ),
+                    )
                   }
                 />
-              </div>
-            </section>
-            {handoff.state?.session ? (
-              <GenesysChatComposer
-                value={input}
-                onChange={setInput}
-                onSubmit={sendMessage}
-                disabled={!handoff.canSend || handoff.pending}
+              )}
+            </aside>
+            <CodeWorkspaceResizeHandle
+              controls="coding-chat-panel"
+              label={t("resizeCodingChat")}
+              maximum={MAX_CHAT_WIDTH}
+              minimum={MIN_CHAT_WIDTH}
+              onResize={updateCodingChatWidth}
+              value={codingChatWidth}
+            />
+            <div className="order-first min-h-0 flex-1 overflow-hidden lg:order-none">
+              <CodeWorkspaceArtifactCard
+                artifact={codeWorkspaceArtifact}
+                workspaceId={workspaceId ?? undefined}
+                variant="workbench"
               />
-            ) : (
-              <ChatComposer
-                input={input}
-                maxInputCharacters={
-                  handoff.blocking ? 3000 : maxInputCharacters
-                }
-                canChat={
-                  (handoff.blocking ? handoff.canSend : canChat) &&
-                  !conversationLoadError &&
-                  !handoff.pending
-                }
-                needsSetup={needsSetup}
+            </div>
+          </section>
+        ) : (
+          <section className="min-h-0 flex-1 overflow-hidden">
+            {!loadingMessages && messages.length === 0 ? (
+              <EmptyConversationState needsSetup={needsSetup} t={t} />
+            ) : null}
+            <div className="size-full min-h-0">
+              <ChatMessageList
+                key={activeConversationId ?? "new-conversation"}
+                messages={messages}
                 sending={sending}
-                queuedMessages={queuedMessages}
-                onInputChange={setInput}
-                onSubmit={sendMessage}
-                onStop={stopGeneration}
-                onQueuedMessageChange={updateQueuedMessage}
-                onQueuedMessageCancel={cancelQueuedMessage}
-                onUploadCodeWorkspace={
-                  handoff.blocking ? undefined : uploadCodeWorkspace
-                }
-                onUploadChatAttachment={
-                  handoff.blocking ? undefined : uploadChatAttachment
-                }
-                attachments={attachments}
-                todoList={latestTodoList}
-                onRemoveAttachment={(attachmentId) =>
-                  setAttachments((current) =>
-                    current.filter(
-                      (attachment) => attachment.id !== attachmentId,
-                    ),
-                  )
+                loading={loadingMessages}
+                workspaceId={workspaceId ?? undefined}
+                conversationId={activeConversationId}
+                bottomRef={bottomRef}
+                onEditMessage={ownerEditMessage}
+                onDeleteMessage={ownerDeleteMessage}
+                onRegenerateAssistant={ownerRegenerateResponse}
+                onContinueAssistant={ownerContinueResponse}
+                onForkMessage={availableForkConversation}
+                onNavigateBranch={navigateConversationBranch}
+                forkingMessageId={forkingMessageId}
+                onJumpLatest={reloadActualLatestMessages}
+                pendingApprovals={pendingApprovals}
+                onApproveTool={approveToolInvocation}
+                onRejectTool={rejectToolInvocation}
+                onSuggestionClick={
+                  handoff.blocking ? undefined : submitSuggestion
                 }
               />
-            )}
-          </aside>
-          <CodeWorkspaceResizeHandle
-            controls="coding-chat-panel"
-            label={t("resizeCodingChat")}
-            maximum={MAX_CHAT_WIDTH}
-            minimum={MIN_CHAT_WIDTH}
-            onResize={updateCodingChatWidth}
-            value={codingChatWidth}
+            </div>
+          </section>
+        )}
+        {interfaceMode === CODING_INTERFACE_MODE &&
+        codeWorkspaceArtifact ? null : handoff.state?.session ? (
+          <GenesysChatComposer
+            value={input}
+            onChange={setInput}
+            onSubmit={sendMessage}
+            disabled={!handoff.canSend || handoff.pending}
           />
-          <div className="order-first min-h-0 flex-1 overflow-hidden lg:order-none">
-            <CodeWorkspaceArtifactCard
-              artifact={codeWorkspaceArtifact}
-              workspaceId={workspaceId ?? undefined}
-              variant="workbench"
-            />
-          </div>
-        </section>
-      ) : (
-        <section className="min-h-0 flex-1 overflow-hidden">
-          {!loadingMessages && messages.length === 0 ? (
-            <EmptyConversationState needsSetup={needsSetup} t={t} />
-          ) : null}
-          <div className="size-full min-h-0">
-            <ChatMessageList
-              key={activeConversationId ?? "new-conversation"}
-              messages={messages}
-              sending={sending}
-              loading={loadingMessages}
-              workspaceId={workspaceId ?? undefined}
-              conversationId={activeConversationId}
-              bottomRef={bottomRef}
-              onEditMessage={ownerEditMessage}
-              onDeleteMessage={ownerDeleteMessage}
-              onRegenerateAssistant={ownerRegenerateResponse}
-              onContinueAssistant={ownerContinueResponse}
-              onForkMessage={availableForkConversation}
-              onNavigateBranch={navigateConversationBranch}
-              forkingMessageId={forkingMessageId}
-              onJumpLatest={reloadActualLatestMessages}
-              pendingApprovals={pendingApprovals}
-              onApproveTool={approveToolInvocation}
-              onRejectTool={rejectToolInvocation}
-              onSuggestionClick={
-                handoff.blocking ? undefined : submitSuggestion
-              }
-            />
-          </div>
-        </section>
-      )}
-      {interfaceMode === CODING_INTERFACE_MODE &&
-      codeWorkspaceArtifact ? null : handoff.state?.session ? (
-        <GenesysChatComposer
-          value={input}
-          onChange={setInput}
-          onSubmit={sendMessage}
-          disabled={!handoff.canSend || handoff.pending}
-        />
-      ) : (
-        <ChatComposer
-          input={input}
-          maxInputCharacters={handoff.blocking ? 3000 : maxInputCharacters}
-          canChat={
-            (handoff.blocking ? handoff.canSend : canChat) &&
-            !conversationLoadError &&
-            !handoff.pending
-          }
-          needsSetup={needsSetup}
-          sending={sending}
-          queuedMessages={queuedMessages}
-          onInputChange={setInput}
-          onSubmit={sendMessage}
-          onStop={stopGeneration}
-          onQueuedMessageChange={updateQueuedMessage}
-          onQueuedMessageCancel={cancelQueuedMessage}
-          onUploadCodeWorkspace={
-            handoff.blocking ? undefined : uploadCodeWorkspace
-          }
-          onUploadChatAttachment={
-            handoff.blocking ? undefined : uploadChatAttachment
-          }
-          attachments={attachments}
-          todoList={latestTodoList}
-          centered={!loadingMessages && messages.length === 0}
-          promptSuggestions={emptyPromptSuggestions}
-          onPromptSuggestionClick={submitSuggestion}
-          onRemoveAttachment={(attachmentId) =>
-            setAttachments((current) =>
-              current.filter((attachment) => attachment.id !== attachmentId),
-            )
-          }
-        />
-      )}
-    </ChatLayout>
+        ) : (
+          <ChatComposer
+            input={input}
+            maxInputCharacters={handoff.blocking ? 3000 : maxInputCharacters}
+            canChat={
+              (handoff.blocking ? handoff.canSend : canChat) &&
+              !conversationLoadError &&
+              !handoff.pending
+            }
+            needsSetup={needsSetup}
+            sending={sending}
+            queuedMessages={queuedMessages}
+            onInputChange={setInput}
+            onSubmit={sendMessage}
+            onStop={stopGeneration}
+            onQueuedMessageChange={updateQueuedMessage}
+            onQueuedMessageCancel={cancelQueuedMessage}
+            onUploadCodeWorkspace={
+              handoff.blocking ? undefined : uploadCodeWorkspace
+            }
+            onUploadChatAttachment={
+              handoff.blocking ? undefined : uploadChatAttachment
+            }
+            attachments={attachments}
+            todoList={latestTodoList}
+            centered={!loadingMessages && messages.length === 0}
+            promptSuggestions={emptyPromptSuggestions}
+            onPromptSuggestionClick={submitSuggestion}
+            onRemoveAttachment={(attachmentId) =>
+              setAttachments((current) =>
+                current.filter((attachment) => attachment.id !== attachmentId),
+              )
+            }
+          />
+        )}
+      </ChatLayout>
+    </QuestionFormContext.Provider>
   );
 }
+
+import { QuestionFormContext } from "@/components/chat/question-form";

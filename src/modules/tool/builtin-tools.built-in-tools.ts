@@ -1,3 +1,4 @@
+import { questionFormTool } from "@/modules/question-form/tool";
 import { genesysHandoffTool } from "@/modules/genesys/tool";
 import type { BuiltInToolDefinition } from "./builtin-tools.built-in-tool-execution-context";
 import { builtInToolsPart1 } from "./builtin-tools.built-in-tools.part-1";
@@ -11,4 +12,5 @@ export const builtInTools = [
   ...builtInToolsPart3,
   ...workflowAssistantTools,
   genesysHandoffTool,
+  questionFormTool,
 ] satisfies BuiltInToolDefinition[];

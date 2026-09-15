@@ -1,5 +1,8 @@
 "use client";
 
+import { isQuestionForm } from "@/modules/question-form/contracts";
+import { QuestionFormCard } from "./question-form";
+
 import {
   CodeSandboxResultCard,
   HtmlArtifactCard,
@@ -290,6 +293,8 @@ export const ToolPartCard = memo(function ToolPartCard({
         embedded
       />
     );
+  } else if (isQuestionForm(parsed.output)) {
+    specializedContent = <QuestionFormCard value={parsed.output} />;
   } else if (isHtmlArtifactOutput(parsed.output)) {
     specializedContent = <HtmlArtifactCard artifact={parsed.output} embedded />;
   } else if (isGeneratedImageOutput(parsed.output)) {
