@@ -1,3 +1,4 @@
+import { safeInstanceUrl } from "./connection-selection";
 import {
   createCipheriv,
   createHash,
@@ -49,7 +50,7 @@ async function findVisibleConnection(
     : null;
 }
 
-async function findPreferredConnection(
+export async function findPreferredConnection(
   connectorId: string,
   input: ResolveToolExecutionHeadersInput,
   settings: UserToolSetting | null,
@@ -181,6 +182,19 @@ export async function resolveToolExecutionHeaders(
     return {};
   }
 
+  if (
+    input.expectedInstanceUrl &&
+    safeInstanceUrl(
+      {
+        ...jsonRecord(connector.defaultConfigJson),
+        ...jsonRecord(connection.configJson),
+      }.instanceUrl,
+    ) !== input.expectedInstanceUrl
+  ) {
+    throw new Error(
+      "Connection target changed; reload the available connections before retrying",
+    );
+  }
   const connectionSecrets = await decryptRecord(
     connection.encryptedSecretsJson,
   );
@@ -242,6 +256,12 @@ export async function listToolExecutionConnections(
             id: connection.id,
             label: connection.label,
             isDefault: connection.isDefault,
+            instanceUrl: safeInstanceUrl(
+              {
+                ...jsonRecord(connector.defaultConfigJson),
+                ...jsonRecord(connection.configJson),
+              }.instanceUrl,
+            ),
           }
         : null,
     ),

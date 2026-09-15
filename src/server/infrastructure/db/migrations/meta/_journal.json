@@ -491,6 +491,13 @@
       "when": 1789372800005,
       "tag": "0069_chained_workflows",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1789372800006,
+      "tag": "0070_assistant_connections",
+      "breakpoints": true
     }
   ]
 }

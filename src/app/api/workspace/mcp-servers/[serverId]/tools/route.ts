@@ -1,3 +1,5 @@
+import { findConnectorForTool } from "@/modules/tool-connections/use-cases.upsert-tool-connection-requirement";
+import { listToolExecutionConnections } from "@/modules/tool-connections/use-cases.build-signed-tool-context-headers";
 import {
   handleRoute,
   requireResourcePermissionAsync,
@@ -33,9 +35,29 @@ export async function GET(
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
-      return NextResponse.json(
-        await listMcpTools(serverId, parsed.data.workspaceId, session.user.id),
+      const tools = await listMcpTools(
+        serverId,
+        parsed.data.workspaceId,
+        session.user.id,
       );
+      if (req.nextUrl.searchParams.get("includeConnections") === "true") {
+        const context = {
+          workspaceId: parsed.data.workspaceId,
+          userId: session.user.id,
+          toolSource: "mcp",
+          toolId: tools[0]?.id ?? serverId,
+          mcpServerId: serverId,
+        };
+        const { connector } = await findConnectorForTool(context);
+        return NextResponse.json({
+          connectorKey: connector?.key ?? null,
+          connections:
+            connector?.key === "servicenow"
+              ? await listToolExecutionConnections(context)
+              : [],
+        });
+      }
+      return NextResponse.json(tools);
     },
     {
       logLabel: "Failed to list MCP tools",

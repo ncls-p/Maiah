@@ -4325,9 +4325,9 @@
   },
   "governance": {
     "organizations": "Organisations",
-    "organizationsHint": "Créez une organisation seule, puis ajoutez ses projets lorsque vous en avez besoin.",
+    "organizationsHint": "Créez et gérez vos organisations.",
     "newOrganizationName": "Nom de la nouvelle organisation",
-    "createOrganization": "Créer une organisation seule",
+    "createOrganization": "Créer l’organisation",
     "organization": "Organisation",
     "projectCount": "{count} projet(s)",
     "noProjects": "Aucun projet. Vous pouvez en ajouter un plus tard.",
@@ -4491,5 +4491,18 @@
     "noOutputSchema": "Aucun schéma de sortie déclaré. Le résultat réel est consultable dans les appels de la conversation.",
     "approvalRequired": "Cet outil demande une approbation avant son exécution.",
     "approvalPolicy": "La configuration de cet outil ne force pas d’approbation. Les règles de l’assistant et de l’organisation restent applicables."
+  },
+  "connectionSelection": {
+    "title": "Connexions ServiceNow",
+    "assistantHint": "Choisissez les connexions accessibles à cet assistant. Leur nom et leur URL seront visibles par le modèle.",
+    "conversationHint": "Activez les connexions à utiliser dans cette conversation parmi celles autorisées par l’assistant.",
+    "default": "Utiliser ma connexion par défaut",
+    "unknownUrl": "URL non disponible",
+    "empty": "Aucune connexion disponible.",
+    "none": "Aucune connexion sélectionnée : les outils ServiceNow seront indisponibles.",
+    "reset": "Reprendre la sélection de l’assistant",
+    "error": "Impossible de charger les connexions.",
+    "retry": "Réessayer",
+    "loading": "Chargement des connexions…"
   }
 }

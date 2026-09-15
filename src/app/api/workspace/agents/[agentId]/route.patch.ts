@@ -121,6 +121,7 @@ export async function PATCH(
             "Tool not found",
             "Custom tool not found",
             "MCP tool not found",
+            "MCP connection not found",
             "Knowledge base not found",
             "Skill not found",
             "Share target user not found",

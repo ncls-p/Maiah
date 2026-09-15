@@ -49,6 +49,7 @@ export type ChatExecutionContext = {
     enabledTools: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
     enabledSkillIds: string[];
     enabledKnowledgeIds: string[];
+    mcpConnectionIds?: Record<string, string[]>;
   };
 };
 

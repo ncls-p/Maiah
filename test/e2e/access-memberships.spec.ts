@@ -43,6 +43,7 @@ test("manages multiple team and project memberships from people and teams", asyn
     workspaceId,
     name: `Second project ${suffix}`,
   });
+  await page.request.patch("/api/workspaces", { data: { workspaceId } });
   await page.goto("/en/members");
   await page
     .getByRole("combobox", { name: "Active project", exact: true })
@@ -264,28 +265,25 @@ test("creates, renames and deletes a project from Access", async ({ page }) => {
   await login(page);
   await page.goto("/en/members");
   await page
-    .getByRole("button", {
-      name: "Project and organization settings",
-      exact: true,
-    })
+    .getByRole("tab", { name: "Organizations and projects", exact: true })
     .click();
-  await page.getByRole("button", { name: "New project", exact: true }).click();
-  const dialog = page.getByRole("dialog");
   const name = `Project lifecycle ${Date.now()}`;
-  await dialog
+  await page
     .getByRole("textbox", { name: "Project name", exact: true })
     .fill("x");
-  await dialog
-    .getByRole("button", { name: "Create project", exact: true })
-    .click();
-  await expect(dialog).toBeVisible();
-  await dialog
+  await page.getByRole("button", { name: "Add project", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Project name", exact: true }),
+  ).toHaveValue("x");
+  await page
     .getByRole("textbox", { name: "Project name", exact: true })
     .fill(name);
-  await dialog
-    .getByRole("button", { name: "Create project", exact: true })
+  await page.getByRole("button", { name: "Add project", exact: true }).click();
+  await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  await page
+    .getByRole("tab", { name: "People and permissions", exact: true })
     .click();
-  await expect(dialog).toHaveCount(0);
+  const dialog = page.getByRole("dialog");
   await expect(
     page.getByRole("combobox", { name: "Active project", exact: true }),
   ).toHaveText(name);

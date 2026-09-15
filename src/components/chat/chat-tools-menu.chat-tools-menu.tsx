@@ -1,5 +1,7 @@
 "use client";
 
+import { ConnectionSelection } from "@/components/tools/connection-selection";
+import type { McpConnectionGroup } from "./chat-tools-menu.enabled-tool-summary";
 import {
   BookMarkedIcon,
   BookOpenIcon,
@@ -56,6 +58,9 @@ export function ChatToolsMenu({
   conversationId: string | null;
 }) {
   const t = useTranslations("chat");
+  const [mcpConnections, setMcpConnections] = useState<McpConnectionGroup[]>(
+    [],
+  );
   const [open, setOpen] = useState(false);
   const [tools, setTools] = useState<EnabledToolSummary[]>([]);
   const [skills, setSkills] = useState<EnabledSkillSummary[]>([]);
@@ -84,6 +89,7 @@ export function ChatToolsMenu({
         `/api/workspace/agents/${agent.id}/tools?workspaceId=${workspaceId}&includeDetails=true&includeAvailable=true`,
       );
       setTools(payload.tools);
+      setMcpConnections(payload.mcpConnections ?? []);
       setSkills(payload.skills ?? []);
       setKnowledge(payload.knowledge ?? []);
       setLoaded(true);
@@ -493,6 +499,27 @@ export function ChatToolsMenu({
                   displayMode === "grid" && "sm:grid-cols-2",
                 )}
               >
+                {(categoryFilter === "all" || categoryFilter === "mcp") &&
+                  mcpConnections.map((group) => (
+                    <div key={group.serverId}>
+                      <p className="text-xs font-medium">{group.name}</p>
+                      <ConnectionSelection
+                        connections={group.connections}
+                        selectedIds={
+                          overrides.mcpConnectionIds?.[group.serverId]
+                        }
+                        onChange={(ids) => {
+                          const next = { ...overrides.mcpConnectionIds };
+                          if (ids === null) delete next[group.serverId];
+                          else next[group.serverId] = ids;
+                          persistOverrides({
+                            ...overrides,
+                            mcpConnectionIds: next,
+                          });
+                        }}
+                      />
+                    </div>
+                  ))}
                 {groups.map((group) => {
                   const GroupIcon = group.icon;
                   const groupActiveCount = group.capabilities.filter(

@@ -51,6 +51,7 @@ export async function cloneToolBindings(
         toolSource: "mcp",
         toolId: binding.toolId,
         mcpServerId: tool.mcpServerId,
+        connectionIds: binding.connectionIds,
         requireApproval: binding.requireApproval,
       });
       continue;

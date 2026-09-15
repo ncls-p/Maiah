@@ -82,6 +82,7 @@ export type AgentSkill = {
   provenance: ResourceProvenance;
 };
 export type ToolBinding = {
+  connectionIds?: string[] | null;
   toolSource: string;
   toolId: string;
   requireApproval: boolean;
@@ -202,7 +203,11 @@ export type AgentForm = {
 
 export type ToolBindingState = Record<
   string,
-  { enabled: boolean; requireApproval: boolean }
+  {
+    enabled: boolean;
+    requireApproval: boolean;
+    connectionIds?: string[] | null;
+  }
 >;
 
 /* ─── Constants ─────────────────────────────────────────────────────── */

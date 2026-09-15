@@ -18,6 +18,7 @@ export function buildToolBindingMap<T extends { id: string }>(
     const binding = bindingsByToolId.get(tool.id);
     map[tool.id] = {
       enabled: Boolean(binding),
+      connectionIds: binding?.connectionIds,
       requireApproval: binding?.requireApproval ?? defaultApproval(tool),
     };
   }

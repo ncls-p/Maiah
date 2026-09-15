@@ -1,5 +1,6 @@
 "use client";
 
+import { AssistantConnections } from "./capabilities-tab.connections";
 import { ChevronDownIcon } from "lucide-react";
 
 import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
@@ -60,6 +61,7 @@ export function McpServerCollapsible({
       for (const tool of serverTools) {
         const cb = current[tool.id];
         next[tool.id] = {
+          ...current[tool.id],
           enabled: enabled && tool.enabled,
           requireApproval:
             isMcpToolApprovalForced(tool, mcpServers) ||
@@ -78,6 +80,7 @@ export function McpServerCollapsible({
       const next = { ...current };
       for (const tool of bindableTools) {
         next[tool.id] = {
+          ...current[tool.id],
           enabled: true,
           requireApproval:
             isMcpToolApprovalForced(tool, mcpServers) || shouldRequireApproval,
@@ -91,6 +94,7 @@ export function McpServerCollapsible({
     setMcpBindings((current) => ({
       ...current,
       [tool.id]: {
+        ...current[tool.id],
         enabled: enabled && tool.enabled,
         requireApproval:
           isMcpToolApprovalForced(tool, mcpServers) ||
@@ -103,6 +107,7 @@ export function McpServerCollapsible({
     setMcpBindings((current) => ({
       ...current,
       [tool.id]: {
+        ...current[tool.id],
         enabled: current[tool.id]?.enabled ?? false,
         requireApproval: tool.enabled
           ? isMcpToolApprovalForced(tool, mcpServers) || shouldRequireApproval
@@ -180,6 +185,29 @@ export function McpServerCollapsible({
           </label>
         </div>
       </div>
+      {serverState.selectedCount > 0 && (
+        <AssistantConnections
+          serverId={server.id}
+          selectedIds={
+            serverTools
+              .map((tool) => mcpBindings[tool.id])
+              .find((binding) => binding?.enabled)?.connectionIds
+          }
+          onChange={(connectionIds) =>
+            setMcpBindings((current) => {
+              const next = { ...current };
+              for (const tool of serverTools)
+                next[tool.id] = {
+                  ...current[tool.id],
+                  enabled: current[tool.id]?.enabled ?? false,
+                  requireApproval: current[tool.id]?.requireApproval ?? false,
+                  connectionIds,
+                };
+              return next;
+            })
+          }
+        />
+      )}
       <CollapsibleContent className="flex flex-col gap-2 pt-3">
         {serverTools.length === 0 ? (
           <p className="text-xs text-muted-foreground">

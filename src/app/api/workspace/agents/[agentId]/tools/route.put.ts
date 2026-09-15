@@ -122,6 +122,7 @@ export async function PUT(
             "Tool not found",
             "Custom tool not found",
             "MCP tool not found",
+            "MCP connection not found",
           ].includes(error.message)
         ) {
           return NextResponse.json({ error: error.message }, { status: 400 });

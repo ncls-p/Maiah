@@ -34,6 +34,7 @@ describe("chat capability overrides", () => {
       enabledTools: [{ source: "custom", id: "calculator" }],
       enabledSkillIds: ["accessibility"],
       enabledKnowledgeIds: ["product-docs"],
+      mcpConnectionIds: { servicenow: ["prod", "test"] },
     });
 
     expect(readChatCapabilityOverrides("agent-1", "conversation-1")).toEqual({
@@ -45,6 +46,7 @@ describe("chat capability overrides", () => {
       enabledTools: [{ source: "custom", id: "calculator" }],
       enabledSkillIds: ["accessibility"],
       enabledKnowledgeIds: ["product-docs"],
+      mcpConnectionIds: { servicenow: ["prod", "test"] },
     });
     expect(readChatCapabilityOverrides("agent-1", "conversation-2")).toEqual({
       disabledTools: [],

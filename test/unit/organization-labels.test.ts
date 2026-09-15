@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   organizationLabels,
+  projectLabels,
   organizationProjectLabels,
 } from "@/components/iam/organization-labels";
 
@@ -17,6 +18,23 @@ describe("organization labels", () => {
       projects: [{ id: "live", name: "Veolia" }],
     },
   ];
+  it("deduplicates project identities and distinguishes equal names", () => {
+    expect(
+      projectLabels([
+        { id: "aaa", name: "Demo" },
+        { id: "aaa", name: "Demo" },
+        { id: "bbb", name: "Demo" },
+      ]),
+    ).toEqual([
+      { id: "aaa", name: "Demo · aaa" },
+      { id: "bbb", name: "Demo · bbb" },
+    ]);
+  });
+  it("renders each organization only once even when memberships repeat", () => {
+    expect(organizationLabels([rows[0], rows[0]])).toEqual([
+      { id: rows[0].id, name: "Helpline" },
+    ]);
+  });
   it("distinguishes homonyms by their projects without merging organizations", () => {
     expect(organizationLabels(rows)).toEqual([
       { id: rows[0].id, name: "Helpline · Demo Veolia" },

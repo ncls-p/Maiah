@@ -20,6 +20,7 @@ export const toolBindingInputSchema = z.discriminatedUnion("toolSource", [
     toolSource: z.literal("mcp"),
     toolId: z.uuid(),
     mcpServerId: z.uuid(),
+    connectionIds: z.array(z.uuid()).max(32).nullable().optional(),
     requireApproval: z.boolean().optional(),
   }),
   z.object({

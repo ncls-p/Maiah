@@ -53,6 +53,9 @@ export const chatRequestSchema = z.object({
         .default([]),
       enabledSkillIds: z.array(z.uuid()).max(128).default([]),
       enabledKnowledgeIds: z.array(z.uuid()).max(128).default([]),
+      mcpConnectionIds: z
+        .record(z.uuid(), z.array(z.uuid()).max(32))
+        .optional(),
     })
     .optional(),
 });

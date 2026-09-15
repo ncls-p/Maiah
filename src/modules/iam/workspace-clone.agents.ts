@@ -19,6 +19,7 @@ export async function cloneAgents(context: WorkspaceCloneContext) {
     providerMap,
     modelMap,
     mcpToolMap,
+    connectionMap,
     customToolMap,
     knowledgeMap,
     skillMap,
@@ -113,6 +114,10 @@ export async function cloneAgents(context: WorkspaceCloneContext) {
           id: randomUUID(),
           agentVersionId: versionMap.get(source.agentVersionId)!,
           toolId: mappedToolId,
+          connectionIds:
+            source.connectionIds?.flatMap((id) =>
+              connectionMap.has(id) ? [connectionMap.get(id)!] : [],
+            ) ?? null,
           createdAt: new Date(),
         });
     }

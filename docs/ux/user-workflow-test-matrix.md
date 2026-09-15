@@ -263,3 +263,18 @@ Avant merge :
 - Le build Next.js génère avec succès les 84 pages et routes. Le lockfile reproductible, Prettier, ESLint et TypeScript passent également.
 - Huit routes principales ont été contrôlées à 320, 375, 768 et 1440 px sans overflow horizontal. Axe ne remonte aucune violation critique ou sérieuse sur leur état stabilisé.
 - Les intégrations nécessitant des comptes tiers réels (fournisseurs IA, GitHub, MCP distant) restent validées par contrats, mocks et tests d’intégration ; leur smoke avec identifiants de production relève de la recette de déploiement.
+
+## Sélections des organisations, projets et connexions
+
+- La création d’organisation et de projet passe par l’onglet Organisations et
+  projets, indépendamment du panneau de réglages du projet actif. Les boutons
+  soumettent explicitement les formulaires ; les erreurs conservent la saisie.
+- Les sélecteurs Accès et leur état d’erreur proposent une organisation puis
+  uniquement ses projets. Les identités répétées sont dédupliquées ; les entités
+  distinctes de même nom restent séparées et portent un libellé distinctif.
+- Recette navigateur : création par clic, validation du nom, filtrage entre
+  organisations, droits en lecture seule, navigation clavier et largeur mobile.
+- ServiceNow : sélection multiple enregistrée par assistant, relecture après
+  sauvegarde, restriction propre au chat, URL visibles et absence de débordement.
+  Les tests serveur couvrent les identifiants forgés, la révocation, l’absence de
+  repli et le changement d’URL avant exécution.

@@ -81,6 +81,7 @@ export interface UpsertToolConnectionRequirementInput {
 
 export interface ResolveToolExecutionHeadersInput {
   connectionId?: string;
+  expectedInstanceUrl?: string;
   workspaceId: string;
   userId: string;
   toolSource: string;

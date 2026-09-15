@@ -31,7 +31,14 @@ export type EnabledKnowledgeSummary = {
   attached?: boolean;
 };
 
+export type McpConnectionGroup = {
+  serverId: string;
+  name: string;
+  connections: import("@/modules/tool-connections/connection-selection").ExecutionConnection[];
+};
+
 export type EnabledToolsPayload = {
+  mcpConnections?: McpConnectionGroup[];
   tools: EnabledToolSummary[];
   skills: EnabledSkillSummary[];
   knowledge?: EnabledKnowledgeSummary[];

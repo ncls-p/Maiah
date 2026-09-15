@@ -23,7 +23,12 @@ function distinguish(
 }
 
 /** Keep homonymous organizations separate and identifiable without changing their names. */
-export function organizationLabels(organizations: Organization[]) {
+export function organizationLabels(input: Organization[]) {
+  const organizations = [
+    ...new Map(
+      input.map((organization) => [organization.id, organization]),
+    ).values(),
+  ];
   return distinguish(
     organizations.map((organization) => {
       const homonyms = organizations.filter(
@@ -57,6 +62,14 @@ export function organizationProjectLabels(
         discriminator: project.id,
         name: `${organization.name} · ${project.name}`,
       })),
+    ),
+  );
+}
+
+export function projectLabels(projects: { id: string; name: string }[]) {
+  return distinguish(
+    [...new Map(projects.map((project) => [project.id, project])).values()].map(
+      (project) => ({ ...project, discriminator: project.id }),
     ),
   );
 }

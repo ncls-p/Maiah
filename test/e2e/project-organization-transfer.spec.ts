@@ -138,6 +138,12 @@ test("moves a whole project into an empty organization while retaining resources
     // Finish through the real project settings dialog.
     await page.goto("/en/members");
     await page
+      .getByRole("combobox", { name: "Organization", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: `Transfer source ${suffix}`, exact: true })
+      .click();
+    await page
       .getByRole("combobox", { name: "Active project", exact: true })
       .click();
     await page

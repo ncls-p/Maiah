@@ -129,6 +129,7 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
           progress.queue(event);
         },
         reasoningEffort: context.reasoningEffort,
+        mcpConnectionIds: context.capabilityOverrides?.mcpConnectionIds,
       });
       completedRun = result;
       const timings = generationClock.snapshot();

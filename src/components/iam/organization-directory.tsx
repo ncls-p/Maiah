@@ -35,7 +35,21 @@ export function OrganizationDirectory() {
       { signal: controller.signal },
     )
       .then((data) => {
-        setRows(data.organizations);
+        setRows([
+          ...new Map(
+            data.organizations.map((row) => [
+              row.id,
+              {
+                ...row,
+                projects: [
+                  ...new Map(
+                    row.projects.map((project) => [project.id, project]),
+                  ).values(),
+                ],
+              },
+            ]),
+          ).values(),
+        ]);
         setError("");
         setLoading(false);
       })
@@ -60,12 +74,17 @@ export function OrganizationDirectory() {
       }>("/api/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          email,
-          name: action === "createOrganization" ? name : projectName,
-          organizationId,
-        }),
+        body: JSON.stringify(
+          action === "createOrganization"
+            ? { action, name }
+            : action === "createProject"
+              ? {
+                  action,
+                  name: projectName,
+                  organizationId: selectedOrganizationId,
+                }
+              : { action, email, organizationId: selectedOrganizationId },
+        ),
       });
       setRevision((value) => value + 1);
       await workspace.refresh();
@@ -80,7 +99,19 @@ export function OrganizationDirectory() {
       setPending(false);
     }
   }
-  const selected = rows.find((row) => row.id === organizationId);
+  const activeOrganizationId = workspace.workspaces.find(
+    (project) => project.id === workspace.workspaceId,
+  )?.organizationId;
+  const selectedOrganizationId =
+    (rows.some((row) => row.id === organizationId)
+      ? organizationId
+      : undefined) ||
+    (rows.some((row) => row.id === activeOrganizationId)
+      ? activeOrganizationId
+      : undefined) ||
+    rows[0]?.id ||
+    "";
+  const selected = rows.find((row) => row.id === selectedOrganizationId);
   return (
     <section
       className="rounded-xl border bg-card p-4 sm:p-6"
@@ -108,6 +139,7 @@ export function OrganizationDirectory() {
           </Alert>
         ) : null}
         <form
+          aria-label={t("createOrganization")}
           className="flex flex-col gap-3 sm:flex-row sm:items-end"
           onSubmit={(event) => {
             event.preventDefault();
@@ -127,7 +159,9 @@ export function OrganizationDirectory() {
               disabled={pending}
             />
           </Field>
-          <Button disabled={pending}>{t("createOrganization")}</Button>
+          <Button type="submit" disabled={pending}>
+            {t("createOrganization")}
+          </Button>
         </form>
         {loading ? (
           <p role="status">{t("loading")}</p>
@@ -135,7 +169,7 @@ export function OrganizationDirectory() {
           <>
             <GovernanceSelect
               label={t("organization")}
-              value={organizationId}
+              value={selectedOrganizationId}
               onChange={setOrganizationId}
               options={organizationLabels(rows)}
               disabled={pending}
@@ -210,7 +244,9 @@ export function OrganizationDirectory() {
                         disabled={pending}
                       />
                     </Field>
-                    <Button disabled={pending}>{t("addProject")}</Button>
+                    <Button type="submit" disabled={pending}>
+                      {t("addProject")}
+                    </Button>
                   </form>
                 ) : null}
               </>

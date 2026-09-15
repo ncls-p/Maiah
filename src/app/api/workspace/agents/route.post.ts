@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
             "Tool not found",
             "Custom tool not found",
             "MCP tool not found",
+            "MCP connection not found",
             "Knowledge base not found",
             "Share target user not found",
             "Share target user is required",

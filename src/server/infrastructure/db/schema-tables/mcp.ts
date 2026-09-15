@@ -125,6 +125,7 @@ export const agentToolBindings = pgTable(
       .notNull()
       .references(() => agentVersions.id, { onDelete: CASCADE_ACTION }),
     toolSource: varchar("tool_source", { length: 16 }).notNull(),
+    connectionIds: jsonb("connection_ids").$type<string[]>(),
     toolId: uuid("tool_id").notNull(),
     requireApproval: boolean("require_approval").notNull().default(false),
     riskLevel: varchar("risk_level", { length: 16 }),

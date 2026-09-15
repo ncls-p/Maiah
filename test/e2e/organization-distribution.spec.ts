@@ -113,6 +113,12 @@ test("creates an empty organization, exposes organization agents across projects
     expect(preserved.ok(), await preserved.text()).toBe(true);
     await page.goto("/en/members");
     await page
+      .getByRole("combobox", { name: "Organization", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: organizationName, exact: true })
+      .click();
+    await page
       .getByRole("combobox", { name: "Active project", exact: true })
       .click();
     await page
