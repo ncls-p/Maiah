@@ -45,6 +45,7 @@ suite("Genesys handoff with PostgreSQL and simulated Genesys HTTP", () => {
     statusFails: false,
     sendStatus: 202,
     sendCount: 0,
+    disconnectPending: false,
   };
   let savedInput: Parameters<typeof saveConnection>[2];
   const conversationIds: string[] = [];
@@ -99,7 +100,7 @@ suite("Genesys handoff with PostgreSQL and simulated Genesys HTTP", () => {
           );
         }
         if (options?.method === "PATCH") {
-          state.remote = "completed";
+          if (!state.disconnectPending) state.remote = "completed";
           return Response.json({});
         }
         if (state.statusFails) return new Response(null, { status: 503 });
@@ -263,6 +264,14 @@ suite("Genesys handoff with PostgreSQL and simulated Genesys HTTP", () => {
     expect(history[1].parts[0].content).toContain("Bonjour");
     await resumeAi(f.owner, id);
     expect((await currentHandoff(id))?.state).toBe("closing");
+    state.disconnectPending = true;
+    const closingAt = (await currentHandoff(id))!.updatedAt;
+    await drainGenesys();
+    expect((await currentHandoff(id))?.state).toBe("closing");
+    expect((await currentHandoff(id))!.updatedAt.getTime()).toBeGreaterThan(
+      closingAt.getTime(),
+    );
+    state.disconnectPending = false;
     await drainGenesys();
     expect(await currentHandoff(id)).toBeNull();
     await receiveGenesysWebhook(

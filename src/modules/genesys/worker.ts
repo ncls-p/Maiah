@@ -77,8 +77,10 @@ async function processSession(id: string) {
         );
       }
       if (session.state === "closing") {
-        if (remote === "completed")
-          await patch({ state: "resumed", errorCode: null });
+        await patch({
+          state: remote === "completed" ? "resumed" : "closing",
+          errorCode: null,
+        });
         return;
       }
       await patch({ state: remote, errorCode: null });

@@ -25,6 +25,7 @@ export async function resumeAi(userId: string, conversationId: string) {
         .where(
           and(
             eq(genesysSessions.conversationId, conversationId),
+            eq(genesysSessions.id, current.id),
             ne(genesysSessions.state, "resumed"),
           ),
         )
