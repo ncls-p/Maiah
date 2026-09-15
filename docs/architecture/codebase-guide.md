@@ -233,3 +233,11 @@ Les tests d’un changement doivent cibler le niveau où vit l’invariant. Un t
 - [Matrice de recette](../ux/user-workflow-test-matrix.md)
 - [Skill d’orchestration](../../.agents/skills/agent-orchestration/SKILL.md)
 - [Skill d’audit UX](../../.agents/skills/ux-workflow-audit/SKILL.md)
+
+### Genesys Open Messaging
+
+`src/modules/genesys` owns organization connections, project grants, durable human
+handoffs, signed webhooks and queued deliveries. The existing worker drains those
+sessions; chat uses a durable stop condition and a DB admission guard while a
+handoff is active. Setup, state transitions, recovery and external acceptance
+requirements are in [Genesys Open Messaging](genesys-open-messaging.md).

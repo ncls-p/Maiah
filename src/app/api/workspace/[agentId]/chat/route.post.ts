@@ -1,3 +1,4 @@
+import { currentHandoff } from "@/modules/genesys/sessions";
 import {
   hasResourcePermissionForRequest,
   isWorkspaceMemberForRequest,
@@ -241,6 +242,9 @@ export async function POST(
       return forbidden;
     }
 
+    if (existingConversationId && conversationAccess && await currentHandoff(existingConversationId)) {
+      return rejectChatRequest(409, "human_handoff_active", { error: "GENESYS_HANDOFF_ACTIVE", code: "GENESYS_HANDOFF_ACTIVE" });
+    }
     const quota = await assertWorkspaceWithinTokenQuota(agent.workspaceId);
     if (!quota.allowed) {
       return rejectChatRequest(

@@ -1,3 +1,6 @@
+import { GenesysChatComposer } from "@/components/chat/genesys-chat-composer";
+import { useGenesysHandoff } from "@/components/chat/use-genesys-handoff";
+import { GenesysHandoffBanner } from "@/components/chat/genesys-handoff-banner";
 import { type CSSProperties } from "react";
 
 import { ChatComposer } from "@/components/chat/chat-composer";
@@ -99,14 +102,30 @@ export function ChatPageView({ model }: { model: Model }) {
     userDefaultAgentId,
     workspaceId,
   } = model;
-  const ownerEditMessage = conversationIsOwner ? editMessage : undefined;
-  const ownerDeleteMessage = conversationIsOwner ? deleteMessage : undefined;
-  const ownerRegenerateResponse = conversationIsOwner
-    ? regenerateAssistantResponse
-    : undefined;
-  const ownerContinueResponse = conversationIsOwner
-    ? continueAssistantResponse
-    : undefined;
+  const handoff = useGenesysHandoff(
+    activeConversationId,
+    conversationIsOwner,
+    reloadActualLatestMessages,
+  );
+  const sendMessage = handoff.blocking
+    ? () => {
+        void handoff.send(input).then((ok) => {
+          if (ok) setInput("");
+        });
+      }
+    : submitMessage;
+  const ownerEditMessage =
+    conversationIsOwner && !handoff.blocking ? editMessage : undefined;
+  const ownerDeleteMessage =
+    conversationIsOwner && !handoff.blocking ? deleteMessage : undefined;
+  const ownerRegenerateResponse =
+    conversationIsOwner && !handoff.blocking
+      ? regenerateAssistantResponse
+      : undefined;
+  const ownerContinueResponse =
+    conversationIsOwner && !handoff.blocking
+      ? continueAssistantResponse
+      : undefined;
   const availableForkConversation = conversationReadOnly
     ? undefined
     : forkConversation;
@@ -134,6 +153,17 @@ export function ChatPageView({ model }: { model: Model }) {
       onReasoningEffortChange={setReasoningEffort}
     >
       <ChatContextBar quota={quota} />
+      <GenesysHandoffBanner
+        handoff={handoff}
+        sending={sending}
+        summary={messages
+          .filter((m) => m.role === "user")
+          .slice(-3)
+          .flatMap((m) =>
+            m.parts.filter((p) => p.type === "text").map((p) => p.content),
+          )
+          .join("\n")}
+      />
       {effectiveEphemeral ? (
         <ConversationRetentionBanner
           temporary
@@ -221,34 +251,55 @@ export function ChatPageView({ model }: { model: Model }) {
                   pendingApprovals={pendingApprovals}
                   onApproveTool={approveToolInvocation}
                   onRejectTool={rejectToolInvocation}
-                  onSuggestionClick={submitSuggestion}
+                  onSuggestionClick={
+                    handoff.blocking ? undefined : submitSuggestion
+                  }
                 />
               </div>
             </section>
-            <ChatComposer
-              input={input}
-              maxInputCharacters={maxInputCharacters}
-              canChat={canChat && !conversationLoadError}
-              needsSetup={needsSetup}
-              sending={sending}
-              queuedMessages={queuedMessages}
-              onInputChange={setInput}
-              onSubmit={submitMessage}
-              onStop={stopGeneration}
-              onQueuedMessageChange={updateQueuedMessage}
-              onQueuedMessageCancel={cancelQueuedMessage}
-              onUploadCodeWorkspace={uploadCodeWorkspace}
-              onUploadChatAttachment={uploadChatAttachment}
-              attachments={attachments}
-              todoList={latestTodoList}
-              onRemoveAttachment={(attachmentId) =>
-                setAttachments((current) =>
-                  current.filter(
-                    (attachment) => attachment.id !== attachmentId,
-                  ),
-                )
-              }
-            />
+            {handoff.state?.session ? (
+              <GenesysChatComposer
+                value={input}
+                onChange={setInput}
+                onSubmit={sendMessage}
+                disabled={!handoff.canSend || handoff.pending}
+              />
+            ) : (
+              <ChatComposer
+                input={input}
+                maxInputCharacters={
+                  handoff.blocking ? 3000 : maxInputCharacters
+                }
+                canChat={
+                  (handoff.blocking ? handoff.canSend : canChat) &&
+                  !conversationLoadError &&
+                  !handoff.pending
+                }
+                needsSetup={needsSetup}
+                sending={sending}
+                queuedMessages={queuedMessages}
+                onInputChange={setInput}
+                onSubmit={sendMessage}
+                onStop={stopGeneration}
+                onQueuedMessageChange={updateQueuedMessage}
+                onQueuedMessageCancel={cancelQueuedMessage}
+                onUploadCodeWorkspace={
+                  handoff.blocking ? undefined : uploadCodeWorkspace
+                }
+                onUploadChatAttachment={
+                  handoff.blocking ? undefined : uploadChatAttachment
+                }
+                attachments={attachments}
+                todoList={latestTodoList}
+                onRemoveAttachment={(attachmentId) =>
+                  setAttachments((current) =>
+                    current.filter(
+                      (attachment) => attachment.id !== attachmentId,
+                    ),
+                  )
+                }
+              />
+            )}
           </aside>
           <CodeWorkspaceResizeHandle
             controls="coding-chat-panel"
@@ -291,27 +342,44 @@ export function ChatPageView({ model }: { model: Model }) {
               pendingApprovals={pendingApprovals}
               onApproveTool={approveToolInvocation}
               onRejectTool={rejectToolInvocation}
-              onSuggestionClick={submitSuggestion}
+              onSuggestionClick={
+                handoff.blocking ? undefined : submitSuggestion
+              }
             />
           </div>
         </section>
       )}
       {interfaceMode === CODING_INTERFACE_MODE &&
-      codeWorkspaceArtifact ? null : (
+      codeWorkspaceArtifact ? null : handoff.state?.session ? (
+        <GenesysChatComposer
+          value={input}
+          onChange={setInput}
+          onSubmit={sendMessage}
+          disabled={!handoff.canSend || handoff.pending}
+        />
+      ) : (
         <ChatComposer
           input={input}
-          maxInputCharacters={maxInputCharacters}
-          canChat={canChat && !conversationLoadError}
+          maxInputCharacters={handoff.blocking ? 3000 : maxInputCharacters}
+          canChat={
+            (handoff.blocking ? handoff.canSend : canChat) &&
+            !conversationLoadError &&
+            !handoff.pending
+          }
           needsSetup={needsSetup}
           sending={sending}
           queuedMessages={queuedMessages}
           onInputChange={setInput}
-          onSubmit={submitMessage}
+          onSubmit={sendMessage}
           onStop={stopGeneration}
           onQueuedMessageChange={updateQueuedMessage}
           onQueuedMessageCancel={cancelQueuedMessage}
-          onUploadCodeWorkspace={uploadCodeWorkspace}
-          onUploadChatAttachment={uploadChatAttachment}
+          onUploadCodeWorkspace={
+            handoff.blocking ? undefined : uploadCodeWorkspace
+          }
+          onUploadChatAttachment={
+            handoff.blocking ? undefined : uploadChatAttachment
+          }
           attachments={attachments}
           todoList={latestTodoList}
           centered={!loadingMessages && messages.length === 0}

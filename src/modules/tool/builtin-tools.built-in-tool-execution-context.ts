@@ -11,6 +11,7 @@ export interface BuiltInToolExecutionContext {
   workspaceId: string;
   userId: string;
   conversationId?: string;
+  interactiveChat?: boolean;
   messageId?: string;
   emitEvent?: (event: Record<string, unknown>) => void;
 }

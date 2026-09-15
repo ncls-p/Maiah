@@ -16,3 +16,4 @@ export * from "./schema-tables/workflows";
 export * from "./schema-tables/workspace";
 export * from "./schema-tables/resource-distribution";
 export * from "./schema-tables/usage-limits";
+export * from "./schema-tables/genesys";

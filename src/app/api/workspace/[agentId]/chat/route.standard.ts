@@ -1,3 +1,5 @@
+import { shouldStopForHandoff } from "@/modules/genesys/chat-stop";
+import { HANDOFF_TOOL } from "@/modules/genesys/contracts";
 import { encryptValue } from "@/lib/crypto";
 import { logger, logHandledError, logHandledWarning } from "@/lib/logger";
 import {
@@ -222,7 +224,10 @@ export async function runStandardChat(input: {
         conversationId: true,
       },
     },
-    stopWhen: isStepCount(maxSteps),
+    stopWhen: [
+      isStepCount(maxSteps),
+      () => shouldStopForHandoff(conversation.id, availableToolNames),
+    ],
     prepareStep:
       availableToolNames.length > 0
         ? ({ instructions, messages, steps }) => {
@@ -270,6 +275,7 @@ export async function runStandardChat(input: {
     abortSignal: runtimeDeadline.signal,
     messages: modelHistory,
   });
+  let handedOff = false;
   const streamedToolInputs = new Map<string, string>();
   const streamedToolNames = new Map<string, string>();
   const invalidToolCallErrors = new Map<string, unknown>();
@@ -277,6 +283,13 @@ export async function runStandardChat(input: {
   void (async () => {
     try {
       for await (const part of result.stream) {
+        if (
+          handedOff &&
+          ["text-delta", "reasoning-delta", "reasoning-start"].includes(
+            part.type,
+          )
+        )
+          continue;
         generationClock.observe(part.type, streamToolCallId(part) || undefined);
         if (part.type === "text-delta") {
           await partWriter.appendText("text", part.text);
@@ -338,6 +351,14 @@ export async function runStandardChat(input: {
             input: projectToolMessagePayload(part.input),
           });
         } else if (part.type === "tool-result") {
+          if (
+            part.toolName === HANDOFF_TOOL.name &&
+            typeof part.output === "object" &&
+            part.output !== null &&
+            "accepted" in part.output &&
+            part.output.accepted === true
+          )
+            handedOff = true;
           await partWriter.appendMetadata("tool-result", part);
           enqueueEvent({
             type: "tool_result",

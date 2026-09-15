@@ -1,3 +1,4 @@
+import { drainGenesys } from "@/modules/genesys/worker";
 import { env } from "@/lib/env";
 import { logger, logHandledError } from "@/lib/logger";
 import { reapExpiredAgentRuns } from "@/modules/agent/run-use-cases";
@@ -266,6 +267,9 @@ async function main() {
     logger.info("Worker listening on port 3001");
   });
 
+  const genesysInterval = setInterval(() => {
+    void drainGenesys().catch(() => logger.error("Genesys worker cycle failed"));
+  }, 5_000);
   const interval = setInterval(() => {
     void drainQueues();
   }, 2_000);
@@ -285,6 +289,7 @@ async function main() {
 
   process.on("SIGTERM", () => {
     logger.info("Worker received SIGTERM, shutting down gracefully...");
+    clearInterval(genesysInterval);
     clearInterval(interval);
     clearInterval(workflowRecoveryInterval);
     clearInterval(documentRecoveryInterval);
@@ -300,6 +305,7 @@ async function main() {
 
   process.on("SIGINT", () => {
     logger.info("Worker received SIGINT, shutting down gracefully...");
+    clearInterval(genesysInterval);
     clearInterval(interval);
     clearInterval(workflowRecoveryInterval);
     clearInterval(documentRecoveryInterval);

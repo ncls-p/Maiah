@@ -53,6 +53,7 @@ export type BuildBoundToolsInput = {
   userId: string;
   maxToolCalls: number;
   nonInteractive?: boolean;
+  interactiveChat?: boolean;
   includeWorkflowTools?: boolean;
   approvalPolicy?: AiHubToolApprovalPolicy | null;
   hasSkills?: boolean;

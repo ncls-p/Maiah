@@ -10,6 +10,8 @@ import {
 export function createBuiltinToolExecute(
   input: {
     workspaceId: string;
+    interactiveChat?: boolean;
+    nonInteractive?: boolean;
     conversationId?: string;
     messageId?: string;
     userId: string;
@@ -104,6 +106,7 @@ export function createBuiltinToolExecute(
 
     try {
       const output = await definition.execute(toolInput as never, {
+        interactiveChat: input.interactiveChat === true && !input.nonInteractive,
         workspaceId: input.workspaceId,
         userId: input.userId,
         conversationId: input.conversationId,
