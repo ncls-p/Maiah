@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useRef, useState, type DragEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
 import type { DocumentRow } from "./page.knowledge-base";

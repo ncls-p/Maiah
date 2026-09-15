@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
@@ -61,6 +62,7 @@ export function SwaggerDocs() {
       {loadError ? (
         <p className="p-8 text-sm text-destructive" role="alert">
           Unable to load the interactive API documentation.
+          <ErrorDetailsButton />
         </p>
       ) : null}
       <div id="swagger-ui" aria-busy={!bundleReady} />

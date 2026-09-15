@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { FileTextIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   AgentSkill,
   BUTTON_TYPE,

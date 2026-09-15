@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export function AgentConfigureLoadError({
             <Link href="/agents">{t("configurePage.back")}</Link>
           </Button>
         </div>
+        <ErrorDetailsButton />
       </div>
     </WorkspacePage>
   );

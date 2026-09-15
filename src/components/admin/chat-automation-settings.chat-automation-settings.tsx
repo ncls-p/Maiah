@@ -23,7 +23,7 @@ import { Link } from "@/i18n/navigation";
 import { MessageSquareTextIcon, PlugZapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   ChatAutomationConfig,
   ChatAutomationState,

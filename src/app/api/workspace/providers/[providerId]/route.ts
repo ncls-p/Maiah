@@ -1,3 +1,4 @@
+import { bedrockInputSchema } from "@/modules/provider/bedrock-settings";
 import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
 import { OPENAI_COMPATIBILITY_PROFILES } from "@/lib/openai-compatibility-profile";
@@ -26,12 +27,15 @@ const updateProviderSchema = z.object({
   workspaceId: z.uuid(),
   name: z.string().min(1).max(255).optional(),
   baseUrl: z.url().optional().or(z.literal("")),
+  bedrock: bedrockInputSchema.optional(),
   apiKey: z.string().min(1).optional().or(z.literal("")),
   headersJson: z.record(z.string(), z.string()).optional(),
   queryParamsJson: z.record(z.string(), z.string()).optional(),
   openaiCompatibleApiRoute: z.enum(OPENAI_COMPATIBLE_API_ROUTES).optional(),
   openaiCompatibilityProfile: z.enum(OPENAI_COMPATIBILITY_PROFILES).optional(),
   enabled: z.boolean().optional(),
+  description: z.string().trim().max(2000).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
 });
 
 export async function GET(

@@ -158,6 +158,8 @@ export function ProviderManagerView({ model }: { model: Model }) {
       <AddProviderDialog
         open={showAddDialog}
         busy={busy}
+        addBedrock={model.addBedrock}
+        onBedrockChange={model.setAddBedrock}
         addKind={addKind}
         addAuthType={addAuthType}
         addName={addName}
@@ -185,6 +187,12 @@ export function ProviderManagerView({ model }: { model: Model }) {
         onCreateProvider={() => void createNewProvider()}
       />
       <EditProviderDialog
+        editDescription={model.editDescription}
+        onDescriptionChange={model.setEditDescription}
+        editTags={model.editTags}
+        onTagsChange={model.setEditTags}
+        editBedrock={model.editBedrock}
+        onBedrockChange={model.setEditBedrock}
         editingProvider={editingProvider}
         busy={busy}
         editName={editName}

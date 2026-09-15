@@ -17,6 +17,19 @@ export async function buildProviderRuntimeConfig(
     headers[key] = await decryptValue(encryptedValue);
   }
   return {
+    ...(provider.kind === "amazon-bedrock"
+      ? {
+          bedrock: {
+            ...(provider.bedrockConfigJson as {
+              region: string;
+              authMode: "api-key" | "iam";
+            }),
+            ...(provider.encryptedAwsCredentials
+              ? JSON.parse(await decryptValue(provider.encryptedAwsCredentials))
+              : {}),
+          },
+        }
+      : {}),
     kind: provider.kind,
     name: provider.name,
     baseUrl: provider.baseUrl ?? undefined,

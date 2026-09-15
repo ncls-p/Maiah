@@ -1,3 +1,4 @@
+import type { BedrockDraft } from "./bedrock-fields";
 import { useTranslations } from "next-intl";
 
 import { Label } from "@/components/ui/label";
@@ -15,45 +16,19 @@ import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
 import {
   AUTH_TYPE_LABELS,
-  KIND_LABELS,
   OPENAI_COMPATIBILITY_PROFILE_LABELS,
 } from "./constants";
 import {
   AddProviderDialogProps,
   FIELD_STACK_CLASS,
 } from "./provider-dialogs.field-stack-class";
-import type { ProviderAuthType, ProviderKind, SafeProvider } from "./types";
-import { defaultAuthType } from "./utils";
+import type { ProviderAuthType, SafeProvider } from "./types";
 
 export function AddProviderAdvancedFields(props: AddProviderDialogProps) {
   const t = useTranslations("providers.manager");
   return (
     <div className="grid gap-4 rounded-xl border bg-muted/20 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor="add-provider-kind">{t("providerType")}</Label>
-          <Select
-            value={props.addKind}
-            onValueChange={(value) => {
-              const kind = value as ProviderKind;
-              props.onKindChange(kind);
-              props.onAuthTypeChange(defaultAuthType(kind));
-            }}
-          >
-            <SelectTrigger id="add-provider-kind">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {Object.entries(KIND_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
         <div className={FIELD_STACK_CLASS}>
           <Label htmlFor="add-provider-auth">{t("authentication")}</Label>
           <Select
@@ -174,6 +149,12 @@ export type EditProviderDialogProps = {
   editingProvider: SafeProvider | null;
   busy: boolean;
   editName: string;
+  editDescription: string;
+  onDescriptionChange: (value: string) => void;
+  editTags: string;
+  onTagsChange: (value: string) => void;
+  editBedrock: BedrockDraft;
+  onBedrockChange: (value: BedrockDraft) => void;
   editBaseUrl: string;
   editApiKey: string;
   editApiRoute: OpenAICompatibleApiRoute;

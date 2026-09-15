@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +61,7 @@ export function KnowledgeMainSection1({
               >
                 {t("retry")}
               </Button>
+              <ErrorDetailsButton />
             </div>
           ) : attachAgents.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">

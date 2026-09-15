@@ -1,4 +1,6 @@
 "use client";
+
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import {
   formatMarketplaceDate,
   getVisibilityLabel,
@@ -31,7 +33,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { ArrowLeft, PackagePlus, Share2, Star, Tag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 export default function MarketplaceItemPage({
   params,
 }: {
@@ -155,6 +157,7 @@ export default function MarketplaceItemPage({
               <Link href="/marketplace">{tDetail("back")}</Link>
             </Button>
           </div>
+          <ErrorDetailsButton />
         </div>
       </WorkspacePage>
     );

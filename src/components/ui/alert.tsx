@@ -1,6 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { ErrorDetailsButton } from "./error-details-button";
 import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
@@ -22,6 +23,7 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  children,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
@@ -30,7 +32,10 @@ function Alert({
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {children}
+      {variant === "destructive" ? <ErrorDetailsButton /> : null}
+    </div>
   );
 }
 

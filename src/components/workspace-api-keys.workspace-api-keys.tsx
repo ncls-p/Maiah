@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -9,7 +10,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import {
   AlertDialog,
@@ -322,6 +323,7 @@ export function WorkspaceApiKeys() {
             {selectedScopes.length === 0 ? (
               <p className="text-sm text-destructive" role="alert">
                 {t("scopeRequired")}
+                <ErrorDetailsButton />
               </p>
             ) : null}
 
@@ -391,6 +393,7 @@ export function WorkspaceApiKeys() {
               >
                 {t("retry")}
               </Button>
+              <ErrorDetailsButton />
             </div>
           ) : keys.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("empty")}</p>

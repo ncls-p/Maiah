@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import "./globals.css";
+import { ErrorDetails } from "@/components/ui/error-details";
+import { createErrorReport, showErrorReport } from "@/lib/error-report";
 
 export default function GlobalError({
   error,
@@ -37,6 +39,7 @@ export default function GlobalError({
   return (
     <html lang={isFrench ? "fr" : "en"} suppressHydrationWarning>
       <body className="min-h-svh bg-background text-foreground antialiased">
+        <ErrorDetails />
         <title>{copy.title} · Maiah</title>
         <main
           data-page="auth"
@@ -54,6 +57,15 @@ export default function GlobalError({
                 {copy.reference}: {error.digest}
               </p>
             ) : null}
+            <button
+              type="button"
+              className="mt-4 block w-full text-sm underline"
+              onClick={() =>
+                showErrorReport(createErrorReport(error.message, error.digest))
+              }
+            >
+              {isFrench ? "Détails de l’erreur" : "Error details"}
+            </button>
             <button
               type="button"
               onClick={() => reset()}

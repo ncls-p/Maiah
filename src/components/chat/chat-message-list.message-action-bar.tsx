@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { type ChatMessage } from "@/components/chat/chat-types";
 import { Button } from "@/components/ui/button";

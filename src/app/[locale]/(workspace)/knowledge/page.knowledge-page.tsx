@@ -14,7 +14,7 @@ import {
 } from "@/modules/knowledge/rag-config-schema";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   DocumentRow,
   KnowledgeBase,

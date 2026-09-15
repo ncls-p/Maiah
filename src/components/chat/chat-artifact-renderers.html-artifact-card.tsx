@@ -3,7 +3,7 @@
 import { Maximize2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import {
   artifactCombinedCode,

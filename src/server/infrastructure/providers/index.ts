@@ -1,3 +1,4 @@
+import { amazonBedrockAdapter } from "./amazon-bedrock-adapter";
 import type { ProviderAdapter, ProviderKind } from "./adapter";
 import { anthropicCompatibleAdapter } from "./anthropic-compatible-adapter";
 import { dragonflyAdapter } from "./dragonfly-adapter";
@@ -5,6 +6,7 @@ import { openaiCompatibleAdapter } from "./openai-compatible-adapter";
 import { vercelAiGatewayAdapter } from "./vercel-ai-gateway-adapter";
 
 const ADAPTERS: Record<ProviderKind, ProviderAdapter> = {
+  "amazon-bedrock": amazonBedrockAdapter,
   "openai-compatible": openaiCompatibleAdapter,
   "anthropic-compatible": anthropicCompatibleAdapter,
   dragonfly: dragonflyAdapter,

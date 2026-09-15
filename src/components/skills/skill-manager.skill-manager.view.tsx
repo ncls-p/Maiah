@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import { ResourceShareDialog } from "@/components/marketplace/resource-share-dialog";
 import { ResourcePackageExport } from "@/components/marketplace/resource-package-export";
@@ -97,6 +98,7 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
           >
             {t("retry")}
           </Button>
+          <ErrorDetailsButton />
         </div>
       ) : skills.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">

@@ -29,6 +29,8 @@ export async function refreshProviderModels(
             providerId,
             modelId: model.modelId,
             displayName: model.displayName || model.modelId,
+            description: model.description || null,
+            tags: model.tags ?? null,
             capabilitiesJson: model.capabilities || null,
             contextWindow: model.contextWindow || null,
             maxOutputTokens: model.maxOutputTokens || null,
@@ -42,6 +44,8 @@ export async function refreshProviderModels(
           target: [aiModels.providerId, aiModels.modelId],
           set: {
             displayName: sql`COALESCE(${aiModels.displayName}, excluded.display_name)`,
+            description: sql`COALESCE(${aiModels.description}, excluded.description)`,
+            tags: sql`COALESCE(${aiModels.tags}, excluded.tags)`,
             capabilitiesJson: sql`COALESCE(excluded.capabilities_json, '{}'::jsonb) || COALESCE(${aiModels.capabilitiesJson}, '{}'::jsonb)`,
             contextWindow: sql`excluded.context_window`,
             maxOutputTokens: sql`excluded.max_output_tokens`,

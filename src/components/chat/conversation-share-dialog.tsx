@@ -1,7 +1,8 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { CopyIcon, Globe2Icon, Share2Icon, Trash2Icon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { useConversationSharing } from "./use-conversation-sharing";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export function ConversationShareDialog({
             <Button variant="outline" onClick={() => void load()}>
               {t("retry")}
             </Button>
+            <ErrorDetailsButton />
           </div>
         )}
         {loading && !payload ? (

@@ -10,7 +10,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import type { ProviderModel, ProviderModelUpdate } from "./types";
 
 function optionalNumber(form: FormData, name: string) {
@@ -36,6 +37,9 @@ export function ModelConfigDialog({
   const t = useTranslations("providers.manager");
   const image = model.imageGenerationConfigJson ?? {};
   const sustainability = model.sustainabilityConfigJson ?? {};
+  const [manualMetrics, setManualMetrics] = useState(
+    sustainability.manualOverride === true,
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-2xl">
@@ -52,6 +56,15 @@ export function ModelConfigDialog({
               .filter(Boolean);
             onSave({
               displayName: String(form.get("displayName") ?? "").trim(),
+              description: String(form.get("description") ?? "").trim(),
+              tags: [
+                ...new Set(
+                  String(form.get("tags") ?? "")
+                    .split(",")
+                    .map((tag) => tag.trim())
+                    .filter(Boolean),
+                ),
+              ],
               enabled: form.get("enabled") === "on",
               capabilitiesJson: {
                 ...(model.capabilitiesJson ?? {}),
@@ -82,8 +95,12 @@ export function ModelConfigDialog({
                   form,
                   "co2GramsPerMillionTokens",
                 ),
-                source: "Administrator override",
-                manualOverride: true,
+                source: manualMetrics
+                  ? "Administrator override"
+                  : sustainability.manualOverride
+                    ? undefined
+                    : sustainability.source,
+                manualOverride: manualMetrics,
                 currency:
                   String(form.get("currency") ?? "")
                     .trim()
@@ -96,18 +113,65 @@ export function ModelConfigDialog({
             <DialogTitle>{t("editModel")}</DialogTitle>
             <DialogDescription>{model.modelId}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-5 py-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field
-                label={t("displayName")}
-                name="displayName"
-                defaultValue={model.displayName ?? model.modelId}
+          <div
+            className="grid gap-5 py-4"
+            onChange={(event) => {
+              const name = (event.target as HTMLInputElement).name;
+              if (
+                [
+                  "currency",
+                  "inputTokenCost",
+                  "outputTokenCost",
+                  "energyKwhPerMillionTokens",
+                  "co2GramsPerMillionTokens",
+                  "costPerImage",
+                  "energyKwhPerImage",
+                  "co2GramsPerImage",
+                ].includes(name)
+              )
+                setManualMetrics(true);
+            }}
+          >
+            <Field
+              label={t("displayName")}
+              name="displayName"
+              defaultValue={model.displayName ?? model.modelId}
+            />
+            <div className="grid gap-2">
+              <Label htmlFor="model-description">{t("description")}</Label>
+              <Textarea
+                id="model-description"
+                name="description"
+                maxLength={2000}
+                defaultValue={model.description ?? ""}
               />
+            </div>
+            <Field
+              label={t("tags")}
+              help={t("tagsHelp")}
+              name="tags"
+              defaultValue={(model.tags ?? []).join(", ")}
+            />
+            <h3 className="text-sm font-semibold">{t("pricingImpact")}</h3>
+            <p className="text-xs text-muted-foreground">
+              {t("automaticMetrics")}
+            </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={manualMetrics}
+                onChange={(event) => setManualMetrics(event.target.checked)}
+              />
+              {t("manualMetrics")}
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field
                 label={t("currency")}
                 help={t("currencyHelp")}
                 name="currency"
-                defaultValue={image.currency ?? "EUR"}
+                defaultValue={
+                  sustainability.currency ?? image.currency ?? "EUR"
+                }
                 maxLength={3}
               />
               <Field
@@ -142,40 +206,55 @@ export function ModelConfigDialog({
                 {t("defaultImageModel")}
               </Check>
             </div>
+            <details
+              className="rounded-lg border p-3"
+              open={
+                image.enabled ||
+                model.capabilitiesJson?.imageGeneration === true
+              }
+            >
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("imageGeneration")}
+              </summary>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field
+                  label={t("defaultImageSize")}
+                  help={t("defaultImageSizeHelp")}
+                  name="defaultSize"
+                  defaultValue={image.defaultSize ?? "1024x1024"}
+                />
+                <Field
+                  label={t("allowedImageSizes")}
+                  help={t("allowedImageSizesHelp")}
+                  name="allowedSizes"
+                  defaultValue={(image.allowedSizes ?? ["1024x1024"]).join(
+                    ", ",
+                  )}
+                />
+                <Field
+                  label={t("costPerImage")}
+                  help={t("impactMetricHelp")}
+                  name="costPerImage"
+                  defaultValue={image.costPerImage}
+                  type="number"
+                />
+                <Field
+                  label={t("energyPerImage")}
+                  help={t("impactMetricHelp")}
+                  name="energyKwhPerImage"
+                  defaultValue={image.energyKwhPerImage}
+                  type="number"
+                />
+                <Field
+                  label={t("co2PerImage")}
+                  help={t("impactMetricHelp")}
+                  name="co2GramsPerImage"
+                  defaultValue={image.co2GramsPerImage}
+                  type="number"
+                />
+              </div>
+            </details>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field
-                label={t("defaultImageSize")}
-                help={t("defaultImageSizeHelp")}
-                name="defaultSize"
-                defaultValue={image.defaultSize ?? "1024x1024"}
-              />
-              <Field
-                label={t("allowedImageSizes")}
-                help={t("allowedImageSizesHelp")}
-                name="allowedSizes"
-                defaultValue={(image.allowedSizes ?? ["1024x1024"]).join(", ")}
-              />
-              <Field
-                label={t("costPerImage")}
-                help={t("impactMetricHelp")}
-                name="costPerImage"
-                defaultValue={image.costPerImage}
-                type="number"
-              />
-              <Field
-                label={t("energyPerImage")}
-                help={t("impactMetricHelp")}
-                name="energyKwhPerImage"
-                defaultValue={image.energyKwhPerImage}
-                type="number"
-              />
-              <Field
-                label={t("co2PerImage")}
-                help={t("impactMetricHelp")}
-                name="co2GramsPerImage"
-                defaultValue={image.co2GramsPerImage}
-                type="number"
-              />
               <Field
                 label={t("energyPerMillionTokens")}
                 help={t("impactMetricHelp")}

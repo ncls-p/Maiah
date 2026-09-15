@@ -1,4 +1,6 @@
 "use client";
+
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 /* eslint-disable @next/next/no-img-element -- Preview the original local blob without image transformation. */
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -156,6 +158,7 @@ export function OriginalDocumentPreview({
               >
                 {t("retry")}
               </Button>
+              <ErrorDetailsButton />
             </div>
           ) : !source ? (
             <div role="status" className="flex justify-center gap-2 py-12">

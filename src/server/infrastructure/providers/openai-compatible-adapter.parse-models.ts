@@ -39,14 +39,22 @@ type OpenAICompatibleModel = {
 
 function toPositiveNumber(value: number | string | null | undefined) {
   const parsed = typeof value === "string" ? Number(value) : value;
-  return typeof parsed === "number" && parsed > 0 ? parsed : undefined;
+  return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : undefined;
+}
+
+function toNonNegativeNumber(value: number | string | null | undefined) {
+  if (typeof value === "string" && !value.trim()) return undefined;
+  const parsed = Number(value);
+  return value != null && Number.isFinite(parsed) && parsed >= 0
+    ? parsed
+    : undefined;
 }
 
 function toNonNegativeCost(value: number | string | null | undefined) {
-  const parsed = typeof value === "string" ? Number(value) : value;
-  return typeof parsed === "number" && Number.isFinite(parsed) && parsed >= 0
-    ? String(parsed)
-    : undefined;
+  const parsed = toNonNegativeNumber(value);
+  return parsed !== undefined ? String(parsed) : undefined;
 }
 
 function normalizeModalities(values: string[] | undefined) {
@@ -64,6 +72,10 @@ function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
   const task = model.task?.toLowerCase();
 
   if (inputModalities.has("image")) capabilities.vision = true;
+  if (outputModalities.has("image")) {
+    capabilities.imageGeneration = true;
+    capabilities.text = outputModalities.has("text");
+  }
   if (inputModalities.has("audio") || outputModalities.has("audio")) {
     capabilities.audio = true;
   }
@@ -75,11 +87,11 @@ function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
 }
 
 function sustainabilityFromModel(model: OpenAICompatibleModel) {
-  const energyKwhPerMillionTokens = toPositiveNumber(
+  const energyKwhPerMillionTokens = toNonNegativeNumber(
     model.energy_kwh_per_million_tokens ??
       model.sustainability?.energy_kwh_per_million_tokens,
   );
-  const co2GramsPerMillionTokens = toPositiveNumber(
+  const co2GramsPerMillionTokens = toNonNegativeNumber(
     model.co2_grams_per_million_tokens ??
       model.sustainability?.co2_grams_per_million_tokens,
   );
@@ -116,7 +128,7 @@ export function parseModels(data: unknown): ModelDescriptor[] {
   if (!Array.isArray(payload.data)) return [];
 
   return (payload.data as OpenAICompatibleModel[])
-    .filter((model) => typeof model.id === "string")
+    .filter((model) => model != null && typeof model.id === "string")
     .map((model) => ({
       modelId: model.id,
       displayName: model.id,

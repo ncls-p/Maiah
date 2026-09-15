@@ -2,7 +2,7 @@
 
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
 import { migrateNewChatComposerDraft } from "@/components/chat/chat-composer-draft";

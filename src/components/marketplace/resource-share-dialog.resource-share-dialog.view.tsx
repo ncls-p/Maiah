@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -96,6 +97,7 @@ export function ResourceShareDialogView({ model }: { model: Model }) {
             <Button variant="outline" onClick={() => void loadPreview()}>
               {tCommon("retry")}
             </Button>
+            <ErrorDetailsButton />
           </div>
         )}
         {previewLoading && step === "meta" ? (

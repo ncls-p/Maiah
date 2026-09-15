@@ -135,3 +135,47 @@ describe("openaiCompatibleAdapter.listModels", () => {
     });
   });
 });
+
+describe("catalog pricing and environmental metrics", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("imports explicit zero metrics and ignores blank or infinite values", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: [
+              null,
+              {
+                id: "zero",
+                pricing: {
+                  input_per_million: "0",
+                  output_per_million: "",
+                  currency: "USD",
+                },
+                sustainability: {
+                  energy_kwh_per_million_tokens: 0,
+                  co2_grams_per_million_tokens: "Infinity",
+                },
+              },
+            ],
+          }),
+          { headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+    const models = await openaiCompatibleAdapter.listModels!({
+      kind: "openai-compatible",
+      name: "catalog",
+      authType: "bearer",
+      baseUrl: "https://example.com/v1",
+    });
+    expect(models).toHaveLength(1);
+    expect(models[0]).toMatchObject({
+      inputTokenCost: "0",
+      sustainability: { energyKwhPerMillionTokens: 0, currency: "USD" },
+    });
+    expect(models[0].outputTokenCost).toBeUndefined();
+    expect(models[0].sustainability?.co2GramsPerMillionTokens).toBeUndefined();
+  });
+});

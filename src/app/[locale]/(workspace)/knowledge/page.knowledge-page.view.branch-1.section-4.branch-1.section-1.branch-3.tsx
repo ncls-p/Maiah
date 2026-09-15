@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { Button } from "@/components/ui/button";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeDocumentTableBranch3({
@@ -24,6 +25,7 @@ export function KnowledgeDocumentTableBranch3({
       >
         {t("retry")}
       </Button>
+      <ErrorDetailsButton />
     </div>
   );
 }

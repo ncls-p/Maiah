@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetails } from "./error-details";
 import { useTheme } from "@teispace/next-themes";
 import {
   CircleCheckIcon,
@@ -23,6 +24,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         if (target.closest("[data-sonner-toast]")) toast.dismiss();
       }}
     >
+      <ErrorDetails />
       <Sonner
         theme={theme as ToasterProps["theme"]}
         className="toaster group"

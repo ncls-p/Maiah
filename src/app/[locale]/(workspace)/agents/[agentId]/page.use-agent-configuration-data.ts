@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import {
   buildAgentFormFromVersion,
@@ -141,7 +141,8 @@ export function useAgentConfigurationData(
         "policy"
       > & { policy: DelegationConfig["policy"] | null };
       const agentsPayload = (await agentsResponse.json()) as
-        Agent[] | { agents?: Agent[] };
+        | Agent[]
+        | { agents?: Agent[] };
       setDelegationConfig({
         ...defaultDelegationConfig,
         ...delegationPayload,

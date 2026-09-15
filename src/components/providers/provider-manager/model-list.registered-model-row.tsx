@@ -1,7 +1,7 @@
 import { ImagePlusIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,20 +41,31 @@ export function RegisteredModelRow({
   }
 
   return (
-    <div className="group flex items-start justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-muted/30">
-      <div className="flex min-w-0 items-start gap-3">
+    <div className="group flex flex-col items-start justify-between gap-3 sm:flex-row px-3 py-2.5 transition-colors hover:bg-muted/30">
+      <div className="flex w-full min-w-0 flex-1 items-start gap-3">
         <ModelLogo logoUrl={model.logoUrl} label={modelLabel} size="lg" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{modelLabel}</p>
           <p className="truncate font-mono text-xs text-muted-foreground">
             {model.modelId}
           </p>
+          {model.description ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {model.description}
+            </p>
+          ) : null}
+          {model.tags?.length ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {model.tags.join(" · ")}
+            </p>
+          ) : null}
           <ModelCapabilities
             capabilities={model.capabilitiesJson}
             contextWindow={model.contextWindow}
             maxOutputTokens={model.maxOutputTokens}
             inputTokenCost={model.inputTokenCost}
             outputTokenCost={model.outputTokenCost}
+            currency={model.sustainabilityConfigJson?.currency}
             enabled={model.enabled}
           />
           <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
@@ -86,13 +97,14 @@ export function RegisteredModelRow({
       </div>
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
         <Button
-          size="icon-xs"
-          variant="ghost"
+          size="xs"
+          variant="outline"
           aria-label={t("editModel")}
           disabled={busy}
           onClick={() => setEditing(true)}
         >
           <PencilIcon className="size-3.5" aria-hidden="true" />
+          {t("editModel")}
         </Button>
         <input
           id={`model-logo-${model.id}`}

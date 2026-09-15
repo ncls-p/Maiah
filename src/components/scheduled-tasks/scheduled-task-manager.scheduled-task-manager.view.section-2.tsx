@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { Link } from "@/i18n/navigation";
 import {
   CalendarClockIcon,
@@ -123,6 +124,7 @@ export function ScheduledTaskManagerSection2({
               >
                 {t("retry")}
               </Button>
+              <ErrorDetailsButton />
             </div>
           ) : tasks.length === 0 ? (
             <PageEmptyState

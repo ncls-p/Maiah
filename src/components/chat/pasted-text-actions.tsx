@@ -1,8 +1,10 @@
 "use client";
+
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PencilIcon, Undo2Icon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { AttachmentAction } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,6 +111,7 @@ export function PastedTextActions({
               <Button variant="outline" onClick={() => void read(false)}>
                 {common("retry")}
               </Button>
+              <ErrorDetailsButton />
             </div>
           ) : (
             <>

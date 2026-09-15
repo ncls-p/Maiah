@@ -2,7 +2,7 @@ import type { Edge, ReactFlowInstance } from "@xyflow/react";
 import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { fetchJson } from "@/lib/api-client";
 import type { ChatTodoList } from "@/modules/chat/todo-list";
 import type {

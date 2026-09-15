@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { PlugZapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -120,6 +121,7 @@ export function ProvidersPageClient() {
           >
             {t("retry")}
           </Button>
+          <ErrorDetailsButton />
         </div>
       ) : (
         <ProviderManager

@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,7 @@ export function KnowledgeMainSection3({
               <p className="mt-1 max-w-md text-xs text-muted-foreground">
                 {t("documentPreviewErrorHint")}
               </p>
+              <ErrorDetailsButton />
             </div>
           ) : previewDocument?.originalUrl ? (
             <iframe

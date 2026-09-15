@@ -4,7 +4,7 @@ import { ChevronDownIcon, FileUpIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { ChatComposerBody } from "@/components/chat/chat-composer-body";
 import {

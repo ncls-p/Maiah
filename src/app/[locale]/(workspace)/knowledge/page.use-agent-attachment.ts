@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { KnowledgeAgent } from "./page.knowledge-base";
 
 export function useKnowledgeAgentAttachment(input: {
@@ -29,7 +29,8 @@ export function useKnowledgeAgentAttachment(input: {
       );
       if (!res.ok) throw new Error(t("errorLoadAgents"));
       const data = (await res.json()) as
-        { agents?: KnowledgeAgent[] } | KnowledgeAgent[];
+        | { agents?: KnowledgeAgent[] }
+        | KnowledgeAgent[];
       setAttachAgents(Array.isArray(data) ? data : (data.agents ?? []));
     } catch (error) {
       setAttachAgentsError(true);

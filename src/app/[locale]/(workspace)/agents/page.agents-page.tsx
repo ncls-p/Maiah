@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 import type { AgentAccessSelection } from "@/modules/agent/access-scope";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { AgentsPageView } from "./page.agents-page.view";
 import {
   AGENT_TEMPLATES,

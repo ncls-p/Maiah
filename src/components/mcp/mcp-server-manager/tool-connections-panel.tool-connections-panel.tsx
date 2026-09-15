@@ -1,9 +1,10 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { LockKeyholeIcon, UnplugIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -282,6 +283,7 @@ export function ToolConnectionsPanel({
             >
               {t("retry")}
             </Button>
+            <ErrorDetailsButton />
           </div>
         ) : (
           <div className="flex flex-col gap-4">

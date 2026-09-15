@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import type { ElementType, ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -225,6 +226,7 @@ export function SettingsLoadError({
       >
         {retryLabel}
       </Button>
+      <ErrorDetailsButton />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { BedrockFields, type BedrockDraft } from "./bedrock-fields";
+import { ProviderPresets } from "./provider-presets";
 import { Loader2Icon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -17,7 +19,6 @@ import { Label } from "@/components/ui/label";
 
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
-import { CLOUD_TEMPLE_BASE_URL } from "@/modules/provider/cloud-temple-catalog";
 import { AddProviderAdvancedFields } from "./provider-dialogs.add-provider-advanced-fields";
 import type { ProviderAuthType, ProviderKind } from "./types";
 
@@ -27,6 +28,8 @@ export type AddProviderDialogProps = {
   open: boolean;
   busy: boolean;
   addKind: ProviderKind;
+  addBedrock: BedrockDraft;
+  onBedrockChange: (value: BedrockDraft) => void;
   addAuthType: ProviderAuthType;
   addName: string;
   addBaseUrl: string;
@@ -63,21 +66,32 @@ export function AddProviderDialog(props: AddProviderDialogProps) {
         </DialogHeader>
         <div className="grid gap-4">
           <AddProviderBasicFields {...props} />
-          <AdvancedSection
-            label={tCommon("advanced")}
-            hint={t("advancedHint")}
-            storageKey="advanced:provider-add"
-            defaultOpen={props.addAdvanced}
-          >
-            <AddProviderAdvancedFields {...props} />
-          </AdvancedSection>
+          {props.addKind !== "amazon-bedrock" ? (
+            <AdvancedSection
+              label={tCommon("advanced")}
+              hint={t("advancedHint")}
+              storageKey="advanced:provider-add"
+              defaultOpen={props.addAdvanced}
+            >
+              <AddProviderAdvancedFields {...props} />
+            </AdvancedSection>
+          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>
             {tCommon("cancel")}
           </Button>
           <Button
-            disabled={props.busy || !props.addName.trim()}
+            disabled={
+              props.busy ||
+              !props.addName.trim() ||
+              (props.addKind === "amazon-bedrock" &&
+                (!props.addBedrock.region.trim() ||
+                  (props.addBedrock.authMode === "api-key"
+                    ? !props.addApiKey.trim()
+                    : !props.addBedrock.accessKeyId.trim() ||
+                      !props.addBedrock.secretAccessKey.trim())))
+            }
             onClick={props.onCreateProvider}
           >
             {props.busy ? (
@@ -97,30 +111,7 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
   const t = useTranslations("providers.manager");
   return (
     <>
-      <div className="rounded-xl border bg-muted/20 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">{t("cloudTemplePreset")}</p>
-            <p className="text-xs text-muted-foreground">
-              {t("cloudTemplePresetHint")}
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              props.onKindChange("openai-compatible");
-              props.onAuthTypeChange("bearer");
-              props.onNameChange("Cloud Temple");
-              props.onBaseUrlChange(CLOUD_TEMPLE_BASE_URL);
-              props.onApiRouteChange("chat-completions");
-            }}
-          >
-            {t("usePreset")}
-          </Button>
-        </div>
-      </div>
+      <ProviderPresets {...props} />
       <div className={FIELD_STACK_CLASS}>
         <Label htmlFor="add-provider-name">{t("providerName")}</Label>
         <Input
@@ -132,35 +123,45 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
           placeholder={t("providerNamePlaceholder")}
         />
       </div>
-      <div className={FIELD_STACK_CLASS}>
-        <Label htmlFor="add-provider-url" help={t("serviceUrlHint")}>
-          {t("serviceUrl")}
-        </Label>
-        <Input
-          id="add-provider-url"
-          name="add-provider-url"
-          type="url"
-          inputMode="url"
-          autoComplete="off"
-          value={props.addBaseUrl}
-          onChange={(e) => props.onBaseUrlChange(e.target.value)}
-          placeholder={t("serviceUrlPlaceholder")}
+      {props.addKind === "amazon-bedrock" ? (
+        <BedrockFields
+          value={props.addBedrock}
+          onChange={props.onBedrockChange}
         />
-        <p className="text-xs text-muted-foreground">{t("serviceUrlHint")}</p>
-      </div>
-      <div className={FIELD_STACK_CLASS}>
-        <Label htmlFor="add-provider-key">{t("apiKey")}</Label>
-        <Input
-          id="add-provider-key"
-          name="add-provider-key"
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={props.addApiKey}
-          onChange={(e) => props.onApiKeyChange(e.target.value)}
-          placeholder="sk-…"
-        />
-      </div>
+      ) : (
+        <div className={FIELD_STACK_CLASS}>
+          <Label htmlFor="add-provider-url" help={t("serviceUrlHint")}>
+            {t("serviceUrl")}
+          </Label>
+          <Input
+            id="add-provider-url"
+            name="add-provider-url"
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            value={props.addBaseUrl}
+            onChange={(e) => props.onBaseUrlChange(e.target.value)}
+            placeholder={t("serviceUrlPlaceholder")}
+          />
+          <p className="text-xs text-muted-foreground">{t("serviceUrlHint")}</p>
+        </div>
+      )}
+      {props.addKind !== "amazon-bedrock" ||
+      props.addBedrock.authMode === "api-key" ? (
+        <div className={FIELD_STACK_CLASS}>
+          <Label htmlFor="add-provider-key">{t("apiKey")}</Label>
+          <Input
+            id="add-provider-key"
+            name="add-provider-key"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={props.addApiKey}
+            onChange={(e) => props.onApiKeyChange(e.target.value)}
+            placeholder="sk-…"
+          />
+        </div>
+      ) : null}
     </>
   );
 }

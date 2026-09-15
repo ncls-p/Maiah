@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export function SetupWizardLoadError({
       >
         {retryLabel}
       </Button>
+      <ErrorDetailsButton />
     </div>
   );
 }

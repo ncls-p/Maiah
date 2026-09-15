@@ -512,6 +512,13 @@
       "when": 1789462800000,
       "tag": "0072_mcp_oauth",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1789475100000,
+      "tag": "0073_amazon_bedrock",
+      "breakpoints": true
     }
   ]
 }

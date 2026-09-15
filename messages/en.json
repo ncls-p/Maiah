@@ -1443,7 +1443,7 @@
       "auth": "Auth",
       "endpoint": "Endpoint",
       "selectProviderDetails": "Select a connection to view details.",
-      "addDialogDescription": "Enter only the name, URL, and API key. Everything else is optional.",
+      "addDialogDescription": "Choose a provider, enter its connection details, then select the models to make available.",
       "providerName": "Name",
       "providerNamePlaceholder": "Production OpenAI…",
       "cloudTemplePreset": "Cloud Temple",
@@ -1489,7 +1489,7 @@
       "errorUpdateModelLogo": "Failed to update model logo",
       "errorUpdateModel": "Failed to update model configuration",
       "errorDeleteModel": "Failed to remove model",
-      "toastProviderConnected": "Connection added",
+      "toastProviderConnected": "Connection saved. Discovering models…",
       "toastConnectionUpdated": "Connection updated",
       "toastProviderReady": "{count, plural, one {Connection ready with # model} other {Connection ready with # models}}",
       "toastProviderSavedModelsFailed": "Connection saved, but its models could not be loaded",
@@ -1522,7 +1522,27 @@
       "metricSource": "Current source: {source}. You can change these values.",
       "cancel": "Cancel",
       "saveModel": "Save model",
-      "toastModelRemoved": "Model removed"
+      "toastModelRemoved": "Model removed",
+      "chooseService": "Choose a provider",
+      "otherService": "Other compatible service",
+      "description": "Description",
+      "tags": "Tags",
+      "tagsHelp": "Separate tags with commas.",
+      "pricingImpact": "Pricing and environmental impact",
+      "manualMetrics": "Keep my prices and metrics during synchronization",
+      "automaticMetrics": "Available data is imported from the provider. An empty field means unknown."
+    },
+    "bedrock": {
+      "hint": "AWS service address is derived automatically from your region.",
+      "region": "AWS region",
+      "authentication": "Authentication",
+      "apiKey": "Bedrock API key",
+      "iam": "IAM credentials",
+      "accessKeyId": "AWS access key ID",
+      "secretAccessKey": "AWS secret key",
+      "sessionToken": "Session token (optional)",
+      "keepSecret": "Leave blank to keep current value",
+      "clearSessionToken": "Clear the existing session token"
     }
   },
   "knowledge": {

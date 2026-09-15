@@ -4,7 +4,7 @@ import { code } from "@streamdown/code";
 import { createMathPlugin } from "@streamdown/math";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Streamdown,
   type LinkSafetyConfig,

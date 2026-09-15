@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { UserRoundCogIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AUTH_SESSION_CHANGED } from "@/components/impersonation-banner";
 

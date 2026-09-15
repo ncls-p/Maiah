@@ -32,6 +32,8 @@ const modelLogoUrlSchema = z
 const updateModelSchema = z.object({
   workspaceId: z.uuid(),
   displayName: z.string().min(1).max(255).optional(),
+  description: z.string().trim().max(2000).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   logoUrl: modelLogoUrlSchema.optional(),
   capabilitiesJson: z.record(z.string(), z.boolean()).optional(),
   contextWindow: z.number().int().positive().optional(),

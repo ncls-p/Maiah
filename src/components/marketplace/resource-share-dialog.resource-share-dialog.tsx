@@ -4,7 +4,7 @@ import { downloadResourcePackage } from "./download-resource-package";
 import type { PublishPreviewResult } from "@/modules/marketplace/use-cases";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ResourceShareDialogView } from "./resource-share-dialog.resource-share-dialog.view";
 import {
   ShareStep,

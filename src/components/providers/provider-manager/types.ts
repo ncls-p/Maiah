@@ -6,7 +6,8 @@ export type ProviderKind =
   | "anthropic-compatible"
   | "dragonfly"
   | "vercel-ai-gateway"
-  | "native";
+  | "native"
+  | "amazon-bedrock";
 
 export type ProviderAuthType =
   | "bearer"
@@ -19,6 +20,8 @@ export type SafeProvider = {
   workspaceId: string;
   kind: ProviderKind;
   name: string;
+  description?: string | null;
+  tags?: string[] | null;
   baseUrl: string | null;
   authType: ProviderAuthType;
   openaiCompatibleApiRoute: OpenAICompatibleApiRoute;
@@ -26,6 +29,8 @@ export type SafeProvider = {
   enabled: boolean;
   healthStatus: string | null;
   lastCheckedAt: string | null;
+  bedrockConfig?: { region: string; authMode: "api-key" | "iam" } | null;
+  hasAwsCredentials?: boolean;
   hasApiKey: boolean;
   hasCustomHeaders: boolean;
   createdAt: string;
@@ -36,6 +41,8 @@ export type ProviderModel = {
   providerId: string;
   modelId: string;
   displayName: string | null;
+  description?: string | null;
+  tags?: string[] | null;
   logoUrl: string | null;
   capabilitiesJson: Record<string, boolean> | null;
   contextWindow: number | null;
@@ -66,6 +73,8 @@ export type ProviderModelUpdate = Partial<
   Pick<
     ProviderModel,
     | "displayName"
+    | "description"
+    | "tags"
     | "capabilitiesJson"
     | "inputTokenCost"
     | "outputTokenCost"
@@ -79,6 +88,7 @@ export type DiscoveredModel = {
   modelId: string;
   displayName?: string;
   description?: string;
+  tags?: string[];
   hostedBy?: string;
   capabilities?: Record<string, boolean>;
   contextWindow?: number;

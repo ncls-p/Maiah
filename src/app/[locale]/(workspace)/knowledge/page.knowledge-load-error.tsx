@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export function KnowledgeLoadError() {
         >
           {t("retry")}
         </Button>
+        <ErrorDetailsButton />
       </div>
     </WorkspacePage>
   );

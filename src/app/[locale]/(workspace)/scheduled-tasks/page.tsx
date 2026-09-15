@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
@@ -77,6 +78,7 @@ export default function ScheduledTasksPage() {
           >
             {t("retry")}
           </Button>
+          <ErrorDetailsButton />
         </div>
       ) : (
         <ScheduledTaskManager workspaceId={workspaceId} agents={agents} />

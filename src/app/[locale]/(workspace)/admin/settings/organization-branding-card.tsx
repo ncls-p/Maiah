@@ -9,7 +9,7 @@ import {
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { applyOrganizationTheme } from "@/components/organization-theme";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";

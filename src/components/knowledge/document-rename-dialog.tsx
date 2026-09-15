@@ -1,4 +1,6 @@
 "use client";
+
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -98,6 +100,7 @@ export function DocumentRenameDialog({
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
+              <ErrorDetailsButton />
             </p>
           )}
           <DialogFooter>

@@ -50,6 +50,8 @@ export interface CreateModelInput {
   providerId: string;
   modelId: string;
   displayName?: string;
+  description?: string;
+  tags?: string[];
   logoUrl?: string | null;
   capabilitiesJson?: Record<string, boolean>;
   contextWindow?: number;
@@ -80,6 +82,8 @@ export async function createModel(providerId: string, input: CreateModelInput) {
       providerId,
       modelId,
       displayName: displayName || modelId,
+      description: input.description || null,
+      tags: input.tags ?? [],
       logoUrl: logoUrl || null,
       capabilitiesJson: capabilitiesJson || null,
       contextWindow: contextWindow || null,
@@ -97,6 +101,8 @@ export async function createModel(providerId: string, input: CreateModelInput) {
 
 export interface UpdateModelInput {
   displayName?: string;
+  description?: string;
+  tags?: string[];
   logoUrl?: string | null;
   capabilitiesJson?: Record<string, boolean>;
   contextWindow?: number;
@@ -116,6 +122,8 @@ type ModelUpdateRule = {
 
 export const MODEL_UPDATE_RULES: ModelUpdateRule[] = [
   { key: "displayName", column: "displayName" },
+  { key: "description", column: "description" },
+  { key: "tags", column: "tags" },
   { key: "logoUrl", column: "logoUrl", normalize: (value) => value ?? null },
   {
     key: "capabilitiesJson",

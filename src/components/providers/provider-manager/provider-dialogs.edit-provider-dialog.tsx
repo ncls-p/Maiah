@@ -1,3 +1,4 @@
+import { BedrockFields } from "./bedrock-fields";
 import { useTranslations } from "next-intl";
 
 import {
@@ -38,6 +39,12 @@ import { FIELD_STACK_CLASS } from "./provider-dialogs.field-stack-class";
 
 export function EditProviderDialog({
   editingProvider,
+  editDescription,
+  onDescriptionChange,
+  editTags,
+  onTagsChange,
+  editBedrock,
+  onBedrockChange,
   busy,
   editName,
   editBaseUrl,
@@ -75,22 +82,51 @@ export function EditProviderDialog({
             />
           </div>
           <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor="edit-provider-url" help={t("serviceUrlHint")}>
-              {t("serviceUrl")}
+            <Label htmlFor="provider-description">{t("description")}</Label>
+            <Input
+              id="provider-description"
+              value={editDescription}
+              onChange={(event) => onDescriptionChange(event.target.value)}
+              maxLength={2000}
+            />
+          </div>
+          <div className={FIELD_STACK_CLASS}>
+            <Label htmlFor="provider-tags" help={t("tagsHelp")}>
+              {t("tags")}
             </Label>
             <Input
-              id="edit-provider-url"
-              name="edit-provider-url"
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              value={editBaseUrl}
-              onChange={(e) => onBaseUrlChange(e.target.value)}
+              id="provider-tags"
+              value={editTags}
+              onChange={(event) => onTagsChange(event.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              {t("serviceUrlHint")}
-            </p>
           </div>
+          {editingProvider?.kind === "amazon-bedrock" ? (
+            <BedrockFields
+              value={editBedrock}
+              onChange={onBedrockChange}
+              editing
+            />
+          ) : (
+            <>
+              <div className={FIELD_STACK_CLASS}>
+                <Label htmlFor="edit-provider-url" help={t("serviceUrlHint")}>
+                  {t("serviceUrl")}
+                </Label>
+                <Input
+                  id="edit-provider-url"
+                  name="edit-provider-url"
+                  type="url"
+                  inputMode="url"
+                  autoComplete="off"
+                  value={editBaseUrl}
+                  onChange={(e) => onBaseUrlChange(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("serviceUrlHint")}
+                </p>
+              </div>
+            </>
+          )}
           {editingProvider?.kind === "openai-compatible" ? (
             <div className={FIELD_STACK_CLASS}>
               <Label htmlFor="edit-provider-api-route" help={t("apiRouteHint")}>
@@ -157,22 +193,27 @@ export function EditProviderDialog({
               </p>
             </div>
           ) : null}
-          <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor="edit-provider-key">
-              {t("newApiKey")}{" "}
-              <span className="text-muted-foreground">({t("optional")})</span>
-            </Label>
-            <Input
-              id="edit-provider-key"
-              name="edit-provider-key"
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={editApiKey}
-              onChange={(e) => onApiKeyChange(e.target.value)}
-              placeholder={t("keepCurrentKey")}
-            />
-          </div>
+          {!(
+            editingProvider?.kind === "amazon-bedrock" &&
+            editBedrock.authMode === "iam"
+          ) ? (
+            <div className={FIELD_STACK_CLASS}>
+              <Label htmlFor="edit-provider-key">
+                {t("newApiKey")}{" "}
+                <span className="text-muted-foreground">({t("optional")})</span>
+              </Label>
+              <Input
+                id="edit-provider-key"
+                name="edit-provider-key"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={editApiKey}
+                onChange={(e) => onApiKeyChange(e.target.value)}
+                placeholder={t("keepCurrentKey")}
+              />
+            </div>
+          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

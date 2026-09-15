@@ -1443,7 +1443,7 @@
       "auth": "Authentification",
       "endpoint": "Adresse",
       "selectProviderDetails": "Sélectionnez une connexion pour voir les détails.",
-      "addDialogDescription": "Renseignez uniquement le nom, l’adresse et la clé API. Le reste est optionnel.",
+      "addDialogDescription": "Choisissez un fournisseur, renseignez ses paramètres puis sélectionnez les modèles à rendre disponibles.",
       "providerName": "Nom",
       "providerNamePlaceholder": "OpenAI production…",
       "cloudTemplePreset": "Cloud Temple",
@@ -1489,7 +1489,7 @@
       "errorUpdateModelLogo": "Impossible de mettre à jour le logo du modèle",
       "errorUpdateModel": "Impossible de mettre à jour la configuration du modèle",
       "errorDeleteModel": "Impossible de retirer le modèle",
-      "toastProviderConnected": "Connexion ajoutée",
+      "toastProviderConnected": "Connexion enregistrée. Recherche des modèles…",
       "toastConnectionUpdated": "Connexion mise à jour",
       "toastProviderReady": "{count, plural, one {Connexion prête avec # modèle} other {Connexion prête avec # modèles}}",
       "toastProviderSavedModelsFailed": "Connexion enregistrée, mais ses modèles n’ont pas pu être chargés",
@@ -1522,7 +1522,27 @@
       "metricSource": "Source actuelle : {source}. Vous pouvez modifier ces valeurs.",
       "cancel": "Annuler",
       "saveModel": "Enregistrer le modèle",
-      "toastModelRemoved": "Modèle retiré"
+      "toastModelRemoved": "Modèle retiré",
+      "chooseService": "Choisir un fournisseur",
+      "otherService": "Autre service compatible",
+      "description": "Description",
+      "tags": "Tags",
+      "tagsHelp": "Séparer les tags par une virgule.",
+      "pricingImpact": "Tarifs et impact environnemental",
+      "manualMetrics": "Conserver mes tarifs et indicateurs lors des synchronisations",
+      "automaticMetrics": "Les données disponibles sont importées depuis le fournisseur. Un champ vide signifie inconnu."
+    },
+    "bedrock": {
+      "hint": "AWS construit automatiquement l’adresse du service à partir de votre région.",
+      "region": "Région AWS",
+      "authentication": "Authentification",
+      "apiKey": "Clé API Bedrock",
+      "iam": "Identifiants IAM",
+      "accessKeyId": "Identifiant de clé AWS",
+      "secretAccessKey": "Clé secrète AWS",
+      "sessionToken": "Jeton de session (facultatif)",
+      "keepSecret": "Laisser vide pour conserver",
+      "clearSessionToken": "Effacer le jeton de session existant"
     }
   },
   "knowledge": {

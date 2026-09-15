@@ -1,24 +1,15 @@
+import { createGateway } from "ai";
+import { parseGatewayCatalog } from "./gateway-catalog";
 import { logger } from "@/lib/logger";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
 import type {
-  ModelCapability,
   ModelDescriptor,
   ProviderAdapter,
   ProviderHealth,
   ProviderRuntimeConfig,
 } from "./adapter";
 import { validateModelsEndpoint } from "./adapter-health";
-
-const DEFAULT_CAPABILITIES: ModelCapability = {
-  text: true,
-  vision: false,
-  tools: false,
-  reasoning: false,
-  embeddings: false,
-  audio: false,
-  imageGeneration: false,
-};
 
 const GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 
@@ -62,17 +53,7 @@ export const vercelAiGatewayAdapter: ProviderAdapter = {
         throw new Error(`Failed to list models: HTTP ${res.status}`);
       }
 
-      const data = (await res.json()) as {
-        data?: Array<{ id: string }>;
-      };
-
-      return (
-        data.data?.map((m) => ({
-          modelId: m.id,
-          displayName: m.id,
-          capabilities: { ...DEFAULT_CAPABILITIES },
-        })) ?? []
-      );
+      return parseGatewayCatalog(await res.json());
     } catch (error) {
       logger.error(
         "Failed to list Vercel AI Gateway models",
@@ -106,6 +87,16 @@ export const vercelAiGatewayAdapter: ProviderAdapter = {
 
     // Model IDs in gateway format: openai/gpt-4o, anthropic/claude-3.5-sonnet, etc.
     return provider.chatModel(modelId);
+  },
+
+  createImageModel(config, modelId) {
+    if (!config.apiKey?.trim())
+      throw new Error("Gateway API key required for image generation");
+    return createGateway({
+      apiKey: config.apiKey,
+      baseURL: normalizeBaseUrl(config.baseUrl).replace(/\/v1$/, "/v4/ai"),
+      headers: gatewayHeaders(config),
+    }).imageModel(modelId);
   },
 
   createEmbeddingModel(

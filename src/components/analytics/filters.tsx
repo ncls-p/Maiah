@@ -1,4 +1,6 @@
 "use client";
+
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useTranslations } from "next-intl";
 import { GovernanceSelect } from "@/components/iam/governance-select";
 import { Button } from "@/components/ui/button";
@@ -83,6 +85,7 @@ export function AnalyticsFilters({
       {invalid && (
         <p role="alert" className="text-sm text-destructive">
           {t("invalidDates")}
+          <ErrorDetailsButton />
         </p>
       )}
       <details>

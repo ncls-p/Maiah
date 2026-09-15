@@ -28,6 +28,7 @@ export const providerKindEnum = pgEnum("provider_kind", [
   "dragonfly",
   "vercel-ai-gateway",
   "native",
+  "amazon-bedrock",
 ]);
 export const providerAuthTypeEnum = pgEnum("provider_auth_type", [
   "bearer",
@@ -45,9 +46,13 @@ export const aiProviders = pgTable(
       .references(() => workspaces.id, { onDelete: CASCADE_ACTION }),
     kind: providerKindEnum("kind").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    tags: text("tags").array(),
     baseUrl: text("base_url"),
     authType: providerAuthTypeEnum("auth_type").notNull(),
     encryptedApiKey: text("encrypted_api_key"),
+    bedrockConfigJson: jsonb("bedrock_config_json"),
+    encryptedAwsCredentials: text("encrypted_aws_credentials"),
     encryptedHeadersJson: jsonb("encrypted_headers_json"),
     queryParamsJson: jsonb("query_params_json"),
     openaiCompatibleApiRoute: varchar("openai_compatible_api_route", {
@@ -87,6 +92,8 @@ export const aiModels = pgTable(
     modelId: varchar("model_id", { length: 255 }).notNull(),
     displayName: varchar("display_name", { length: 255 }),
     logoUrl: text("logo_url"),
+    description: text("description"),
+    tags: text("tags").array(),
     capabilitiesJson: jsonb("capabilities_json"),
     contextWindow: integer("context_window"),
     maxOutputTokens: integer("max_output_tokens"),

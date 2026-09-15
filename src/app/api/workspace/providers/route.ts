@@ -1,3 +1,4 @@
+import { bedrockInputSchema } from "@/modules/provider/bedrock-settings";
 import {
   DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   OPENAI_COMPATIBLE_API_ROUTES,
@@ -32,6 +33,7 @@ const providerKindSchema = z.enum([
   "dragonfly",
   "vercel-ai-gateway",
   "native",
+  "amazon-bedrock",
 ]);
 
 const providerAuthTypeSchema = z.enum([
@@ -41,22 +43,33 @@ const providerAuthTypeSchema = z.enum([
   "gateway",
 ]);
 
-const createProviderSchema = z.object({
-  kind: providerKindSchema,
-  name: z.string().min(1).max(255),
-  baseUrl: z.url().optional().or(z.literal("")),
-  authType: providerAuthTypeSchema,
-  apiKey: z.string().min(1).optional().or(z.literal("")),
-  headersJson: z.record(z.string(), z.string()).optional(),
-  queryParamsJson: z.record(z.string(), z.string()).optional(),
-  openaiCompatibleApiRoute: z
-    .enum(OPENAI_COMPATIBLE_API_ROUTES)
-    .default(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE),
-  openaiCompatibilityProfile: z
-    .enum(OPENAI_COMPATIBILITY_PROFILES)
-    .default(DEFAULT_OPENAI_COMPATIBILITY_PROFILE),
-  workspaceId: z.uuid(),
-});
+const createProviderSchema = z
+  .object({
+    kind: providerKindSchema,
+    name: z.string().min(1).max(255),
+    baseUrl: z.url().optional().or(z.literal("")),
+    authType: providerAuthTypeSchema,
+    description: z.string().trim().max(2000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+    bedrock: bedrockInputSchema.optional(),
+    apiKey: z.string().min(1).optional().or(z.literal("")),
+    headersJson: z.record(z.string(), z.string()).optional(),
+    queryParamsJson: z.record(z.string(), z.string()).optional(),
+    openaiCompatibleApiRoute: z
+      .enum(OPENAI_COMPATIBLE_API_ROUTES)
+      .default(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE),
+    openaiCompatibilityProfile: z
+      .enum(OPENAI_COMPATIBILITY_PROFILES)
+      .default(DEFAULT_OPENAI_COMPATIBILITY_PROFILE),
+    workspaceId: z.uuid(),
+  })
+  .refine(
+    (value) => value.kind !== "amazon-bedrock" || Boolean(value.bedrock),
+    {
+      message: "Bedrock region and authentication are required",
+      path: ["bedrock"],
+    },
+  );
 
 const listProvidersSchema = z.object({
   workspaceId: z.uuid(),
@@ -202,6 +215,12 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json(toSafeProvider(provider), { status: 201 });
     },
-    { logLabel: "Failed to create provider" },
+    {
+      logLabel: "Failed to create provider",
+      expectedError: (error) =>
+        error instanceof Error && /^BEDROCK_[A-Z_]+$/.test(error.message)
+          ? NextResponse.json({ error: error.message }, { status: 400 })
+          : null,
+    },
   );
 }

@@ -1,4 +1,6 @@
 "use client";
+
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ShieldAlertIcon } from "lucide-react";
@@ -57,6 +59,7 @@ export function ImpersonationBanner({
       {error ? (
         <p role="alert" className="w-full">
           {t("error")}
+          <ErrorDetailsButton />
         </p>
       ) : null}
     </div>

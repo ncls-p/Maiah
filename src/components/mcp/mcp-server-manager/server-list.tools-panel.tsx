@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { CircleAlertIcon, SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type Dispatch, type SetStateAction } from "react";
@@ -53,6 +54,7 @@ export function ToolsPanel({
               />
               <span>{t("discoveryFailedDescription")}</span>
             </div>
+            <ErrorDetailsButton />
           </div>
         ) : null}
         {tools.length > 3 ? (

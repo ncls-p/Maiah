@@ -185,7 +185,9 @@ function ProviderRow({
           ) : null}
         </div>
         <p className="truncate font-mono text-xs text-muted-foreground">
-          {provider.baseUrl || t("defaultEndpoint")}
+          {provider.kind === "amazon-bedrock"
+            ? (provider.bedrockConfig?.region ?? "Amazon Bedrock")
+            : provider.baseUrl || t("defaultEndpoint")}
         </p>
       </div>
       <span className="hidden text-xs text-muted-foreground sm:inline">

@@ -1,8 +1,9 @@
 "use client";
 
+import { responseErrorMessage } from "@/lib/api-client";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import {
   DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
@@ -13,6 +14,10 @@ import {
   type OpenAICompatibilityProfile,
 } from "@/lib/openai-compatibility-profile";
 
+import {
+  emptyBedrock,
+  type BedrockDraft,
+} from "./provider-manager/bedrock-fields";
 import { ProviderManagerView } from "./provider-manager.view";
 import { KIND_LABELS } from "./provider-manager/constants";
 import type {
@@ -53,6 +58,12 @@ export function useProviderManagerController({
   const [addAuthType, setAddAuthType] = useState<ProviderAuthType>(
     defaultAuthType("openai-compatible"),
   );
+  const [addBedrock, setAddBedrock] = useState<BedrockDraft>({
+    ...emptyBedrock,
+  });
+  const [editBedrock, setEditBedrock] = useState<BedrockDraft>({
+    ...emptyBedrock,
+  });
   const [addName, setAddName] = useState("");
   const [addBaseUrl, setAddBaseUrl] = useState("");
   const [addApiKey, setAddApiKey] = useState("");
@@ -160,6 +171,7 @@ export function useProviderManagerController({
   }
 
   function resetAddForm() {
+    setAddBedrock({ ...emptyBedrock });
     setAddName("");
     setAddBaseUrl("");
     setAddApiKey("");
@@ -172,8 +184,14 @@ export function useProviderManagerController({
     setAddAdvanced(false);
   }
 
+  const [editDescription, setEditDescription] = useState("");
+  const [editTags, setEditTags] = useState("");
+
   function openEditDialog(provider: SafeProvider) {
+    setEditDescription(provider.description ?? "");
+    setEditTags((provider.tags ?? []).join(", "));
     setEditingProvider(provider);
+    setEditBedrock({ ...emptyBedrock, ...provider.bedrockConfig });
     setEditName(provider.name);
     setEditBaseUrl(provider.baseUrl ?? "");
     setEditApiKey("");
@@ -190,6 +208,7 @@ export function useProviderManagerController({
         body: JSON.stringify({
           workspaceId,
           kind: addKind,
+          ...(addKind === "amazon-bedrock" ? { bedrock: addBedrock } : {}),
           name: addName,
           baseUrl: addBaseUrl,
           authType: addAuthType,
@@ -206,7 +225,9 @@ export function useProviderManagerController({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("errorConnectProvider"));
+        throw new Error(
+          responseErrorMessage(res, data.error || t("errorConnectProvider")),
+        );
       }
       const provider = (await res.json()) as SafeProvider;
       setProviders((prev) => [provider, ...prev]);
@@ -214,7 +235,7 @@ export function useProviderManagerController({
       setShowAddDialog(false);
       resetAddForm();
       toast.success(t("toastProviderConnected"));
-      await loadModelsForProvider(provider.id);
+      await discoverProviderModels(provider.id);
     } catch (error) {
       toast.error((error as Error).message);
       return;
@@ -239,7 +260,9 @@ export function useProviderManagerController({
         | { error?: string };
       if (!res.ok || !Array.isArray(data)) {
         const errorMessage = Array.isArray(data) ? undefined : data.error;
-        throw new Error(errorMessage || t("errorDiscoverModels"));
+        throw new Error(
+          responseErrorMessage(res, errorMessage || t("errorDiscoverModels")),
+        );
       }
       setDiscoveredModels(data);
       toast.success(t("toastDiscoveredModels", { count: data.length }));
@@ -281,6 +304,25 @@ export function useProviderManagerController({
           body: JSON.stringify({
             workspaceId,
             name: editName.trim(),
+            description: editDescription.trim(),
+            tags: [
+              ...new Set(
+                editTags
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .filter(Boolean),
+              ),
+            ],
+            ...(editingProvider.kind === "amazon-bedrock"
+              ? {
+                  bedrock: {
+                    ...editBedrock,
+                    sessionToken: editBedrock.clearSessionToken
+                      ? ""
+                      : editBedrock.sessionToken || undefined,
+                  },
+                }
+              : {}),
             baseUrl: editBaseUrl.trim() || "",
             ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
             ...(editingProvider.kind === "openai-compatible"
@@ -295,7 +337,10 @@ export function useProviderManagerController({
       const data = (await res.json().catch(() => ({}))) as SafeProvider & {
         error?: string;
       };
-      if (!res.ok) throw new Error(data.error || t("errorUpdateProvider"));
+      if (!res.ok)
+        throw new Error(
+          responseErrorMessage(res, data.error || t("errorUpdateProvider")),
+        );
       setEditingProvider(null);
       setEditApiKey("");
       await loadProviders();
@@ -352,6 +397,14 @@ export function useProviderManagerController({
 
   return {
     kind: "ready",
+    addBedrock,
+    setAddBedrock,
+    editBedrock,
+    setEditBedrock,
+    editDescription,
+    setEditDescription,
+    editTags,
+    setEditTags,
     addAdvanced,
     addApiKey,
     addApiRoute,

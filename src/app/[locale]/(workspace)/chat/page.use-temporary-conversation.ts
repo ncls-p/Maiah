@@ -6,7 +6,7 @@ import { notifyWorkspaceHistoryChanged } from "@/lib/workspace-history-events";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { upsertConversation } from "./chat-page-helpers";
 
 export function useTemporaryConversationPersistence(input: {

@@ -9,7 +9,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { fetchJson } from "@/lib/api-client";
 import type { WorkflowDetail } from "./types";

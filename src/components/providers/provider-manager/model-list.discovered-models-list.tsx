@@ -200,6 +200,7 @@ function DiscoveredModelInfo({ model }: { model: DiscoveredModel }) {
         maxOutputTokens={model.maxOutputTokens}
         inputTokenCost={model.inputTokenCost}
         outputTokenCost={model.outputTokenCost}
+        currency={model.sustainability?.currency}
         hostedBy={model.hostedBy}
       />
     </div>

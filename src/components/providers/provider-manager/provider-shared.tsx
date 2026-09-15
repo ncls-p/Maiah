@@ -31,6 +31,7 @@ export function ModelCapabilities({
   maxOutputTokens,
   inputTokenCost,
   outputTokenCost,
+  currency,
   hostedBy,
   enabled,
 }: {
@@ -39,6 +40,7 @@ export function ModelCapabilities({
   maxOutputTokens?: number | null;
   inputTokenCost?: string | null;
   outputTokenCost?: string | null;
+  currency?: string;
   hostedBy?: string | null;
   enabled?: boolean;
 }) {
@@ -86,12 +88,12 @@ export function ModelCapabilities({
       ) : null}
       {inputTokenCost ? (
         <span className="text-xs text-muted-foreground">
-          ↗ {inputTokenCost}
+          ↗ {inputTokenCost} {currency} / 1M tokens
         </span>
       ) : null}
       {outputTokenCost ? (
         <span className="text-xs text-muted-foreground">
-          ↘ {outputTokenCost}
+          ↘ {outputTokenCost} {currency} / 1M tokens
         </span>
       ) : null}
       {visibleCapabilities.map((capability) => (

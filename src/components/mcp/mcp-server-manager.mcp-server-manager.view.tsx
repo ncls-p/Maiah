@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { KeyRoundIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ export function McpServerManagerView({ model }: { model: Model }) {
           >
             {t("retry")}
           </Button>
+          <ErrorDetailsButton />
         </div>
       ) : null}
 

@@ -16,6 +16,7 @@ export const KIND_LABELS: Record<ProviderKind, string> = {
   dragonfly: "Dragonfly",
   "vercel-ai-gateway": "Vercel AI Gateway",
   native: "Native",
+  "amazon-bedrock": "Amazon Bedrock",
 };
 
 export const OPENAI_COMPATIBILITY_PROFILE_LABELS: Record<
@@ -42,6 +43,7 @@ export const KIND_ICONS: Record<ProviderKind, ElementType> = {
   dragonfly: CloudIcon,
   "vercel-ai-gateway": NetworkIcon,
   native: CpuIcon,
+  "amazon-bedrock": CloudIcon,
 };
 
 export function kindAccent(kind: ProviderKind) {

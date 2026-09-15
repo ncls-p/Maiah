@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import {
   migrateDraftCapabilityOverrides,

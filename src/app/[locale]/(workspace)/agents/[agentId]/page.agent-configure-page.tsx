@@ -4,7 +4,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { type SyntheticEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { useWorkspaceShell } from "@/components/app-shell";
 import { PageLoading } from "@/components/page-loading";

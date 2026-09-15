@@ -16,7 +16,8 @@ export type ProviderKind =
   | "anthropic-compatible"
   | "dragonfly"
   | "vercel-ai-gateway"
-  | "native";
+  | "native"
+  | "amazon-bedrock";
 
 type ProviderAuthType = "bearer" | "x-api-key" | "custom-header" | "gateway";
 
@@ -34,6 +35,7 @@ export interface ModelDescriptor {
   modelId: string;
   displayName?: string;
   description?: string;
+  tags?: string[];
   hostedBy?: string;
   capabilities: ModelCapability;
   contextWindow?: number;
@@ -56,6 +58,13 @@ export interface ProviderRuntimeConfig {
   baseUrl?: string;
   authType: ProviderAuthType;
   apiKey?: string;
+  bedrock?: {
+    region: string;
+    authMode: "api-key" | "iam";
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    sessionToken?: string;
+  };
   headers?: Record<string, string>;
   queryParams?: Record<string, string>;
   openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;

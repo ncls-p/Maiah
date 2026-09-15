@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { fetchJson } from "@/lib/api-client";
 import type { WorkflowRunDetail } from "./types";

@@ -159,15 +159,45 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                     disabled={!hasProviders}
                   >
                     <SelectTrigger id="agent-provider" className="w-full">
-                      <SelectValue placeholder="—" />
+                      <SelectValue placeholder="—">
+                        {providers.find(
+                          (provider) => provider.id === form.providerId,
+                        )?.name ?? "—"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">—</SelectItem>
                       {providers.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id}>
+                        <SelectItem
+                          key={provider.id}
+                          value={provider.id}
+                          textValue={provider.name}
+                          aria-label={provider.name}
+                          aria-labelledby={`provider-option-name-${provider.id}`}
+                          aria-description={[
+                            provider.description,
+                            provider.tags?.join(", "),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        >
                           <span className="flex items-center gap-2">
                             {getProviderKindIcon(provider.kind)}
-                            {provider.name}
+                            <span className="grid gap-1">
+                              <span id={`provider-option-name-${provider.id}`}>
+                                {provider.name}
+                              </span>
+                              {provider.description ? (
+                                <span className="max-w-sm whitespace-normal text-xs text-muted-foreground">
+                                  {provider.description}
+                                </span>
+                              ) : null}
+                              {provider.tags?.length ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {provider.tags.join(" · ")}
+                                </span>
+                              ) : null}
+                            </span>
                           </span>
                         </SelectItem>
                       ))}
@@ -191,21 +221,73 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                     disabled={!form.providerId}
                   >
                     <SelectTrigger id="agent-model" className="w-full">
-                      <SelectValue placeholder="—" />
+                      <SelectValue placeholder="—">
+                        {filteredModels.find(
+                          (model) => model.id === form.modelId,
+                        )?.displayName ??
+                          filteredModels.find(
+                            (model) => model.id === form.modelId,
+                          )?.modelId ??
+                          "—"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">—</SelectItem>
                       {filteredModels.map((model) => {
                         const modelLabel = model.displayName || model.modelId;
                         return (
-                          <SelectItem key={model.id} value={model.id}>
+                          <SelectItem
+                            key={model.id}
+                            value={model.id}
+                            textValue={modelLabel}
+                            aria-label={modelLabel}
+                            aria-labelledby={`model-option-name-${model.id}`}
+                            aria-description={[
+                              providers.find(
+                                (provider) => provider.id === model.providerId,
+                              )?.name,
+                              model.description,
+                              model.tags?.join(", "),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          >
                             <span className="flex items-center gap-2">
                               <ModelLogo
                                 logoUrl={model.logoUrl}
                                 label={modelLabel}
                                 size="sm"
                               />
-                              {modelLabel}
+                              <span className="grid gap-1 text-left">
+                                <span id={`model-option-name-${model.id}`}>
+                                  {modelLabel}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {
+                                    providers.find(
+                                      (provider) =>
+                                        provider.id === model.providerId,
+                                    )?.name
+                                  }
+                                </span>
+                                {model.description ? (
+                                  <span className="max-w-sm whitespace-normal text-xs text-muted-foreground">
+                                    {model.description}
+                                  </span>
+                                ) : null}
+                                {model.tags?.length ? (
+                                  <span className="flex flex-wrap gap-1">
+                                    {model.tags.map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className="rounded bg-muted px-1.5 text-xs"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </span>
+                                ) : null}
+                              </span>
                             </span>
                           </SelectItem>
                         );

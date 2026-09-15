@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import type { ChatAgent } from "@/components/chat/chat-types";
 import { fetchJson } from "@/lib/api-client";
@@ -37,7 +37,9 @@ export function useScheduledTaskManagerController({
   const [timeOfDay, setTimeOfDay] = useState("08:00");
   const [intervalMinutes, setIntervalMinutes] = useState("1440");
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
-  const [target, setTarget] = useState<"assistant" | "workflow">(agents.length ? "assistant" : "workflow");
+  const [target, setTarget] = useState<"assistant" | "workflow">(
+    agents.length ? "assistant" : "workflow",
+  );
   const [workflowId, setWorkflowId] = useState("");
   const [workflowInput, setWorkflowInput] = useState<unknown>({});
   const [workflows, setWorkflows] = useState<

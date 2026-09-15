@@ -1,6 +1,7 @@
+import { responseErrorMessage } from "@/lib/api-client";
 import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import type { DiscoveredModel, ProviderModelUpdate } from "./types";
 
@@ -52,6 +53,8 @@ export function useProviderModelActions(input: {
           },
           contextWindow: model?.contextWindow,
           maxOutputTokens: model?.maxOutputTokens,
+          description: model?.description,
+          tags: model?.tags,
           inputTokenCost: model?.inputTokenCost,
           outputTokenCost: model?.outputTokenCost,
           imageGenerationConfigJson: model?.imageGeneration,
@@ -61,7 +64,9 @@ export function useProviderModelActions(input: {
     );
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || t("errorCreateModel"));
+      throw new Error(
+        responseErrorMessage(res, data.error || t("errorCreateModel")),
+      );
     }
   }
 
@@ -136,7 +141,10 @@ export function useProviderModelActions(input: {
         },
       );
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || t("errorUpdateModel"));
+      if (!res.ok)
+        throw new Error(
+          responseErrorMessage(res, data.error || t("errorUpdateModel")),
+        );
       toast.success(t("toastModelUpdated"));
       await loadModelsForProvider(selectedProviderId);
     } catch (error) {

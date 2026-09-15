@@ -30,12 +30,20 @@ export type Agent = {
   accessOptions: AgentAccessOptions;
 };
 
-export type Provider = { id: string; name: string; kind: string };
+export type Provider = {
+  id: string;
+  name: string;
+  kind: string;
+  description?: string | null;
+  tags?: string[] | null;
+};
 export type Model = {
   id: string;
   providerId: string;
   modelId: string;
   displayName: string | null;
+  description?: string | null;
+  tags?: string[] | null;
   logoUrl?: string | null;
   contextWindow?: number | null;
   maxOutputTokens?: number | null;

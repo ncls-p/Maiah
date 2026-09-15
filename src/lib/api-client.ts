@@ -88,7 +88,11 @@ export async function fetchJson<T>(
     } catch {
       // The HTTP status remains the fallback when the body is not JSON.
     }
-    throw new Error(error?.error ?? `Request failed: ${res.status}`);
+    const path = url.split("?")[0];
+    const reference = res.headers?.get?.("x-request-id");
+    throw new Error(
+      `${error?.error ?? `Request failed: ${res.status}`}\n${init?.method ?? "GET"} ${path} · HTTP ${res.status}${reference ? ` · ${reference}` : ""}`,
+    );
   }
   return res.json() as Promise<T>;
 }
@@ -110,4 +114,13 @@ export async function fetchWorkspacePermissions(
   return fetchJson<WorkspacePermissions>(
     `/api/workspace/permissions?workspaceId=${workspaceId}`,
   );
+}
+
+export function responseErrorMessage(
+  response: Response,
+  message: string,
+): string {
+  const reference = response.headers?.get?.("x-request-id");
+  const path = response.url ? new URL(response.url).pathname : "";
+  return `${message}\nHTTP ${response.status}${path ? ` · ${path}` : ""}${reference ? ` · ${reference}` : ""}`;
 }

@@ -1,3 +1,4 @@
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import {
   ArrowRightIcon,
   BotIcon,
@@ -167,6 +168,7 @@ export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
             >
               {tList("retry")}
             </Button>
+            <ErrorDetailsButton />
           </div>
         ) : agents.length === 0 ? (
           <PageEmptyState

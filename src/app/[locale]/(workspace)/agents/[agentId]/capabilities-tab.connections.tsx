@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -60,6 +61,7 @@ export function AssistantConnections({
         >
           {t("retry")}
         </Button>
+        <ErrorDetailsButton />
       </div>
     );
   if (connections === null)

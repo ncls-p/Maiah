@@ -7,7 +7,7 @@ import {
   NetworkIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { ModelLogo } from "@/components/providers/model-logo";
 import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";

@@ -1,3 +1,4 @@
+import { prepareBedrockSettings, type BedrockInput } from "./bedrock-settings";
 import { encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import {
@@ -33,8 +34,18 @@ export function toSafeProvider(
     workspaceId: provider.workspaceId,
     kind: provider.kind,
     name: provider.name,
+    description: provider.description,
+    tags: provider.tags,
     baseUrl: includeConnectionDetails ? provider.baseUrl : null,
     authType: provider.authType,
+    bedrockConfig:
+      provider.kind === "amazon-bedrock"
+        ? (provider.bedrockConfigJson as {
+            region: string;
+            authMode: "api-key" | "iam";
+          })
+        : null,
+    hasAwsCredentials: Boolean(provider.encryptedAwsCredentials),
     queryParamsJson: includeConnectionDetails ? provider.queryParamsJson : null,
     openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
       provider.openaiCompatibleApiRoute,
@@ -59,9 +70,12 @@ export interface CreateProviderInput {
   userId: string;
   kind: ProviderKind;
   name: string;
+  description?: string;
+  tags?: string[];
   baseUrl?: string;
   authType: ProviderAuthType;
   apiKey?: string;
+  bedrock?: BedrockInput;
   headersJson?: Record<string, string>;
   queryParamsJson?: Record<string, string>;
   openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
@@ -83,7 +97,14 @@ export async function createProvider(input: CreateProviderInput) {
     openaiCompatibilityProfile = DEFAULT_OPENAI_COMPATIBILITY_PROFILE,
   } = input;
 
-  const encryptedApiKey = apiKey ? await encryptValue(apiKey) : null;
+  const bedrockValues =
+    kind === "amazon-bedrock"
+      ? await prepareBedrockSettings(input.bedrock, apiKey)
+      : {};
+  const encryptedApiKey =
+    apiKey && !(kind === "amazon-bedrock" && input.bedrock?.authMode === "iam")
+      ? await encryptValue(apiKey)
+      : null;
 
   let encryptedHeadersJson: Record<string, string> | null = null;
   if (headersJson && Object.keys(headersJson).length > 0) {
@@ -100,9 +121,12 @@ export async function createProvider(input: CreateProviderInput) {
       createdById: userId,
       kind,
       name,
+      description: input.description,
+      tags: input.tags,
       baseUrl: baseUrl || null,
       authType,
       encryptedApiKey,
+      ...bedrockValues,
       encryptedHeadersJson,
       queryParamsJson: queryParamsJson || null,
       openaiCompatibleApiRoute,
@@ -131,8 +155,11 @@ export interface UpdateProviderInput {
   workspaceId: string;
   userId: string;
   name?: string;
+  description?: string;
+  tags?: string[];
   baseUrl?: string;
   apiKey?: string;
+  bedrock?: BedrockInput;
   headersJson?: Record<string, string>;
   queryParamsJson?: Record<string, string>;
   openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;

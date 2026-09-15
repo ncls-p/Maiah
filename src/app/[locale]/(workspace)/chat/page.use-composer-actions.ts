@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
 import type {

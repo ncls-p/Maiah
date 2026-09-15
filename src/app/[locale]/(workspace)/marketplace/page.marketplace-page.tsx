@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import { useWorkspaceShell } from "@/components/app-shell";
 import { type ShareableResource } from "@/components/marketplace/resource-share-dialog";
 import { PageLoading } from "@/components/page-loading";
@@ -9,7 +10,7 @@ import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   MarketplaceFilters,
   MarketplaceItem,
@@ -298,6 +299,7 @@ export function useMarketplacePageController() {
           >
             {t("retry")}
           </Button>
+          <ErrorDetailsButton />
         </div>
       </WorkspacePage>
     );

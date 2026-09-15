@@ -1,3 +1,4 @@
+import { prepareBedrockSettings } from "./bedrock-settings";
 import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
 import { encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
@@ -38,8 +39,17 @@ export async function updateProvider(input: UpdateProviderInput) {
   }
 
   const updates: Record<string, unknown> = {};
+  if (existing.kind === "amazon-bedrock" && input.bedrock) {
+    Object.assign(
+      updates,
+      await prepareBedrockSettings(input.bedrock, apiKey, existing),
+    );
+    if (input.bedrock.authMode === "iam") updates.encryptedApiKey = null;
+  }
 
   if (name !== undefined) updates.name = name;
+  if (input.description !== undefined) updates.description = input.description;
+  if (input.tags !== undefined) updates.tags = input.tags;
   if (baseUrl !== undefined) updates.baseUrl = baseUrl || null;
   if (enabled !== undefined) updates.enabled = enabled;
   if (queryParamsJson !== undefined) {
@@ -53,7 +63,7 @@ export async function updateProvider(input: UpdateProviderInput) {
   }
 
   // Encrypt new API key if provided
-  if (apiKey !== undefined && apiKey) {
+  if (apiKey !== undefined && apiKey && input.bedrock?.authMode !== "iam") {
     updates.encryptedApiKey = await encryptValue(apiKey);
   }
 

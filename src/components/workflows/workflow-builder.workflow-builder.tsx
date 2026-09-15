@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { fetchJson } from "@/lib/api-client";
 import {
