@@ -108,7 +108,8 @@ export function serverFormFromServer(
 ): McpServerForm {
   return {
     name: server.name,
-    transport: server.transport,
+    transport:
+      server.transport === "stdio" ? "streamable-http" : server.transport,
     url: server.url ?? "",
     command: server.command ?? "",
     args: server.argsJson?.join("\n") ?? "",

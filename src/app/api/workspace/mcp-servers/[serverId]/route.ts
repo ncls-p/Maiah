@@ -22,7 +22,7 @@ const querySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z.object({
   workspaceId: z.uuid(),
   name: z.string().min(1).max(255).optional(),
-  transport: z.enum(["stdio", "sse", "streamable-http"]).optional(),
+  transport: z.enum(["sse", "streamable-http"]).optional(),
   url: z.url().or(z.literal("")).optional(),
   command: z.string().max(2048).optional(),
   args: z.array(z.string().max(512)).optional(),

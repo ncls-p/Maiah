@@ -60,12 +60,12 @@ describe("syncMcpTools", () => {
     );
   });
 
-  it("returns manual status for stdio transport", async () => {
+  it("rejects removed stdio transport", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeStdioServer]);
 
-    const result = await syncMcpTools("srv-2", "ws-1", "user-1");
-    expect(result.status).toBe("manual");
-    expect(result.discovered).toBe(0);
+    await expect(syncMcpTools("srv-2", "ws-1", "user-1")).rejects.toThrow(
+      "MCP_STDIO_UNSUPPORTED",
+    );
   });
 
   it("syncs tools for SSE transport", async () => {
@@ -99,7 +99,7 @@ describe("syncMcpTools", () => {
     expect(dbModule._tx.delete).not.toHaveBeenCalled();
   });
 
-  it("removes stale tools when a healthy server returns an empty catalog", async () => {
+  it("does not delete tools when a healthy server returns an empty catalog", async () => {
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockResolvedValueOnce([{ name: "old-tool", requireApproval: false }]);
@@ -109,7 +109,7 @@ describe("syncMcpTools", () => {
     const result = await syncMcpTools("srv-1", "ws-1", "user-1");
 
     expect(result.status).toBe("healthy");
-    expect(dbModule._tx.delete).toHaveBeenCalledOnce();
+    expect(dbModule._tx.delete).not.toHaveBeenCalled();
     expect(dbModule._tx.insert).not.toHaveBeenCalled();
   });
 
@@ -127,9 +127,7 @@ describe("syncMcpTools", () => {
     // Check the insert values included requireApproval=true for "search"
     expect(dbModule._tx.values).toHaveBeenCalled();
     const insertedTools = dbModule._tx.values.mock.calls[0][0];
-    const searchTool = (
-      insertedTools as Array<{ name: string; requireApproval: boolean }>
-    ).find((t) => t.name === "search");
+    const searchTool = insertedTools as { requireApproval: boolean };
     expect(searchTool?.requireApproval).toBe(true);
   });
 });
@@ -143,11 +141,12 @@ describe("testMcpConnection", () => {
     );
   });
 
-  it("returns manual status for stdio transport", async () => {
+  it("rejects removed stdio transport", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeStdioServer]);
 
-    const result = await testMcpConnection("srv-2", "ws-1", "user-1");
-    expect(result.status).toBe("manual");
+    await expect(testMcpConnection("srv-2", "ws-1", "user-1")).rejects.toThrow(
+      "MCP_STDIO_UNSUPPORTED",
+    );
   });
 
   it("returns healthy with tool count message", async () => {
@@ -176,6 +175,6 @@ describe("testMcpConnection", () => {
 
     const result = await testMcpConnection("srv-1", "ws-1", "user-1");
     expect(result.status).toBe("unhealthy");
-    expect(result.message).toBe("Timeout");
+    expect(result.message).toBe("MCP_CONNECTION_FAILED");
   });
 });

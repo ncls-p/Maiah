@@ -160,7 +160,7 @@ export function ServerActions({
           workspaceId={workspaceId}
           resource={{ kind: "mcp_server", id: server.id, name: server.name }}
         />
-        {server.healthStatus === "unhealthy" ? (
+        {server.transport !== "stdio" ? (
           <DropdownMenuItem
             disabled={!server.canEdit}
             onClick={() => onRetryDiscoveryAction(server.id)}

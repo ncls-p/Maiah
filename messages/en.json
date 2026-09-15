@@ -1989,7 +1989,7 @@
       "enableNamed": "Enable {name}",
       "approvalNamed": "Require approval for {name}",
       "serverActions": "Server actions",
-      "retryDiscovery": "Try loading tools again",
+      "retryDiscovery": "Resynchronize",
       "discoveryFailedDescription": "The connection was saved, but its tools could not be loaded. Check the URL and credentials, then try again.",
       "editServer": "Edit server",
       "removeServer": "Remove server",
@@ -2026,7 +2026,10 @@
       "httpHeaders": "HTTP headers",
       "httpHeadersHint": "One header per line as Key=Value.",
       "environmentVariables": "Environment variables",
-      "environmentVariablesHint": "One variable per line as KEY=VALUE."
+      "environmentVariablesHint": "One variable per line as KEY=VALUE.",
+      "syncInProgress": "Synchronization is already running.",
+      "oauthConnected": "Your account is connected.",
+      "oauthFailed": "Connection failed. Check the saved client settings and provider permissions, then retry."
     },
     "toolConnections": {
       "title": "Tool connections",
@@ -2134,6 +2137,37 @@
         "oauth": "OAuth 2.0",
         "api_key": "API key"
       }
+    },
+    "oauth": {
+      "title": "OAuth 2.0 connection",
+      "description": "Authorize your own account for this MCP server. Your tokens are never shared with other users.",
+      "failed": "Connection failed. Check the saved client settings and provider permissions, then retry.",
+      "loading": "Loading connection…",
+      "expired": "Authorization expired. Reconnect your account.",
+      "connected": "Your account is connected.",
+      "notConnected": "Your account is not connected.",
+      "enabled": "Use OAuth 2.0",
+      "clientId": "Client ID",
+      "clientSecret": "Client secret (optional)",
+      "secretKept": "Leave blank to keep the saved secret.",
+      "publicClient": "Public clients do not require a secret.",
+      "clearSecret": "Remove saved client secret",
+      "scopes": "Scopes (space-separated)",
+      "dynamic": "Allow dynamic client registration",
+      "callback": "Redirect URL to register with the provider",
+      "save": "Save OAuth settings",
+      "saveHint": "Saving requires all users to reconnect. Save changes before authorizing. OAuth replaces static Authorization headers.",
+      "adminRequired": "Ask a server manager to configure OAuth first.",
+      "connect": "Authorize my account",
+      "reconnect": "Reconnect my account",
+      "disconnect": "Disconnect my account",
+      "saved": "Settings saved. You can now authorize your account.",
+      "disconnected": "Your account has been disconnected and tokens revoked.",
+      "revocationUnavailable": "Disconnected locally. The provider could not confirm revocation; revoke access in your provider account.",
+      "revocationUnsupported": "Disconnected locally. This provider does not advertise token revocation; remove access in your provider account if needed.",
+      "autoSync": "Automatic sync about every 15 minutes; retries are spaced out after errors.",
+      "resync": "Resynchronize",
+      "syncing": "Synchronizing…"
     }
   },
   "marketplace": {
@@ -2638,7 +2672,14 @@
         "modelMissing": "model needs setup",
         "openAgent": "Configure",
         "save": "Save",
-        "saved": "Workflow builder assistant saved"
+        "saved": "Workflow builder assistant saved",
+        "configurationNeeded": "Selection can be saved. Before running the builder: {reason}.",
+        "unavailableReasons": {
+          "version": "publish an active assistant version",
+          "provider": "configure an enabled provider",
+          "model": "select an enabled model",
+          "tools": "select a model supporting tools"
+        }
       }
     },
     "membersTitle": "Users",

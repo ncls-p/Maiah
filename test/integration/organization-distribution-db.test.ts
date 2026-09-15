@@ -71,6 +71,27 @@ suite("organization distribution and concurrent usage limits", () => {
       ]),
     );
   });
+  it("excludes archived projects from organization selectors", async () => {
+    await db
+      .update(workspaces)
+      .set({ archivedAt: new Date() })
+      .where(eq(workspaces.id, f.destinationId));
+    try {
+      const rows = await listManagedOrganizations(f.owner, false);
+      const organization = rows.find((row) => row.id === f.organizationId)!;
+      expect(
+        organization.projects.some((project) => project.id === f.workspaceId),
+      ).toBe(true);
+      expect(
+        organization.projects.some((project) => project.id === f.destinationId),
+      ).toBe(false);
+    } finally {
+      await db
+        .update(workspaces)
+        .set({ archivedAt: null })
+        .where(eq(workspaces.id, f.destinationId));
+    }
+  });
   it("exposes organization agents in sibling projects, but never grants mutation", async () => {
     const { agent } = await f.makeAgent("Organization assistant");
     await db
@@ -197,16 +218,14 @@ suite("organization distribution and concurrent usage limits", () => {
       .where(eq(roles.name, "workspace.viewer"))
       .limit(1);
     const resourceId = crypto.randomUUID();
-    await db
-      .insert(roleBindings)
-      .values({
-        principalType: "group",
-        principalId: f.organizationId,
-        roleId: viewer.id,
-        resourceType: "knowledge_base",
-        resourceId,
-        createdById: f.owner,
-      });
+    await db.insert(roleBindings).values({
+      principalType: "group",
+      principalId: f.organizationId,
+      roleId: viewer.id,
+      resourceType: "knowledge_base",
+      resourceId,
+      createdById: f.owner,
+    });
     expect(
       await getResourceAccessSelection({
         resourceType: "knowledge_base",

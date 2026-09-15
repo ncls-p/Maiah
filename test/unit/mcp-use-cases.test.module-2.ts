@@ -105,20 +105,17 @@ describe("createMcpServer", () => {
     expect(encryptValue).toHaveBeenCalledWith("Bearer secret");
   });
 
-  it("encrypts env vars on create", async () => {
-    dbModule._c.returning.mockResolvedValueOnce([fakeSseServer]);
-    const { encryptValue } = await import("@/lib/crypto");
-
-    await createMcpServer({
-      workspaceId: "ws-1",
-      userId: "user-1",
-      name: "Test",
-      transport: "stdio",
-      command: "node server.js",
-      env: { API_KEY: "secret" },
-    });
-
-    expect(encryptValue).toHaveBeenCalledWith("secret");
+  it("rejects creation of removed stdio servers", async () => {
+    await expect(
+      createMcpServer({
+        workspaceId: "ws-1",
+        userId: "user-1",
+        name: "legacy",
+        transport: "stdio",
+        command: "npx",
+        env: { TOKEN: "secret" },
+      }),
+    ).rejects.toThrow("MCP_STDIO_UNSUPPORTED");
   });
 });
 
@@ -216,7 +213,7 @@ describe("updateMcpServer", () => {
         transport: "stdio",
         command: "",
       }),
-    ).rejects.toThrow("Command is required for stdio transport");
+    ).rejects.toThrow("MCP_STDIO_UNSUPPORTED");
   });
 
   it("updates server fields and returns updated server", async () => {

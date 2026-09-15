@@ -18,6 +18,7 @@ import {
 } from "./use-cases.mcp-server";
 
 export async function createMcpServer(input: CreateMcpServerInput) {
+  validateTransportConfig(input.transport, input.url ?? null);
   const [server] = await db
     .insert(mcpServers)
     .values({
@@ -185,7 +186,6 @@ export function validateMcpServerUpdate(
   validateTransportConfig(
     input.transport ?? existing.transport,
     nextNullableText(input.url, existing.url),
-    nextNullableText(input.command, existing.command),
   );
 }
 

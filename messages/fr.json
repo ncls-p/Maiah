@@ -1989,7 +1989,7 @@
       "enableNamed": "Activer {name}",
       "approvalNamed": "Exiger une approbation pour {name}",
       "serverActions": "Actions du serveur",
-      "retryDiscovery": "Réessayer de charger les outils",
+      "retryDiscovery": "Resynchroniser",
       "discoveryFailedDescription": "La connexion a été enregistrée, mais ses outils n’ont pas pu être chargés. Vérifiez l’adresse et les identifiants, puis réessayez.",
       "editServer": "Modifier le serveur",
       "removeServer": "Supprimer le serveur",
@@ -2026,7 +2026,10 @@
       "httpHeaders": "En-têtes HTTP",
       "httpHeadersHint": "Un en-tête par ligne au format Clé=Valeur.",
       "environmentVariables": "Variables d’environnement",
-      "environmentVariablesHint": "Une variable par ligne au format CLÉ=VALEUR."
+      "environmentVariablesHint": "Une variable par ligne au format CLÉ=VALEUR.",
+      "syncInProgress": "Synchronisation déjà en cours.",
+      "oauthConnected": "Votre compte est connecté.",
+      "oauthFailed": "La connexion a échoué. Vérifiez les paramètres enregistrés et les droits du fournisseur, puis réessayez."
     },
     "toolConnections": {
       "title": "Connexions aux outils",
@@ -2134,6 +2137,37 @@
         "oauth": "OAuth 2.0",
         "api_key": "Clé API"
       }
+    },
+    "oauth": {
+      "title": "Connexion OAuth 2.0",
+      "description": "Autorisez votre compte pour ce serveur MCP. Vos tokens ne sont jamais partagés avec les autres utilisateurs.",
+      "failed": "La connexion a échoué. Vérifiez les paramètres enregistrés et les droits du fournisseur, puis réessayez.",
+      "loading": "Chargement de la connexion…",
+      "expired": "Autorisation expirée. Reconnectez votre compte.",
+      "connected": "Votre compte est connecté.",
+      "notConnected": "Votre compte n’est pas connecté.",
+      "enabled": "Utiliser OAuth 2.0",
+      "clientId": "Identifiant client",
+      "clientSecret": "Secret client (facultatif)",
+      "secretKept": "Laissez vide pour conserver le secret enregistré.",
+      "publicClient": "Les clients publics n’ont pas besoin de secret.",
+      "clearSecret": "Supprimer le secret client enregistré",
+      "scopes": "Scopes (séparés par des espaces)",
+      "dynamic": "Autoriser l’enregistrement dynamique du client",
+      "callback": "URL de redirection à enregistrer chez le fournisseur",
+      "save": "Enregistrer les paramètres OAuth",
+      "saveHint": "L’enregistrement demande à chaque utilisateur de se reconnecter. Enregistrez avant d’autoriser. OAuth remplace les en-têtes Authorization statiques.",
+      "adminRequired": "Demandez à un gestionnaire du serveur de configurer OAuth.",
+      "connect": "Autoriser mon compte",
+      "reconnect": "Reconnecter mon compte",
+      "disconnect": "Déconnecter mon compte",
+      "saved": "Paramètres enregistrés. Vous pouvez autoriser votre compte.",
+      "disconnected": "Votre compte est déconnecté et les tokens révoqués.",
+      "revocationUnavailable": "Déconnecté localement. Le fournisseur n’a pas confirmé la révocation ; révoquez l’accès dans votre compte fournisseur.",
+      "revocationUnsupported": "Déconnecté localement. Ce fournisseur ne propose pas de révocation ; retirez l’accès dans votre compte fournisseur si nécessaire.",
+      "autoSync": "Synchronisation automatique environ toutes les 15 minutes ; tentatives espacées après erreur.",
+      "resync": "Resynchroniser",
+      "syncing": "Synchronisation…"
     }
   },
   "marketplace": {
@@ -2638,7 +2672,14 @@
         "modelMissing": "modèle à configurer",
         "openAgent": "Configurer",
         "save": "Enregistrer",
-        "saved": "Assistant constructeur enregistré"
+        "saved": "Assistant constructeur enregistré",
+        "configurationNeeded": "La sélection peut être enregistrée. Avant de lancer le constructeur : {reason}.",
+        "unavailableReasons": {
+          "version": "publiez une version active de l’assistant",
+          "provider": "configurez un fournisseur actif",
+          "model": "sélectionnez un modèle actif",
+          "tools": "sélectionnez un modèle acceptant les outils"
+        }
       }
     },
     "membersTitle": "Utilisateurs",

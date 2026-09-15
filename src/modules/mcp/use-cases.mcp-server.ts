@@ -136,10 +136,9 @@ export async function mergeEncryptedRecord(
 export function validateTransportConfig(
   transport: McpTransport,
   url: string | null,
-  command: string | null,
 ) {
-  if (transport === "stdio" && !command?.trim()) {
-    throw new Error("Command is required for stdio transport");
+  if (transport === "stdio") {
+    throw new Error("MCP_STDIO_UNSUPPORTED");
   }
   if (
     (transport === "sse" || transport === "streamable-http") &&

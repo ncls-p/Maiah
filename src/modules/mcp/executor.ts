@@ -64,7 +64,8 @@ export async function executeMcpTool(input: {
   );
   if (!server) throw new Error("MCP server not found");
   if (!server.enabled) throw new Error("MCP server is disabled");
-  if (!server.url) throw new Error("MCP server URL is not configured");
+  if (server.transport !== "stdio" && !server.url)
+    throw new Error("MCP server URL is not configured");
 
   const [tool] = await db
     .select()
@@ -94,6 +95,8 @@ export async function executeMcpTool(input: {
 
   const result = await callRemoteMcpTool(server, tool.name, input.toolInput, {
     headers,
+    userId: input.userId,
+    workspaceId: input.workspaceId,
   });
 
   // MCP application-level failures are valid protocol responses, signalled by

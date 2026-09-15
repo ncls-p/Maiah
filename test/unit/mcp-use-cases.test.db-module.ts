@@ -1,3 +1,10 @@
+vi.mock("@/modules/mcp/sync-schedule", () => ({
+  scheduledSync: (
+    _id: string,
+    _scheduled: boolean,
+    run: () => Promise<unknown>,
+  ) => run(),
+}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listRemoteMcpTools } from "@/modules/mcp/client";
@@ -30,6 +37,7 @@ vi.mock("@/modules/mcp/auth-hint", () => ({
 }));
 
 type Chain = {
+  for: ReturnType<typeof vi.fn>;
   select: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
@@ -58,6 +66,7 @@ function makeChain(): Chain {
   ] as const) {
     c[k] = vi.fn().mockReturnThis();
   }
+  c.for = vi.fn().mockResolvedValue([]);
   c.limit = vi.fn().mockResolvedValue([]);
   c.returning = vi.fn().mockResolvedValue([]);
   return c;
@@ -124,6 +133,9 @@ beforeEach(() => {
   dbModule.db.transaction.mockImplementation(
     (cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx),
   );
+  dbModule._tx.where
+    .mockReturnValueOnce(dbModule._tx)
+    .mockResolvedValueOnce([]);
   // Reset listRemoteMcpTools mock queue between tests
   vi.mocked(listRemoteMcpTools).mockReset().mockResolvedValue([]);
 });

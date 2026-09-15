@@ -1,3 +1,6 @@
+vi.mock("@/modules/mcp/oauth/tokens", () => ({
+  oauthHeaders: vi.fn(async () => null),
+}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdkMocks = vi.hoisted(() => ({
@@ -157,7 +160,9 @@ describe("listRemoteMcpTools", () => {
 
   it("falls back from streamable HTTP to SSE when the primary transport fails", async () => {
     sdkMocks.connect
-      .mockRejectedValueOnce(new Error("stream failed"))
+      .mockRejectedValueOnce(
+        Object.assign(new Error("stream failed"), { code: 404 }),
+      )
       .mockResolvedValueOnce(undefined);
     sdkMocks.request.mockResolvedValueOnce({ tools: [{ name: "fallback" }] });
 
@@ -175,12 +180,14 @@ describe("listRemoteMcpTools", () => {
 
   it("throws the last transport error when all connection attempts fail", async () => {
     sdkMocks.connect
-      .mockRejectedValueOnce(new Error("stream failed"))
+      .mockRejectedValueOnce(
+        Object.assign(new Error("stream failed"), { code: 404 }),
+      )
       .mockRejectedValueOnce(new Error("sse failed"));
 
     await expect(
       listRemoteMcpTools(server({ transport: "streamable-http" }) as never),
-    ).rejects.toThrow("sse failed");
+    ).rejects.toThrow("MCP_CONNECTION_FAILED");
     expect(sdkMocks.transportClose).toHaveBeenCalledTimes(2);
   });
 

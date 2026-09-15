@@ -2,7 +2,7 @@
 
 import { BotIcon, ExternalLinkIcon, WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -35,6 +35,7 @@ type BuilderAgent = {
   modelDisplayName: string | null;
   supportsTools: boolean;
   ready: boolean;
+  unavailableReason?: "version" | "provider" | "model" | "tools" | null;
 };
 
 type AdminState = {
@@ -88,10 +89,6 @@ export function WorkflowBuilderSettings() {
     return () => controller.abort();
   }, [loadSettings, organizationId]);
 
-  const readyAgents = useMemo(
-    () => state?.availableAgents.filter((agent) => agent.ready) ?? [],
-    [state],
-  );
   const selectedAgent = state?.availableAgents.find(
     (agent) => agent.id === agentId,
   );
@@ -158,7 +155,7 @@ export function WorkflowBuilderSettings() {
           description={t("toolsDescription")}
         />
 
-        {readyAgents.length === 0 ? (
+        {state.availableAgents.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-background p-5 text-center">
             <BotIcon
               className="mx-auto size-6 text-muted-foreground"
@@ -189,11 +186,7 @@ export function WorkflowBuilderSettings() {
               <SelectContent>
                 <SelectItem value={AUTOMATIC}>{t("automatic")}</SelectItem>
                 {state.availableAgents.map((agent) => (
-                  <SelectItem
-                    key={agent.id}
-                    value={agent.id}
-                    disabled={!agent.ready}
-                  >
+                  <SelectItem key={agent.id} value={agent.id}>
                     {agent.name}
                     {agent.modelDisplayName
                       ? ` · ${agent.modelDisplayName}`
@@ -207,6 +200,15 @@ export function WorkflowBuilderSettings() {
             </p>
           </div>
 
+          {selectedAgent && !selectedAgent.ready ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t("configurationNeeded", {
+                reason: t(
+                  `unavailableReasons.${selectedAgent.unavailableReason ?? "model"}`,
+                ),
+              })}
+            </p>
+          ) : null}
           {selectedAgent ? (
             <div className="flex items-center gap-3 rounded-lg bg-muted/45 p-3">
               <ModelLogo
@@ -237,7 +239,7 @@ export function WorkflowBuilderSettings() {
         <div className="flex justify-end border-t border-border/60 pt-4">
           <Button
             onClick={() => void save()}
-            disabled={saving || (agentId !== null && !selectedAgent?.ready)}
+            disabled={saving || (agentId !== null && !selectedAgent)}
           >
             {saving ? <Spinner data-icon="inline-start" /> : null}
             {t("save")}

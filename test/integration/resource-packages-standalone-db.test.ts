@@ -63,9 +63,8 @@ suite("standalone resource packages and scoped installation", () => {
       .values({
         ...context,
         name: "Standalone server",
-        transport: "stdio",
-        command: "npx",
-        argsJson: ["-y", "server", "--api-key=stored-value"],
+        transport: "streamable-http",
+        url: "https://mcp.example.com/mcp?api_key=stored-value",
       })
       .returning();
     const tools = await db
@@ -196,14 +195,12 @@ suite("standalone resource packages and scoped installation", () => {
         status: "published",
       })
       .returning();
-    await db
-      .insert(marketplaceItemVersions)
-      .values({
-        itemId: item.id,
-        version: "1.0.0",
-        manifestJson: manifest,
-        createdById: fixture.owner,
-      });
+    await db.insert(marketplaceItemVersions).values({
+      itemId: item.id,
+      version: "1.0.0",
+      manifestJson: manifest,
+      createdById: fixture.owner,
+    });
     const auth = {
       type: "api_key" as const,
       apiKeyId: randomUUID(),
