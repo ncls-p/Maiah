@@ -77,6 +77,7 @@ export async function prepareStandardChatConfig(input: {
     (version.approvalPolicyJson as AiHubToolApprovalPolicy | null) ?? null;
   const boundToolConfig = shouldUseToolCalling
     ? await buildBoundTools({
+        interactiveChat: true,
         agentVersionId: version.id,
         workspaceId: agent.workspaceId,
         conversationId: conversation.id,

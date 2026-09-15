@@ -1,3 +1,4 @@
+import { genesysHandoffTool } from "@/modules/genesys/tool";
 import type { BuiltInToolDefinition } from "./builtin-tools.built-in-tool-execution-context";
 import { builtInToolsPart1 } from "./builtin-tools.built-in-tools.part-1";
 import { builtInToolsPart2 } from "./builtin-tools.built-in-tools.part-2";
@@ -9,4 +10,5 @@ export const builtInTools = [
   ...builtInToolsPart2,
   ...builtInToolsPart3,
   ...workflowAssistantTools,
+  genesysHandoffTool,
 ] satisfies BuiltInToolDefinition[];

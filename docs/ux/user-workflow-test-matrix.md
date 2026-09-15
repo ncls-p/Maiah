@@ -278,3 +278,17 @@ Avant merge :
   sauvegarde, restriction propre au chat, URL visibles et absence de débordement.
   Les tests serveur couvrent les identifiants forgés, la révocation, l’absence de
   repli et le changement d’URL avant exécution.
+
+## Genesys Open Messaging
+
+- Organization admin: save settings, preserve hidden secrets, select project grants,
+  test saved connection, read explicit errors, rotate credentials and inspect recovery.
+- Conversation owner: manual or tool handoff, wait, receive signed messages in the
+  same history, refresh, send text and explicitly resume AI after remote closure.
+- Server boundaries: denied organization/project/owner, temporary conversation,
+  interactive-only tool, duplicate requests/webhooks, in-flight AI, failed OAuth,
+  uncertain delivery, lost sender, project revocation and verified recovery.
+- Browser: real authenticated settings/chat endpoints, invalid signature, duplicate
+  signed reply, persistence after refresh, 390px mobile layout.
+- External acceptance: actual Genesys licence, OAuth roles/divisions, Architect
+  routing, pickup and closure require a configured test tenant and consultant.
