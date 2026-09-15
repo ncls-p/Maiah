@@ -17,3 +17,5 @@ export * from "./schema-tables/workspace";
 export * from "./schema-tables/resource-distribution";
 export * from "./schema-tables/usage-limits";
 export * from "./schema-tables/genesys";
+
+export * from "./schema-tables/mcp-oauth";

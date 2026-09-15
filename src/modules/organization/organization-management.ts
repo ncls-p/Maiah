@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import {
   organizations,
@@ -112,9 +112,12 @@ export async function listManagedOrganizations(
         })
         .from(workspaces)
         .where(
-          inArray(
-            workspaces.organizationId,
-            rows.map((row) => row.id),
+          and(
+            isNull(workspaces.archivedAt),
+            inArray(
+              workspaces.organizationId,
+              rows.map((row) => row.id),
+            ),
           ),
         )
     : [];

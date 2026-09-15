@@ -63,6 +63,16 @@ export function useMcpServerManagerController() {
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [canManageMcpServers, setCanManageMcpServers] = useState(false);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const result = url.searchParams.get("oauth");
+    if (!result) return;
+    if (result === "connected") toast.success(t("oauthConnected"));
+    else toast.error(t("oauthFailed"));
+    url.searchParams.delete("oauth");
+    window.history.replaceState(null, "", url);
+  }, [t]);
+
   const load = useCallback(async () => {
     if (!workspaceId) return;
     setLoading(true);
@@ -76,33 +86,7 @@ export function useMcpServerManagerController() {
         `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
       );
       if (!res.ok) throw new Error(t("loadFailed"));
-      let data = (await res.json()) as McpServer[];
-      const serversPendingInitialDiscovery = data.filter(
-        (server) =>
-          server.canEdit &&
-          server.enabled &&
-          server.transport !== "stdio" &&
-          (!server.healthStatus || server.healthStatus === "unknown"),
-      );
-      if (
-        permissions.canManageMcpServers &&
-        serversPendingInitialDiscovery.length > 0
-      ) {
-        await Promise.all(
-          serversPendingInitialDiscovery.map((server) =>
-            fetch(
-              `/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`,
-              { method: "POST" },
-            ),
-          ),
-        );
-        const refreshedRes = await fetch(
-          `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
-        );
-        if (refreshedRes.ok) {
-          data = (await refreshedRes.json()) as McpServer[];
-        }
-      }
+      const data = (await res.json()) as McpServer[];
       setServers(data);
       const entries = await Promise.all(
         data.map(async (server) => {
@@ -334,13 +318,15 @@ export function useMcpServerManagerController() {
         status?: string;
         error?: string;
       };
-      if (res.ok) {
+      if (res.ok && data.status === "healthy") {
         toast.success(
           data.discovered
             ? t("discoverySuccess", { count: data.discovered })
             : t("discoveryEmpty"),
         );
         await load();
+      } else if (data.status === "syncing") {
+        toast.info(t("syncInProgress"));
       } else {
         toast.error(data.error || t("discoveryFailed"));
       }

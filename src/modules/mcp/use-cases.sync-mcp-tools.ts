@@ -1,3 +1,4 @@
+import { scheduledSync } from "./sync-schedule";
 import { logger } from "@/lib/logger";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
 import { audit } from "@/server/domain/services/audit";
@@ -15,12 +16,11 @@ import {
 import {
   discoverMcpTools,
   emitMcpToolsSyncedAudit,
-  markMcpServerManual,
   saveMcpToolSyncResult,
   updateMcpServer,
 } from "./use-cases.update-mcp-server";
 
-export async function syncMcpTools(
+async function performSyncMcpTools(
   serverId: string,
   workspaceId: string,
   userId: string,
@@ -29,17 +29,15 @@ export async function syncMcpTools(
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
   await assertCanManageMcpServer(server, userId, canManageGlobal);
-  if (server.transport === "stdio" || !server.url) {
-    await markMcpServerManual(serverId);
-    return { status: "manual", discovered: 0 };
-  }
+  if (server.transport === "stdio") throw new Error("MCP_STDIO_UNSUPPORTED");
+  if (!server.enabled) throw new Error("MCP_SERVER_DISABLED");
 
   let discovered: DiscoveredMcpTool[] = [];
   let healthStatus = "healthy";
   let syncError: unknown;
 
   try {
-    discovered = await discoverMcpTools(server, serverId);
+    discovered = await discoverMcpTools(server, serverId, userId);
   } catch (error) {
     healthStatus = "unhealthy";
     syncError = error;
@@ -48,7 +46,7 @@ export async function syncMcpTools(
   if (syncError) {
     logger.warn("MCP tool sync failed", {
       serverId,
-      error: syncError instanceof Error ? syncError.message : String(syncError),
+      error: "MCP_SYNC_FAILED",
     });
   }
 
@@ -62,6 +60,18 @@ export async function syncMcpTools(
   });
 
   return { status: healthStatus, discovered: discovered.length };
+}
+
+export async function syncMcpTools(
+  serverId: string,
+  workspaceId: string,
+  userId: string,
+  canManageGlobal = false,
+  scheduled = false,
+) {
+  return scheduledSync(serverId, scheduled, () =>
+    performSyncMcpTools(serverId, workspaceId, userId, canManageGlobal),
+  );
 }
 
 export async function createMcpServerWithDiscovery(
@@ -102,23 +112,14 @@ export async function testMcpConnection(
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
   await assertCanManageMcpServer(server, userId, canManageGlobal);
-
-  if (server.transport === "stdio" || !server.url) {
-    await db
-      .update(mcpServers)
-      .set({ healthStatus: "manual", lastCheckedAt: new Date() })
-      .where(eq(mcpServers.id, serverId));
-    return {
-      status: "manual",
-      message: "stdio servers require manual tool registration",
-    };
-  }
+  if (server.transport === "stdio") throw new Error("MCP_STDIO_UNSUPPORTED");
+  if (!server.enabled) throw new Error("MCP_SERVER_DISABLED");
 
   let healthStatus = "healthy";
   let message = "Connection successful";
 
   try {
-    const tools = await listRemoteMcpTools(server);
+    const tools = await listRemoteMcpTools(server, { userId });
     message =
       tools.length > 0
         ? `Connected — ${tools.length} tools available`
@@ -126,7 +127,9 @@ export async function testMcpConnection(
   } catch (error) {
     healthStatus = "unhealthy";
     message =
-      error instanceof Error ? error.message : "Unable to reach MCP server";
+      error instanceof Error && /^MCP_[A-Z_]+$/.test(error.message)
+        ? error.message
+        : "MCP_CONNECTION_FAILED";
   }
 
   await db

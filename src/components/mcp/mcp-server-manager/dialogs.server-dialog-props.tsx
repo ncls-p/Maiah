@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import type { ResourceAccessOptions } from "@/modules/iam/resource-access-scope";
 import { emptyForm, type McpServerForm } from "./form";
@@ -118,13 +117,7 @@ function ServerFormFields({ form, setForm }: Omit<ServerDialogProps, "busy">) {
           placeholder={t("namePlaceholder")}
         />
       </div>
-      {form.transport === "stdio" ? (
-        <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
-          {t("localModeHint")}
-        </div>
-      ) : (
-        <TransportTargetFields form={form} setForm={setForm} prefix="mcp" />
-      )}
+      <TransportTargetFields form={form} setForm={setForm} prefix="mcp" />
     </div>
   );
 }
@@ -158,32 +151,6 @@ export function TransportTargetFields({
   prefix,
 }: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
   const t = useTranslations("mcp.serverManager");
-  if (form.transport === "stdio") {
-    return (
-      <>
-        <div className="grid gap-2">
-          <Label htmlFor={`${prefix}-command`}>{t("command")}</Label>
-          <Input
-            id={`${prefix}-command`}
-            autoComplete="off"
-            value={form.command}
-            onChange={(e) => setForm({ ...form, command: e.target.value })}
-            placeholder="npx…"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor={`${prefix}-args`}>{t("argsOnePerLine")}</Label>
-          <Textarea
-            id={`${prefix}-args`}
-            autoComplete="off"
-            value={form.args}
-            onChange={(e) => setForm({ ...form, args: e.target.value })}
-            placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
-          />
-        </div>
-      </>
-    );
-  }
 
   return (
     <div className="grid gap-2">

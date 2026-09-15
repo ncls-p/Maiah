@@ -91,7 +91,7 @@ const mcp = z.strictObject({
   preset: z.strictObject({
     scope: z.enum(["server", "tool"]),
     serverName: name,
-    transport: z.enum(["stdio", "sse", "streamable-http"]),
+    transport: z.enum(["sse", "streamable-http"]),
     command: text.optional(),
     args: z.array(text).max(256).optional(),
     url: z.url().optional(),

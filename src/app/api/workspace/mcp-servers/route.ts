@@ -19,7 +19,7 @@ const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
   workspaceId: z.uuid(),
   name: z.string().min(1).max(255),
-  transport: z.enum(["stdio", "sse", "streamable-http"]),
+  transport: z.enum(["sse", "streamable-http"]),
   command: z.string().max(2048).optional(),
   args: z.array(z.string().max(512)).optional(),
   url: z.url().optional(),

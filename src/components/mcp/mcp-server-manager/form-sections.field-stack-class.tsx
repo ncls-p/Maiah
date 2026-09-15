@@ -18,7 +18,6 @@ export const FIELD_STACK_CLASS = "grid gap-2";
 export function AuthSection({
   form,
   setForm,
-  transport,
   prefix,
   isEdit = false,
 }: {
@@ -53,14 +52,8 @@ export function AuthSection({
               <SelectItem value="custom">{t("authCustom")}</SelectItem>
             ) : null}
             <SelectItem value="none">{t("authNone")}</SelectItem>
-            {transport === "stdio" ? (
-              <SelectItem value="env">{t("authToken")}</SelectItem>
-            ) : (
-              <>
-                <SelectItem value="bearer">{t("authBearer")}</SelectItem>
-                <SelectItem value="api-key">{t("authApiKey")}</SelectItem>
-              </>
-            )}
+            <SelectItem value="bearer">{t("authBearer")}</SelectItem>
+            <SelectItem value="api-key">{t("authApiKey")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -69,38 +62,7 @@ export function AuthSection({
           {t("customCredentialsHint")}
         </p>
       ) : null}
-      {transport === "stdio" && form.authMode === "env" ? (
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-          <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor={`${prefix}-env-key-name`}>
-              {t("variableName")}
-            </Label>
-            <Input
-              id={`${prefix}-env-key-name`}
-              autoComplete="off"
-              value={form.envKeyName}
-              onChange={(e) => setForm({ ...form, envKeyName: e.target.value })}
-              placeholder="API_KEY"
-            />
-          </div>
-          <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor={`${prefix}-env-key-value`}>
-              {t("secretValue")}
-            </Label>
-            <Input
-              id={`${prefix}-env-key-value`}
-              type="password"
-              autoComplete="off"
-              value={form.envKeyValue}
-              onChange={(e) =>
-                setForm({ ...form, envKeyValue: e.target.value })
-              }
-              placeholder={secretPlaceholder(t("pasteToken"))}
-            />
-          </div>
-        </div>
-      ) : null}
-      {transport !== "stdio" && form.authMode === "bearer" ? (
+      {form.authMode === "bearer" ? (
         <div className={FIELD_STACK_CLASS}>
           <Label htmlFor={`${prefix}-bearer-token`}>{t("authBearer")}</Label>
           <Input
@@ -113,7 +75,7 @@ export function AuthSection({
           />
         </div>
       ) : null}
-      {transport !== "stdio" && form.authMode === "api-key" ? (
+      {form.authMode === "api-key" ? (
         <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
           <div className={FIELD_STACK_CLASS}>
             <Label htmlFor={`${prefix}-api-key-header`}>

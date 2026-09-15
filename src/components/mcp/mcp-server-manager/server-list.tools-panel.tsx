@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  CircleAlertIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  XIcon,
-} from "lucide-react";
+import { CircleAlertIcon, SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type Dispatch, type SetStateAction } from "react";
 
+import { McpConnectionActions } from "../mcp-connection-actions";
 import { Button } from "@/components/ui/button";
 import { CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -37,6 +33,14 @@ export function ToolsPanel({
   return (
     <CollapsibleContent>
       <div className="border-t border-border/60">
+        {server.transport !== "stdio" ? (
+          <McpConnectionActions
+            serverId={server.id}
+            canEdit={server.canEdit}
+            enabled={server.enabled}
+            onSync={() => onRetryDiscoveryAction(server.id)}
+          />
+        ) : null}
         {discoveryFailed ? (
           <div
             className="flex flex-col gap-3 border-b border-destructive/20 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
@@ -49,15 +53,6 @@ export function ToolsPanel({
               />
               <span>{t("discoveryFailedDescription")}</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!server.canEdit}
-              onClick={() => onRetryDiscoveryAction(server.id)}
-            >
-              <RefreshCwIcon className="size-4" aria-hidden="true" />
-              {t("retryDiscovery")}
-            </Button>
           </div>
         ) : null}
         {tools.length > 3 ? (

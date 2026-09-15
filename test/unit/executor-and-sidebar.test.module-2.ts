@@ -170,6 +170,8 @@ describe("mcp/executor", async () => {
       "search",
       { query: "test" },
       {
+        userId: "user-1",
+        workspaceId: "ws-1",
         headers: {
           "x-maiah-tool-context": "payload",
           "x-maiah-tool-context-signature": "sig",

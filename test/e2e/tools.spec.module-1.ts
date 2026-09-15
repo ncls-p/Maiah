@@ -254,7 +254,7 @@ test.describe("tools hub page", () => {
     ).toBeVisible();
   });
 
-  test("loads MCP tools automatically and only offers retry after failure", async ({
+  test("offers manual MCP resynchronization and reports discovery failures", async ({
     page,
   }) => {
     const workspacesResponse = await page.request.get("/api/workspaces");
@@ -301,11 +301,14 @@ test.describe("tools hub page", () => {
       await serverRow.click();
 
       await expect(
-        page.getByRole("button", { name: "Try loading tools again" }),
+        page.getByRole("button", { name: "Resynchronize", exact: true }),
       ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Resynchronize", exact: true })
+        .click();
       await expect(
-        page.getByRole("button", { name: /Sync tools|Test connection/i }),
-      ).toHaveCount(0);
+        page.getByText("Unable to load tools", { exact: true }),
+      ).toBeVisible();
     } finally {
       if (serverId) {
         await page.request.delete(

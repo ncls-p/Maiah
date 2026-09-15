@@ -7,7 +7,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -85,39 +84,9 @@ export function AdvancedSection({
                     {t("httpServer")}
                   </SelectItem>
                   <SelectItem value="sse">{t("sseServer")}</SelectItem>
-                  <SelectItem value="stdio">{t("localCommand")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {form.transport === "stdio" ? (
-              <>
-                <div className={FIELD_STACK_CLASS}>
-                  <Label htmlFor={`${prefix}-command`}>{t("command")}</Label>
-                  <Input
-                    id={`${prefix}-command`}
-                    autoComplete="off"
-                    value={form.command}
-                    onChange={(e) =>
-                      setForm({ ...form, command: e.target.value })
-                    }
-                    placeholder="npx…"
-                  />
-                </div>
-                <div className={FIELD_STACK_CLASS}>
-                  <Label htmlFor={`${prefix}-args`}>{t("args")}</Label>
-                  <Textarea
-                    id={`${prefix}-args`}
-                    autoComplete="off"
-                    value={form.args}
-                    onChange={(e) => setForm({ ...form, args: e.target.value })}
-                    placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("oneArgumentPerLine")}
-                  </p>
-                </div>
-              </>
-            ) : null}
           </div>
         ) : null}
         <div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/60 p-3">
@@ -148,21 +117,6 @@ export function AdvancedSection({
           />
           <p className="text-xs text-muted-foreground">
             {t("httpHeadersHint")}
-          </p>
-        </div>
-        <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor={`${prefix}-env`} help={t("environmentVariablesHint")}>
-            {t("environmentVariables")}
-          </Label>
-          <Textarea
-            id={`${prefix}-env`}
-            autoComplete="off"
-            value={form.env}
-            onChange={(e) => setForm({ ...form, env: e.target.value })}
-            placeholder="API_KEY=…"
-          />
-          <p className="text-xs text-muted-foreground">
-            {t("environmentVariablesHint")}
           </p>
         </div>
       </CollapsibleContent>

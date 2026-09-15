@@ -40,7 +40,7 @@ export type ServerListProps = {
   onToolSearchChangeAction: Dispatch<SetStateAction<Record<string, string>>>;
   onEditServerAction: (server: McpServer) => void;
   onDeleteServerAction: (serverId: string) => void;
-  onRetryDiscoveryAction: (serverId: string) => void;
+  onRetryDiscoveryAction: (serverId: string) => void | Promise<void>;
   onShareServerAction: (server: McpServer) => void;
   onShareToolAction: (server: McpServer, tool: McpTool) => void;
   onToggleEnabledAction: (server: McpServer, enabled: boolean) => void;

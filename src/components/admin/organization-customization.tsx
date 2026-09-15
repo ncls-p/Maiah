@@ -26,7 +26,12 @@ export function OrganizationCustomization() {
   const activeOrganization = workspaces.find(
     (project) => project.id === workspaceId,
   )?.organizationId;
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{
+    id: string;
+    context: string | undefined;
+  } | null>(null);
+  const selectedId =
+    selection?.context === activeOrganization ? selection?.id : null;
   const [rows, setRows] = useState<Organization[] | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -43,7 +48,7 @@ export function OrganizationCustomization() {
         if (!controller.signal.aborted) setError(error.message);
       });
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, workspaceId]);
   const organization =
     rows?.find((row) => row.id === (selectedId ?? activeOrganization)) ??
     rows?.[0];
@@ -69,7 +74,7 @@ export function OrganizationCustomization() {
             label={t("organization")}
             value={organization?.id ?? ""}
             options={organizationLabels(rows)}
-            onChange={setSelectedId}
+            onChange={(id) => setSelection({ id, context: activeOrganization })}
           />
         ) : (
           <p role="status">{t("loading")}</p>

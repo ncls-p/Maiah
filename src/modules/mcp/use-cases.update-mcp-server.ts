@@ -140,9 +140,10 @@ function discoveredMcpTool(
 export async function discoverMcpTools(
   server: McpServer,
   serverId: string,
+  userId?: string,
 ): Promise<DiscoveredMcpTool[]> {
   const approvalByName = await existingToolApprovalByName(serverId);
-  const remoteTools = await listRemoteMcpTools(server);
+  const remoteTools = await listRemoteMcpTools(server, { userId });
   return remoteTools.map((tool) => discoveredMcpTool(tool, approvalByName));
 }
 
@@ -153,20 +154,53 @@ export async function saveMcpToolSyncResult(
 ) {
   await db.transaction(async (tx) => {
     if (healthStatus === "healthy") {
-      await tx.delete(mcpTools).where(eq(mcpTools.mcpServerId, serverId));
-      if (discovered.length > 0) {
-        await tx.insert(mcpTools).values(
-          discovered.map((tool) => ({
+      await tx
+        .select({ id: mcpServers.id })
+        .from(mcpServers)
+        .where(eq(mcpServers.id, serverId))
+        .for("update");
+      const existing = await tx
+        .select()
+        .from(mcpTools)
+        .where(eq(mcpTools.mcpServerId, serverId));
+      const byName = new Map(existing.map((tool) => [tool.name, tool]));
+      const discoveredNames = new Set(discovered.map((tool) => tool.name));
+      if (discoveredNames.size !== discovered.length)
+        throw new Error("MCP_DUPLICATE_TOOL_NAME");
+      for (const tool of discovered) {
+        const current = byName.get(tool.name);
+        const metadata = {
+          description: tool.description,
+          inputSchemaJson: tool.inputSchemaJson,
+          outputSchemaJson: tool.outputSchemaJson,
+        };
+        if (!current)
+          await tx.insert(mcpTools).values({
             mcpServerId: serverId,
             name: tool.name,
-            description: tool.description,
-            inputSchemaJson: tool.inputSchemaJson,
-            outputSchemaJson: tool.outputSchemaJson,
+            ...metadata,
             enabled: true,
             requireApproval: tool.requireApproval,
-          })),
-        );
+          });
+        else if (
+          current.description !== metadata.description ||
+          JSON.stringify(current.inputSchemaJson) !==
+            JSON.stringify(metadata.inputSchemaJson) ||
+          JSON.stringify(current.outputSchemaJson) !==
+            JSON.stringify(metadata.outputSchemaJson)
+        ) {
+          await tx
+            .update(mcpTools)
+            .set({ ...metadata, discoveredAt: new Date() })
+            .where(eq(mcpTools.id, current.id));
+        }
       }
+      for (const tool of existing)
+        if (!discoveredNames.has(tool.name) && tool.enabled)
+          await tx
+            .update(mcpTools)
+            .set({ enabled: false })
+            .where(eq(mcpTools.id, tool.id));
     }
     await tx
       .update(mcpServers)

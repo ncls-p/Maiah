@@ -149,6 +149,15 @@ async function listWorkflowBuilderAgents(organizationId: string) {
       modelDisplayName: row.modelDisplayName ?? row.modelTechnicalId,
       supportsTools,
       ready,
+      unavailableReason: ready
+        ? null
+        : !row.activeVersionId
+          ? "version"
+          : !row.providerId || !row.providerEnabled || row.providerArchivedAt
+            ? "provider"
+            : !row.modelId || !row.modelEnabled
+              ? "model"
+              : "tools",
     };
   });
 }
@@ -178,11 +187,6 @@ export async function setWorkflowBuilderConfig(input: {
     );
     if (!selectedAgent) {
       throw new Error("Workflow builder assistant not found");
-    }
-    if (!selectedAgent.ready) {
-      throw new Error(
-        "Workflow builder assistant requires an active tool-capable model",
-      );
     }
   }
 

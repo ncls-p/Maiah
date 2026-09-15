@@ -225,7 +225,7 @@ describe("workflow builder settings", () => {
     expect(dbModule.db.insert).toHaveBeenCalledOnce();
   });
 
-  it("rejects missing and unready assistants", async () => {
+  it("rejects missing assistants but permits selecting one requiring configuration", async () => {
     dbModule._chain.orderBy.mockResolvedValueOnce([]);
     await expect(
       setWorkflowBuilderConfig({
@@ -247,8 +247,7 @@ describe("workflow builder settings", () => {
         agentId: unavailableAgentId,
         updatedById: "user-1",
       }),
-    ).rejects.toThrow(
-      "Workflow builder assistant requires an active tool-capable model",
-    );
+    ).resolves.toBeDefined();
+    expect(dbModule.db.insert).toHaveBeenCalledOnce();
   });
 });

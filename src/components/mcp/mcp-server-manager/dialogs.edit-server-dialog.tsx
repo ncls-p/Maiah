@@ -66,7 +66,6 @@ function ConnectionFields({
             <SelectContent>
               <SelectItem value="streamable-http">{t("httpServer")}</SelectItem>
               <SelectItem value="sse">{t("sseServer")}</SelectItem>
-              <SelectItem value="stdio">{t("localCommand")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
