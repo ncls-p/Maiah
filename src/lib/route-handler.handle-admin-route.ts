@@ -1,3 +1,4 @@
+import { serverErrorResponse } from "./server-error-response";
 import { logger, logHandledError } from "@/lib/logger";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getSession } from "@/modules/auth/session";
@@ -76,7 +77,7 @@ export async function handleAdminRoute(
       error as Error,
     );
     return attachRequestId(
-      NextResponse.json({ error: "Internal server error" }, { status: 500 }),
+      NextResponse.json(serverErrorResponse(error, requestId), { status: 500 }),
       requestId,
     );
   }

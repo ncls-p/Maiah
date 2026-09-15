@@ -1,3 +1,4 @@
+import { serverErrorResponse } from "./server-error-response";
 import { logger, logHandledError } from "@/lib/logger";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import {
@@ -117,7 +118,7 @@ export async function handleRoute(
       error as Error,
     );
     return attachRequestId(
-      NextResponse.json({ error: "Internal server error" }, { status: 500 }),
+      NextResponse.json(serverErrorResponse(error, requestId), { status: 500 }),
       requestId,
     );
   }

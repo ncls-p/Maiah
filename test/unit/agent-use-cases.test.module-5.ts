@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   getActiveVersion,
@@ -60,6 +60,60 @@ describe("resolveProviderForVersion", () => {
     expect(result).toBeNull();
   });
 
+  it("passes saved Bedrock region and bearer credentials through the real agent resolver", async () => {
+    dbModule._c.limit
+      .mockResolvedValueOnce([
+        {
+          ...fakeProvider,
+          kind: "amazon-bedrock",
+          bedrockConfigJson: { region: "eu-west-1", authMode: "api-key" },
+        },
+      ])
+      .mockResolvedValueOnce([fakeModel]);
+    const resolved = await resolveProviderForVersion(fakeVersion as never);
+    expect(resolved?.runtimeConfig).toMatchObject({
+      kind: "amazon-bedrock",
+      apiKey: "decrypted-secret",
+      bedrock: { region: "eu-west-1", authMode: "api-key" },
+    });
+    const { amazonBedrockAdapter } =
+      await import("@/server/infrastructure/providers/amazon-bedrock-adapter");
+    expect(() =>
+      amazonBedrockAdapter.createChatModel(
+        resolved!.runtimeConfig,
+        "amazon.nova-pro-v1:0",
+      ),
+    ).not.toThrow();
+  });
+  it("passes decrypted IAM credentials through the same agent resolver", async () => {
+    const { decryptValue } = await import("@/lib/crypto");
+    vi.mocked(decryptValue).mockResolvedValueOnce(
+      JSON.stringify({
+        accessKeyId: "AKIATEST",
+        secretAccessKey: "test-secret",
+        sessionToken: "test-session",
+      }),
+    );
+    dbModule._c.limit
+      .mockResolvedValueOnce([
+        {
+          ...fakeProvider,
+          kind: "amazon-bedrock",
+          encryptedApiKey: null,
+          encryptedAwsCredentials: "enc:iam",
+          bedrockConfigJson: { region: "eu-west-1", authMode: "iam" },
+        },
+      ])
+      .mockResolvedValueOnce([fakeModel]);
+    const resolved = await resolveProviderForVersion(fakeVersion as never);
+    expect(resolved?.runtimeConfig.bedrock).toMatchObject({
+      region: "eu-west-1",
+      authMode: "iam",
+      accessKeyId: "AKIATEST",
+      secretAccessKey: "test-secret",
+      sessionToken: "test-session",
+    });
+  });
   it("resolves provider with decrypted API key", async () => {
     dbModule._c.limit
       .mockResolvedValueOnce([fakeProvider]) // provider

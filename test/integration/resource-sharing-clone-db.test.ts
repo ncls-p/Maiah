@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import {
   agents,
+  aiProviders,
   agentSkills,
   agentSkillBindings,
   roleBindings,
@@ -50,10 +51,30 @@ suite("shared dependency provenance after cloning a project", () => {
       targetWorkspaceId: fixture.destinationId,
       secretPolicy: "disable" as const,
     };
+    await db
+      .insert(aiProviders)
+      .values({
+        workspaceId: fixture.workspaceId,
+        createdById: fixture.owner,
+        name: "Bedrock secret-policy fixture",
+        kind: "amazon-bedrock",
+        authType: "bearer",
+        bedrockConfigJson: { region: "eu-west-1", authMode: "iam" },
+        encryptedAwsCredentials: "encrypted-aws-fixture",
+      });
     const preview = await previewWorkspaceClone(input);
     await executeWorkspaceClone({
       ...input,
       confirmationToken: preview.confirmationToken,
+    });
+    const [copiedProvider] = await db
+      .select()
+      .from(aiProviders)
+      .where(eq(aiProviders.workspaceId, fixture.destinationId));
+    expect(copiedProvider.encryptedAwsCredentials).toBeNull();
+    expect(copiedProvider.enabled).toBe(false);
+    expect(copiedProvider.bedrockConfigJson).toMatchObject({
+      region: "eu-west-1",
     });
     const [copy] = await db
       .select()

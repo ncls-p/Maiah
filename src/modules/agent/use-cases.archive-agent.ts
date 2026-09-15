@@ -1,6 +1,5 @@
-import { decryptValue } from "@/lib/crypto";
+import { buildProviderRuntimeConfig } from "@/modules/provider/provider-runtime-config";
 import { logger } from "@/lib/logger";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -124,21 +123,6 @@ export async function resolveProviderForVersion(
   if (!provider) return null;
 
   // Decrypt secrets
-  let apiKey: string | undefined;
-  if (provider.encryptedApiKey) {
-    apiKey = await decryptValue(provider.encryptedApiKey);
-  }
-
-  let headers: Record<string, string> | undefined;
-  if (provider.encryptedHeadersJson) {
-    headers = {};
-    for (const [k, v] of Object.entries(
-      provider.encryptedHeadersJson as Record<string, string>,
-    )) {
-      headers[k] = await decryptValue(v);
-    }
-  }
-
   let runtimeModelId = "";
   let modelRecordId: string | undefined;
   let contextWindow: number | undefined;
@@ -165,20 +149,7 @@ export async function resolveProviderForVersion(
   }
 
   return {
-    runtimeConfig: {
-      kind: provider.kind as ProviderKind,
-      name: provider.name,
-      baseUrl: provider.baseUrl || undefined,
-      authType: provider.authType,
-      apiKey,
-      headers,
-      queryParams: provider.queryParamsJson as
-        | Record<string, string>
-        | undefined,
-      openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-        provider.openaiCompatibleApiRoute,
-      ),
-    },
+    runtimeConfig: await buildProviderRuntimeConfig(provider),
     modelId: runtimeModelId,
     modelRecordId,
     contextWindow,

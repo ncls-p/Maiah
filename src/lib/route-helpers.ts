@@ -1,3 +1,4 @@
+import { serverErrorResponse } from "./server-error-response";
 import { logHandledError } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
 import type { NextRequest } from "next/server";
@@ -46,15 +47,16 @@ export function handleRouteError(
   if (isUniqueConstraintError(error)) {
     return conflictResponse("A record with this value already exists");
   }
-  if (error instanceof Error) {
-    logHandledError(context, {}, error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-  logHandledError(context, { error: String(error) });
-  return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  const requestId = crypto.randomUUID();
+  logHandledError(
+    context,
+    { requestId },
+    error instanceof Error ? error : new Error(String(error)),
+  );
+  return NextResponse.json(serverErrorResponse(error, requestId), {
+    status: 500,
+    headers: { "x-request-id": requestId },
+  });
 }
 
 // ─── Query / Body parsing ────────────────────────────────────────────────

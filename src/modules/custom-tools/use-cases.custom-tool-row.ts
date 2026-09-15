@@ -1,8 +1,7 @@
+import { buildProviderRuntimeConfig } from "@/modules/provider/provider-runtime-config";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { decryptValue } from "@/lib/crypto";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { authorization } from "@/server/domain/services/authorization";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { db } from "@/server/infrastructure/db";
@@ -13,10 +12,7 @@ import {
   customTools,
   mcpServers,
 } from "@/server/infrastructure/db/schema";
-import {
-  type ProviderKind,
-  type ProviderRuntimeConfig,
-} from "@/server/infrastructure/providers";
+import { type ProviderKind } from "@/server/infrastructure/providers";
 
 registerAiSdkDevTools();
 
@@ -215,32 +211,7 @@ export async function resolveRuntimeProvider(config: CustomToolBuilderConfig) {
     .limit(1);
   if (!model) return null;
 
-  let apiKey: string | undefined;
-  if (provider.encryptedApiKey)
-    apiKey = await decryptValue(provider.encryptedApiKey);
-
-  let headers: Record<string, string> | undefined;
-  if (provider.encryptedHeadersJson) {
-    headers = {};
-    for (const [key, value] of Object.entries(
-      provider.encryptedHeadersJson as Record<string, string>,
-    )) {
-      headers[key] = await decryptValue(value);
-    }
-  }
-
-  const runtimeConfig: ProviderRuntimeConfig = {
-    kind: provider.kind as ProviderKind,
-    name: provider.name,
-    baseUrl: provider.baseUrl || undefined,
-    authType: provider.authType,
-    apiKey,
-    headers,
-    queryParams: provider.queryParamsJson as Record<string, string> | undefined,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-      provider.openaiCompatibleApiRoute,
-    ),
-  };
+  const runtimeConfig = await buildProviderRuntimeConfig(provider);
 
   return {
     runtimeConfig,

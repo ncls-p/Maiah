@@ -144,7 +144,11 @@ describe("route-handler – handleRoute", async () => {
     vi.mocked(getSession).mockRejectedValue(new Error("boom"));
     const response = await handleRoute(mockReq, async () => new Response("ok"));
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "Internal server error" });
+    expect(response.body).toMatchObject({
+      error: "boom\nReference: test-request-id",
+      code: "SERVER_ERROR",
+      requestId: "test-request-id",
+    });
   });
 
   it("returns custom response via expectedError", async () => {

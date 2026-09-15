@@ -1,8 +1,7 @@
+import { buildProviderRuntimeConfig } from "@/modules/provider/provider-runtime-config";
 import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
 import { and, eq, isNull } from "drizzle-orm";
 
-import { decryptValue } from "@/lib/crypto";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
 import { db } from "@/server/infrastructure/db";
 import { aiModels, aiProviders } from "@/server/infrastructure/db/schema";
@@ -119,34 +118,7 @@ export async function listOpenAIProxyModels(workspaceId: string) {
 }
 
 async function runtimeConfigFor(row: CatalogRow) {
-  let apiKey: string | undefined;
-  if (row.provider.encryptedApiKey) {
-    apiKey = await decryptValue(row.provider.encryptedApiKey);
-  }
-
-  let headers: Record<string, string> | undefined;
-  if (row.provider.encryptedHeadersJson) {
-    headers = {};
-    for (const [key, encryptedValue] of Object.entries(
-      row.provider.encryptedHeadersJson as Record<string, string>,
-    )) {
-      headers[key] = await decryptValue(encryptedValue);
-    }
-  }
-
-  return {
-    kind: row.provider.kind as ProviderKind,
-    name: row.provider.name,
-    baseUrl: row.provider.baseUrl || undefined,
-    authType: row.provider.authType,
-    apiKey,
-    headers,
-    queryParams:
-      (row.provider.queryParamsJson as Record<string, string>) || undefined,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-      row.provider.openaiCompatibleApiRoute,
-    ),
-  } satisfies ProviderRuntimeConfig;
+  return buildProviderRuntimeConfig(row.provider);
 }
 
 export async function resolveOpenAIProxyModel(

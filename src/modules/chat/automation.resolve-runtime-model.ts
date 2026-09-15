@@ -1,10 +1,9 @@
+import { buildProviderRuntimeConfig } from "@/modules/provider/provider-runtime-config";
 import { automationModelAvailability } from "./automation.model-availability";
 import { generateText } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { decryptValue } from "@/lib/crypto";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import {
   agentRuntimePolicy,
   createRuntimeDeadline,
@@ -107,39 +106,12 @@ export async function resolveRuntimeModel(
       reason: "The selected provider is not available to this organization.",
     };
 
-  let apiKey: string | undefined;
-  if (provider.encryptedApiKey) {
-    apiKey = await decryptValue(provider.encryptedApiKey);
-  }
-
-  let headers: Record<string, string> | undefined;
-  if (provider.encryptedHeadersJson) {
-    headers = {};
-    for (const [key, value] of Object.entries(
-      provider.encryptedHeadersJson as Record<string, string>,
-    )) {
-      headers[key] = await decryptValue(value);
-    }
-  }
-
   return {
     ok: true,
     runtime: {
       providerKind: provider.kind as ProviderKind,
       modelId: model.modelId,
-      runtimeConfig: {
-        kind: provider.kind as ProviderKind,
-        name: provider.name,
-        baseUrl: provider.baseUrl || undefined,
-        authType: provider.authType,
-        apiKey,
-        headers,
-        queryParams:
-          (provider.queryParamsJson as Record<string, string>) || undefined,
-        openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-          provider.openaiCompatibleApiRoute,
-        ),
-      },
+      runtimeConfig: await buildProviderRuntimeConfig(provider),
     },
   };
 }

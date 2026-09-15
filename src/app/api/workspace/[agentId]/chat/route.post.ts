@@ -1,3 +1,5 @@
+import { encryptValue } from "@/lib/crypto";
+import { serverErrorResponse } from "@/lib/server-error-response";
 import { currentHandoff } from "@/modules/genesys/sessions";
 import {
   hasResourcePermissionForRequest,
@@ -29,10 +31,14 @@ import {
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 import { db } from "@/server/infrastructure/db";
 import { authorization } from "@/server/domain/services/authorization";
-import { agents, messages } from "@/server/infrastructure/db/schema";
+import {
+  agents,
+  messages,
+  messageParts,
+} from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, max } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { loadConversationHistory } from "./route-history";
 import { chatRequestSchema } from "./route-support";
@@ -242,8 +248,15 @@ export async function POST(
       return forbidden;
     }
 
-    if (existingConversationId && conversationAccess && await currentHandoff(existingConversationId)) {
-      return rejectChatRequest(409, "human_handoff_active", { error: "GENESYS_HANDOFF_ACTIVE", code: "GENESYS_HANDOFF_ACTIVE" });
+    if (
+      existingConversationId &&
+      conversationAccess &&
+      (await currentHandoff(existingConversationId))
+    ) {
+      return rejectChatRequest(409, "human_handoff_active", {
+        error: "GENESYS_HANDOFF_ACTIVE",
+        code: "GENESYS_HANDOFF_ACTIVE",
+      });
     }
     const quota = await assertWorkspaceWithinTokenQuota(agent.workspaceId);
     if (!quota.allowed) {
@@ -426,31 +439,56 @@ export async function POST(
       enqueueEvent,
     });
   } catch (error) {
-    // Chat request failed — messages marked failed below
+    const publicError = serverErrorResponse(error, requestId);
+    // Keep the diagnostic with the failed message so it survives reloading.
 
-    if (assistantMessageId) {
-      await db
-        .update(messages)
-        .set({
-          status: "failed",
-          completedAt: new Date(),
-          streamLeaseExpiresAt: null,
-        })
-        .where(
-          and(
-            eq(messages.id, assistantMessageId),
-            inArray(messages.status, ["pending", "streaming"]),
-            assistantStreamGenerationId
-              ? eq(messages.streamGenerationId, assistantStreamGenerationId)
-              : undefined,
-          ),
-        );
-    }
-    if (userMessageId && createdUserMessage) {
-      await db
-        .update(messages)
-        .set({ status: "failed", completedAt: new Date() })
-        .where(eq(messages.id, userMessageId));
+    try {
+      if (assistantMessageId) {
+        const failedMessages = await db
+          .update(messages)
+          .set({
+            status: "failed",
+            completedAt: new Date(),
+            streamLeaseExpiresAt: null,
+          })
+          .where(
+            and(
+              eq(messages.id, assistantMessageId),
+              inArray(messages.status, ["pending", "streaming"]),
+              assistantStreamGenerationId
+                ? eq(messages.streamGenerationId, assistantStreamGenerationId)
+                : undefined,
+            ),
+          )
+          .returning({ id: messages.id });
+        if (failedMessages.length) {
+          const [lastPart] = await db
+            .select({ order: max(messageParts.sortOrder) })
+            .from(messageParts)
+            .where(eq(messageParts.messageId, assistantMessageId));
+          await db.insert(messageParts).values({
+            messageId: assistantMessageId,
+            type: "error",
+            contentEncrypted: await encryptValue(publicError.error),
+            metadataJson: { code: publicError.code, requestId },
+            sortOrder: (lastPart?.order ?? -1) + 1,
+          });
+        }
+      }
+      if (userMessageId && createdUserMessage) {
+        await db
+          .update(messages)
+          .set({ status: "failed", completedAt: new Date() })
+          .where(eq(messages.id, userMessageId));
+      }
+    } catch (persistError) {
+      logHandledError(
+        "Failed to persist chat error",
+        { requestId },
+        persistError instanceof Error
+          ? persistError
+          : new Error(String(persistError)),
+      );
     }
 
     logHandledError(
@@ -465,14 +503,6 @@ export async function POST(
       error as Error,
     );
 
-    return jsonResponse(
-      {
-        error: "Internal server error",
-        ...(process.env.NODE_ENV !== "production" && error instanceof Error
-          ? { detail: error.message }
-          : {}),
-      },
-      500,
-    );
+    return jsonResponse(publicError, 500);
   }
 }

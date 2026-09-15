@@ -1,6 +1,6 @@
+import { buildProviderRuntimeConfig } from "@/modules/provider/provider-runtime-config";
 import { and, eq, isNull } from "drizzle-orm";
 
-import { decryptValue } from "@/lib/crypto";
 import {
   parseRagConfig,
   ragConfigSchema,
@@ -14,10 +14,7 @@ import {
   aiProviders,
   appSettings,
 } from "@/server/infrastructure/db/schema";
-import {
-  getAdapter,
-  type ProviderRuntimeConfig,
-} from "@/server/infrastructure/providers";
+import { getAdapter } from "@/server/infrastructure/providers";
 
 export {
   DEFAULT_RAG_CONFIG,
@@ -53,30 +50,7 @@ export async function setDefaultRagConfig(
   return valueJson;
 }
 
-async function toRuntimeConfig(
-  provider: typeof aiProviders.$inferSelect,
-): Promise<ProviderRuntimeConfig> {
-  const headers: Record<string, string> = {};
-  for (const [key, value] of Object.entries(
-    (provider.encryptedHeadersJson as Record<string, string> | null) ?? {},
-  )) {
-    headers[key] = await decryptValue(value);
-  }
-  return {
-    kind: provider.kind,
-    name: provider.name,
-    baseUrl: provider.baseUrl ?? undefined,
-    authType: provider.authType,
-    apiKey: provider.encryptedApiKey
-      ? await decryptValue(provider.encryptedApiKey)
-      : undefined,
-    headers: Object.keys(headers).length > 0 ? headers : undefined,
-    queryParams:
-      (provider.queryParamsJson as Record<string, string> | null) ?? undefined,
-    openaiCompatibleApiRoute: provider.openaiCompatibleApiRoute as
-      "responses" | "chat-completions",
-  };
-}
+const toRuntimeConfig = buildProviderRuntimeConfig;
 
 const LIVE_CATALOG_TTL_MS = 60_000;
 const LIVE_CATALOG_TIMEOUT_MS = 10_000;

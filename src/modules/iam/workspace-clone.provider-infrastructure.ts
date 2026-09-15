@@ -38,6 +38,9 @@ export async function cloneProviderInfrastructure(
       id,
       workspaceId: input.targetWorkspaceId,
       encryptedApiKey: disableSecrets ? null : source.encryptedApiKey,
+      encryptedAwsCredentials: disableSecrets
+        ? null
+        : source.encryptedAwsCredentials,
       encryptedHeadersJson: disableSecrets ? null : source.encryptedHeadersJson,
       enabled: disableSecrets ? false : source.enabled,
       healthStatus: null,

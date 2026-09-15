@@ -158,6 +158,7 @@ export function renderablePartsFromMessage(message: ChatMessage) {
       "text",
       "file",
       "reasoning",
+      "error",
       "tool-call",
       "tool-result",
       "suggestions",

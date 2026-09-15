@@ -234,6 +234,7 @@ export async function applyResourceTransferTransaction(context: {
             ? {
                 enabled: false,
                 encryptedApiKey: null,
+                encryptedAwsCredentials: null,
                 encryptedHeadersJson: null,
                 healthStatus: null,
               }
