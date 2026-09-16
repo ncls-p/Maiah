@@ -97,6 +97,17 @@ test("MCP creates a private configured assistant in one call and preserves versi
       status: 201,
     });
     createdId = created.result.agent.id;
+    const read = await call("maiah_run_action", {
+      operationId: "getWorkspaceAgentsAgentId",
+      input: { agentId: createdId },
+    });
+    expect(read).toMatchObject({ ok: true, status: 200 });
+    expect(read.result.id).toBe(createdId);
+    const legacyRead = await call("maiah_execute_action", {
+      operationId: "getWorkspaceAgentsAgentId",
+      parameters: { agentId: createdId },
+    });
+    expect(legacyRead).toMatchObject({ ok: true, status: 200 });
     const versions = await (
       await page.request.get(
         `/api/workspace/agents/${createdId}/versions?workspaceId=${workspaceId}`,

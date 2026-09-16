@@ -70,67 +70,73 @@ export function searchActions(
   limit = 5,
 ) {
   const raw = normalize(query);
-  const terms = raw
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean)
-    .filter(
-      (term) =>
-        ![
-          "un",
-          "une",
-          "des",
-          "les",
-          "de",
-          "du",
-          "le",
-          "la",
-          "a",
-          "the",
-          "my",
-          "mes",
-          "mon",
-        ].includes(term),
-    )
-    .map((term) => synonyms[term] ?? term);
-  const rows = availableActions(identity)
-    .map((action) => {
-      const haystack = normalize(
-        `${action.operationId} ${action.path} ${action.summary}`,
-      );
-      const scores = terms.map((term) =>
-        methods[term]
-          ? methods[term].includes(action.method)
-            ? 5
-            : 0
-          : haystack.includes(term)
-            ? 3
-            : 0,
-      );
-      const exact =
-        raw &&
-        (normalize(action.operationId) === raw ||
-          normalize(action.path) === raw);
-      return {
-        action,
-        score: exact ? 100 : scores.reduce<number>((a, b) => a + b, 0),
-        matches:
-          terms.length === 0 ||
-          (scores.some((score) => score > 0) &&
-            terms.every(
-              (term, index) =>
-                !(methods[term] || Object.values(synonyms).includes(term)) ||
-                scores[index] > 0,
-            )) ||
-          exact,
-      };
-    })
-    .filter((row) => row.matches)
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        a.action.path.length - b.action.path.length ||
-        a.action.operationId.localeCompare(b.action.operationId),
+  const terms = [
+    ...new Set(
+      raw
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+        .filter(
+          (term) =>
+            ![
+              "un",
+              "une",
+              "des",
+              "les",
+              "de",
+              "du",
+              "le",
+              "la",
+              "a",
+              "the",
+              "my",
+              "mes",
+              "mon",
+            ].includes(term),
+        )
+        .map((term) => synonyms[term] ?? term),
+    ),
+  ];
+  const candidates = availableActions(identity).map((action) => {
+    const haystack = normalize(
+      `${action.operationId} ${action.path} ${action.summary}`,
     );
+    const scores = terms.map((term) =>
+      methods[term]
+        ? methods[term].includes(action.method)
+          ? 5
+          : 0
+        : haystack.includes(term)
+          ? 3
+          : 0,
+    );
+    const exact =
+      raw &&
+      (normalize(action.operationId) === raw || normalize(action.path) === raw);
+    return {
+      action,
+      score: exact ? 100 : scores.reduce<number>((a, b) => a + b, 0),
+      matches:
+        terms.length === 0 ||
+        (scores.some((score) => score > 0) &&
+          terms.every(
+            (term, index) =>
+              !(methods[term] || Object.values(synonyms).includes(term)) ||
+              scores[index] > 0,
+          )) ||
+        exact,
+    };
+  });
+  const strict = candidates.filter((row) => row.matches);
+  // Multi-action requests can mention several incompatible verbs/resources.
+  // Fall back to ranked matches instead of returning an empty catalog.
+  const rows = (
+    strict.length ? strict : candidates.filter((row) => row.score > 0)
+  ).sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.action.path.length - b.action.path.length ||
+      a.action.operationId.localeCompare(b.action.operationId),
+  );
   return {
     workspaceId: identity.workspaceId,
     total: rows.length,
