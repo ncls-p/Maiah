@@ -71,7 +71,7 @@ test("global companion performs live page and MCP actions, persists and respects
     compatibleToolSchema =
       body.tools?.find(
         (tool: { function: { name: string; strict?: boolean } }) =>
-          tool.function.name === "maiah_execute_action",
+          tool.function.name === "maiah_run_action",
       )?.function.strict === false;
     const toolMessages = (body.messages ?? []).filter(
       (message: { role: string }) => message.role === "tool",
@@ -83,7 +83,7 @@ test("global companion performs live page and MCP actions, persists and respects
           created: 1,
           model: "e2e-model",
           id: "denied-admin",
-          name: "maiah_execute_action",
+          name: "maiah_run_action",
           arguments: { operationId: "getAdminUsers" },
         });
         return;
@@ -138,10 +138,10 @@ test("global companion performs live page and MCP actions, persists and respects
         },
       },
       {
-        name: "maiah_execute_action",
+        name: "maiah_run_action",
         arguments: {
           operationId: "postWorkspaceConversationFolders",
-          body: { workspaceId, name: folderName },
+          input: { name: folderName },
         },
       },
       {
@@ -249,7 +249,7 @@ test("global companion performs live page and MCP actions, persists and respects
     expect(seenTools).toEqual(
       expect.arrayContaining([
         "maiah_page_context",
-        "maiah_execute_action",
+        "maiah_run_action",
         "maiah_ui_action",
       ]),
     );

@@ -33,6 +33,9 @@ export function buildEssentialPayload(
     maxToolCalls: Number(form.maxToolCalls),
     toolChoice: form.toolChoice,
     generationSettings: {
+      providerOptions: form.generationSettings.providerOptions?.trim()
+        ? JSON.parse(form.generationSettings.providerOptions)
+        : undefined,
       topK: Number(form.generationSettings.topK) || undefined,
       presencePenalty:
         form.generationSettings.presencePenalty === ""

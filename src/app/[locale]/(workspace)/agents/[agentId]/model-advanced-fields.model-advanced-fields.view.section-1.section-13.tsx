@@ -18,7 +18,7 @@ export function ModelAdvancedMainSection13({
   return (
     <Field>
       <FieldLabel htmlFor="agent-tool-choice" help={t("toolChoiceHelp")}>
-        {t("toolChoice")}
+        {"tool_choice"}
       </FieldLabel>
       <FieldContent>
         <Select

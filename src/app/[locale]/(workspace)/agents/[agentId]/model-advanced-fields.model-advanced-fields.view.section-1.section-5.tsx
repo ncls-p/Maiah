@@ -14,13 +14,13 @@ export function ModelAdvancedMainSection5({
         htmlFor="agent-presence-penalty"
         help={t("presencePenaltyHelp")}
       >
-        {t("presencePenalty")}
+        {"presence_penalty"}
       </FieldLabel>
       <FieldContent>
         <Input
           id="agent-presence-penalty"
           type="number"
-          step={0.1}
+          step="any"
           placeholder={t("providerDefault")}
           value={form.generationSettings.presencePenalty}
           onChange={(e) =>

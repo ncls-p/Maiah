@@ -1,3 +1,7 @@
+import {
+  generationCallSettings,
+  mergeProviderOptions,
+} from "@/modules/agent/generation-settings";
 import { stopForQuestionForm } from "@/modules/question-form/contracts";
 import { shouldStopForHandoff } from "@/modules/genesys/chat-stop";
 import { HANDOFF_TOOL } from "@/modules/genesys/contracts";
@@ -168,15 +172,7 @@ export async function runStandardChat(input: {
       },
     },
   );
-  const generationSettings = version.generationSettingsJson as {
-    topK?: number;
-    presencePenalty?: number;
-    frequencyPenalty?: number;
-    seed?: number;
-    maxRetries?: number;
-    stopSequences?: string[];
-    reasoningPresets?: string[];
-  } | null;
+  const generationSettings = generationCallSettings(version);
   const reasoningSettings = reasoningCallSettings(
     executionContext.reasoningEffort,
     providerConfig.runtimeConfig,
@@ -188,20 +184,13 @@ export async function runStandardChat(input: {
     // Conversation summaries are trusted server-generated system messages.
     // AI SDK 7 rejects system messages in `messages` unless this is explicit.
     allowSystemInMessages: true,
-    temperature: version.temperature
-      ? Number.parseFloat(version.temperature)
-      : undefined,
-    topP: version.topP ? Number.parseFloat(version.topP) : undefined,
-    topK: generationSettings?.topK,
-    presencePenalty: generationSettings?.presencePenalty,
-    frequencyPenalty: generationSettings?.frequencyPenalty,
-    seed: generationSettings?.seed,
-    maxRetries: generationSettings?.maxRetries,
-    stopSequences: generationSettings?.stopSequences?.length
-      ? generationSettings.stopSequences
-      : undefined,
+    ...generationSettings,
     maxOutputTokens: fittedContext.maxOutputTokens,
     ...reasoningSettings,
+    providerOptions: mergeProviderOptions(
+      generationSettings.providerOptions,
+      reasoningSettings.providerOptions,
+    ),
     tools,
     toolChoice: configuredToolChoice,
     toolApproval: boundToolConfig.toolApproval,

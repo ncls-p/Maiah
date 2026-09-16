@@ -166,6 +166,18 @@ describe("agent runtime executor", () => {
   });
 
   it("executes and settles a bounded root run", async () => {
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      temperature: "0",
+      generationSettingsJson: {
+        topK: 40,
+        seed: 0,
+        presencePenalty: 0.5,
+        frequencyPenalty: 0.2,
+        stopSequences: ["END"],
+        providerOptions: { openai: { textVerbosity: "low" } },
+      },
+    });
     const messages = [
       { role: "system" as const, content: "Earlier conversation summary" },
       { role: "user" as const, content: "Current follow-up" },
@@ -190,6 +202,13 @@ describe("agent runtime executor", () => {
     );
     expect(mocks.generateText).toHaveBeenCalledWith(
       expect.objectContaining({
+        temperature: 0,
+        topK: 40,
+        seed: 0,
+        presencePenalty: 0.5,
+        frequencyPenalty: 0.2,
+        stopSequences: ["END"],
+        providerOptions: { openai: { textVerbosity: "low" } },
         instructions: "Help",
         allowSystemInMessages: true,
         messages,
@@ -245,4 +264,8 @@ describe("agent runtime executor", () => {
 
 vi.mock("@/modules/usage/limited-language-model", () => ({
   applyUsageLimits: async (model: unknown) => model,
+}));
+
+vi.mock("@/modules/agent/generation-compatibility-store", () => ({
+  applyGenerationCompatibility: async (model: unknown) => model,
 }));

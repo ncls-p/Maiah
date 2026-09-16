@@ -4,6 +4,7 @@ import { normalizeReasoningPresets } from "@/modules/agent/reasoning-presets";
 import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 export type AgentVersionPayload = {
+  excludedGenerationSettings?: string[];
   isActive?: boolean;
   systemPrompt: string | null;
   providerId: string | null;
@@ -14,6 +15,7 @@ export type AgentVersionPayload = {
   maxToolCalls: number | null;
   toolChoice: "auto" | "required" | "none" | null;
   generationSettingsJson: {
+    providerOptions?: Record<string, Record<string, unknown>>;
     topK?: number;
     presencePenalty?: number;
     frequencyPenalty?: number;
@@ -57,6 +59,9 @@ function buildGenerationSettings(activeVersion: AgentVersionPayload | null) {
   const gen = activeVersion?.generationSettingsJson;
 
   return {
+    providerOptions: gen?.providerOptions
+      ? JSON.stringify(gen.providerOptions, null, 2)
+      : "",
     topK: optionalNumericField(gen?.topK),
     presencePenalty: optionalNumericField(gen?.presencePenalty),
     frequencyPenalty: optionalNumericField(gen?.frequencyPenalty),
@@ -114,6 +119,7 @@ function buildModelSettings(activeVersion: AgentVersionPayload | null) {
       defaultGenParams.maxToolCalls,
     ),
     toolChoice: activeVersion?.toolChoice ?? "auto",
+    excludedGenerationSettings: activeVersion?.excludedGenerationSettings ?? [],
     generationSettings: buildGenerationSettings(activeVersion),
     responseFormat:
       activeVersion?.responseFormatJson?.type === "json_object"
@@ -128,6 +134,7 @@ function buildModelSettings(activeVersion: AgentVersionPayload | null) {
     | "maxOutputTokens"
     | "maxToolCalls"
     | "toolChoice"
+    | "excludedGenerationSettings"
     | "generationSettings"
     | "responseFormat"
   >;

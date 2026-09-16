@@ -956,7 +956,11 @@
       "stopSequences": "Séquences d’arrêt",
       "stopSequencesHelp": "La génération s’arrête dès que l’une de ces suites exactes de caractères apparaît.",
       "oneSequencePerLine": "Une séquence par ligne",
-      "resetDefaults": "Réinitialiser la génération"
+      "resetDefaults": "Réinitialiser la génération",
+      "providerOptionsHelp": "Options spécifiques du fournisseur au format JSON du AI SDK, groupées par fournisseur. Utilisez uniquement les clés prises en charge par le fournisseur et le modèle. Ne mettez pas de secrets ici.",
+      "providerOptionsHint": "Exemples de namespaces : openai, openaiCompatible, anthropic, bedrock. Les clés restent au format du SDK (textVerbosity, parallelToolCalls, thinking…). Le niveau de raisonnement choisi dans le chat est prioritaire. Les paramètres de génération refusés explicitement sont désactivés pour cette version de l’assistant.",
+      "providerOptionsInvalid": "JSON invalide : indiquez un objet contenant un objet par fournisseur (16 Ko maximum).",
+      "excludedGenerationSettings": "Paramètres désactivés automatiquement pour cette version : {settings}. Enregistrer une nouvelle version permet de les réessayer."
     },
     "selectModel": "Choisir un modèle",
     "statusReady": "Prêt",

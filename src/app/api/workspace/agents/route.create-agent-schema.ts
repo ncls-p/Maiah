@@ -1,3 +1,4 @@
+import { generationSettingsSchema } from "@/modules/agent/generation-settings";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { AGENT_ACCESS_SCOPES } from "@/modules/agent/access-scope";
 import {
@@ -39,6 +40,8 @@ export const createAgentSchema = z
     promptSuggestions: promptSuggestionsSchema.optional(),
     providerId: z.uuid().optional(),
     modelId: z.uuid().optional(),
+    generationSettings: generationSettingsSchema.optional(),
+    toolChoice: z.enum(["auto", "required", "none"]).optional(),
     temperature: z.string().optional(),
     topP: z.string().optional(),
     maxOutputTokens: z

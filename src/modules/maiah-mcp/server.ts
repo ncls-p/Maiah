@@ -1,12 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { serverErrorResponse } from "@/lib/server-error-response";
 import { z } from "zod";
-import { availableActions, describeAction, type McpIdentity } from "./catalog";
+import { describeAction, type McpIdentity } from "./catalog";
 import { actionInput, executeAction } from "./actions";
+import { runAction, runInput } from "./run-action";
+import { searchActions } from "./search";
 
 export const searchInput = z.object({
   query: z.string().max(200).default(""),
   offset: z.number().int().min(0).default(0),
+  limit: z.number().int().min(1).max(10).default(5),
 });
 export const describeInput = z.object({ operationId: z.string().max(200) });
 export function createMaiahMcpServer(identity: McpIdentity) {
@@ -19,20 +22,12 @@ export function createMaiahMcpServer(identity: McpIdentity) {
     "maiah_search_actions",
     {
       description:
-        "Find Maiah API actions by name, path or topic. Describes capabilities, not an authorization grant. Use describe before execute. All actions run as the current user and respect API token scopes.",
+        "Find Maiah actions by resource and intent in French or English (e.g. créer assistant, workflows, scheduled tasks). Returns ready-to-use input schemas: call maiah_run_action directly without another describe call. Names and IDs come from list/read actions. All actions run as the current user and respect API token scopes.",
       inputSchema: searchInput,
       annotations: { readOnlyHint: true },
     },
-    async ({ query, offset }) => {
-      const rows = availableActions(identity).filter((action) =>
-        JSON.stringify(action).toLowerCase().includes(query.toLowerCase()),
-      );
-      return output({
-        workspaceId: identity.workspaceId,
-        actions: rows.slice(offset, offset + 30),
-        total: rows.length,
-      });
-    },
+    async ({ query, offset, limit }) =>
+      output(searchActions(identity, query, offset, limit)),
   );
   server.registerTool(
     "maiah_describe_action",
@@ -71,6 +66,27 @@ export function createMaiahMcpServer(identity: McpIdentity) {
     async (input, extra) => {
       try {
         const result = await executeAction(identity, input, extra.signal);
+        return output(result, !result.ok);
+      } catch (error) {
+        return output(serverErrorResponse(error, crypto.randomUUID()), true);
+      }
+    },
+  );
+  server.registerTool(
+    "maiah_run_action",
+    {
+      description:
+        "Preferred way to perform any Maiah action. Use the inputSchema returned by search. Pass business fields directly in input; project and organization context are automatic. Create fully configured resources in a single call where supported. Permissions are checked by the existing application routes. Do not retry ambiguous writes.",
+      inputSchema: runInput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      },
+    },
+    async (input, extra) => {
+      try {
+        const result = await runAction(identity, input, extra.signal);
         return output(result, !result.ok);
       } catch (error) {
         return output(serverErrorResponse(error, crypto.randomUUID()), true);

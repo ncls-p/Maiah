@@ -1,3 +1,4 @@
+import { generationCompatibilityForVersion } from "@/modules/agent/generation-compatibility-store";
 import { handleRoute } from "@/lib/route-handler";
 import {
   getAgentVersionById,
@@ -33,6 +34,9 @@ export async function GET(
         }
         return NextResponse.json({
           ...version,
+          excludedGenerationSettings: await generationCompatibilityForVersion(
+            version.id,
+          ),
           isActive: version.id === agent.activeVersionId,
         });
       }

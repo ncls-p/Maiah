@@ -1,3 +1,5 @@
+import { actionExclusion } from "./action-availability";
+import { inputContract } from "./input-contract";
 import { OPENAPI_ROUTE_MANIFEST } from "@/modules/openapi/generated-route-manifest";
 import { buildOpenApiDocument } from "@/modules/openapi/openapi.build-open-api-document";
 
@@ -7,19 +9,11 @@ export type McpIdentity = {
   authentication: "session" | "apiKey";
   headers: Record<string, string>;
 };
-// Authentication, inbound webhooks, recursive model execution and the MCP bridge
-// are not application actions. Everything else keeps its original route guards.
-const excluded =
-  /^\/api\/(?:auth(?:\/|$)|mcp(?:\/|$)|companion(?:\/|$)|v1(?:\/|$)|health(?:\/|$)|openapi(?:\/|$))/;
 export function availableActions(identity: McpIdentity) {
   return OPENAPI_ROUTE_MANIFEST.filter(
     (route) =>
-      !excluded.test(route.path) &&
-      !/\/(?:webhook|callback)(?:\/|$)/.test(route.path) &&
-      !/\/(?:chat|stream)$/.test(route.path) &&
-      route.auth.some((auth) => auth === identity.authentication) &&
-      route.responseKind !== "stream" &&
-      route.bodyKind !== "multipart",
+      !actionExclusion(route.path) &&
+      route.auth.some((auth) => auth === identity.authentication),
   );
 }
 export function describeAction(identity: McpIdentity, operationId: string) {
@@ -51,7 +45,7 @@ export function describeAction(identity: McpIdentity, operationId: string) {
     }
   };
   collect(contract);
-  return { ...action, contract, schemas };
+  return { ...action, inputSchema: inputContract(action), contract, schemas };
 }
 export function actionPath(
   action: ReturnType<typeof availableActions>[number],

@@ -18,7 +18,7 @@ export function ModelAdvancedMainSection14({
     <>
       <Field>
         <FieldLabel htmlFor="agent-seed" help={t("seedHelp")}>
-          {t("seed")}
+          {"seed"}
         </FieldLabel>
         <FieldContent>
           <Input
@@ -33,7 +33,7 @@ export function ModelAdvancedMainSection14({
       </Field>
       <Field>
         <FieldLabel htmlFor="agent-max-retries" help={t("maxRetriesHelp")}>
-          {t("maxRetries")}
+          {"max_retries"}
         </FieldLabel>
         <FieldContent>
           <Input

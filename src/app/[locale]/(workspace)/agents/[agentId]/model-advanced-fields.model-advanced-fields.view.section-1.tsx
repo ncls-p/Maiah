@@ -1,3 +1,4 @@
+import { ProviderOptionsField } from "./model-advanced-fields.provider-options";
 import {
   BrainCircuitIcon,
   ShieldCheckIcon,
@@ -56,13 +57,13 @@ export function ModelAdvancedFieldsSection1({
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="agent-temperature" help={t("temperatureHelp")}>
-              {t("temperature")}
+              {"temperature"}
             </FieldLabel>
             <FieldContent>
               <Input
                 id="agent-temperature"
                 type="number"
-                step={0.1}
+                step="any"
                 value={form.temperature}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, temperature: e.target.value }))
@@ -72,13 +73,13 @@ export function ModelAdvancedFieldsSection1({
           </Field>
           <Field>
             <FieldLabel htmlFor="agent-top-p" help={t("topPHelp")}>
-              {t("topP")}
+              {"top_p"}
             </FieldLabel>
             <FieldContent>
               <Input
                 id="agent-top-p"
                 type="number"
-                step={0.1}
+                step="any"
                 value={form.topP}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, topP: e.target.value }))
@@ -91,7 +92,7 @@ export function ModelAdvancedFieldsSection1({
               htmlFor="agent-max-output"
               help={t("maxOutputTokensHelp")}
             >
-              {t("maxOutputTokens")}
+              {"max_output_tokens"}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -126,7 +127,7 @@ export function ModelAdvancedFieldsSection1({
               htmlFor="agent-max-tool-calls"
               help={t("maxToolCallsHelp")}
             >
-              {t("maxToolCalls")}
+              {"max_tool_calls"}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -150,6 +151,7 @@ export function ModelAdvancedFieldsSection1({
           <ModelAdvancedMainSection4 model={model} />
           <ModelAdvancedMainSection14 model={model} />
           <ModelAdvancedMainSection1 model={model} />
+          <ProviderOptionsField model={model} />
         </FieldGroup>
       </section>
       <section className="rounded-2xl border border-border/70 bg-card/55 p-4">

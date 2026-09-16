@@ -1,3 +1,4 @@
+import { applyGenerationCompatibility } from "@/modules/agent/generation-compatibility-store";
 import {
   requireCompanion,
   CompanionAccessError,
@@ -400,9 +401,12 @@ export async function POST(
     const adapter = getAdapter(providerConfig.providerKind);
     const model = wrapLanguageModel({
       model: await applyUsageLimits(
-        adapter.createChatModel(
-          providerConfig.runtimeConfig,
-          providerConfig.modelId,
+        await applyGenerationCompatibility(
+          adapter.createChatModel(
+            providerConfig.runtimeConfig,
+            providerConfig.modelId,
+          ),
+          version.id,
         ),
         {
           userId: actorUserId,

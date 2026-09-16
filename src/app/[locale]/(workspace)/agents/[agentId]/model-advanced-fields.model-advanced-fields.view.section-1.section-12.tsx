@@ -21,7 +21,7 @@ export function ModelAdvancedMainSection12({
         htmlFor="agent-response-format"
         help={t("responseFormatHelp")}
       >
-        {t("responseFormat")}
+        {"response_format"}
       </FieldLabel>
       <FieldContent>
         <Select

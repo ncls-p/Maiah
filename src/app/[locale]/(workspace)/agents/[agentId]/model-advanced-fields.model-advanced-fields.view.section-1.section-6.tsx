@@ -11,7 +11,7 @@ export function ModelAdvancedMainSection6({
   return (
     <Field>
       <FieldLabel htmlFor="agent-top-k" help={t("topKHelp")}>
-        {t("topK")}
+        {"top_k"}
       </FieldLabel>
       <FieldContent>
         <Input

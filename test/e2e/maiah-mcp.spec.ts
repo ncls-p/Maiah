@@ -29,9 +29,19 @@ test("external MCP client obeys token scopes, project boundaries and revocation"
     return JSON.parse((result.content as { text: string }[])[0].text);
   };
   try {
-    expect((await page.request.post("/api/mcp", {headers: {Authorization: `Bearer ${token.rawKey}`, Origin: "https://foreign.example"}, data: {}})).status()).toBe(403);
+    expect(
+      (
+        await page.request.post("/api/mcp", {
+          headers: {
+            Authorization: `Bearer ${token.rawKey}`,
+            Origin: "https://foreign.example",
+          },
+          data: {},
+        })
+      ).status(),
+    ).toBe(403);
     await client.connect(transport);
-    expect((await client.listTools()).tools).toHaveLength(3);
+    expect((await client.listTools()).tools).toHaveLength(4);
     const discovery = await client.callTool({
       name: "maiah_search_actions",
       arguments: { query: "/api/workspace/agents" },

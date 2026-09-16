@@ -1,3 +1,8 @@
+import {
+  generationCallSettings,
+  mergeProviderOptions,
+} from "./generation-settings";
+import { applyGenerationCompatibility } from "@/modules/agent/generation-compatibility-store";
 import { applyUsageLimits } from "@/modules/usage/limited-language-model";
 import { buildBoundTools } from "@/app/api/workspace/[agentId]/chat/route-support";
 import {
@@ -70,7 +75,10 @@ export async function executeResolvedAgent(
     }
     const adapter = getAdapter(provider.providerKind);
     const model = await applyUsageLimits(
-      adapter.createChatModel(provider.runtimeConfig, provider.modelId),
+      await applyGenerationCompatibility(
+        adapter.createChatModel(provider.runtimeConfig, provider.modelId),
+        input.resolved.version.id,
+      ),
       {
         userId: input.userId,
         workspaceId: input.billingWorkspaceId ?? input.workspaceId,
@@ -78,6 +86,7 @@ export async function executeResolvedAgent(
         modelId: provider.modelRecordId ?? null,
       },
     );
+    const generationSettings = generationCallSettings(input.resolved.version);
     const reasoningSettings = reasoningCallSettings(
       input.reasoningEffort,
       provider.runtimeConfig,
@@ -212,14 +221,13 @@ export async function executeResolvedAgent(
         ...(fittedContext
           ? { messages: fittedContext.messages }
           : { prompt: input.prompt }),
-        temperature: input.resolved.version.temperature
-          ? Number.parseFloat(input.resolved.version.temperature)
-          : undefined,
-        topP: input.resolved.version.topP
-          ? Number.parseFloat(input.resolved.version.topP)
-          : undefined,
+        ...generationSettings,
         maxOutputTokens: fittedContext?.maxOutputTokens ?? maxOutputTokens,
         ...reasoningSettings,
+        providerOptions: mergeProviderOptions(
+          generationSettings.providerOptions,
+          reasoningSettings.providerOptions,
+        ),
         tools,
         toolChoice: configuredToolChoice,
         toolApproval: bound.toolApproval,
@@ -408,14 +416,13 @@ export async function executeResolvedAgent(
               model,
               instructions: recoveryInstructions,
               messages: recoveryContext.messages,
-              temperature: input.resolved.version.temperature
-                ? Number.parseFloat(input.resolved.version.temperature)
-                : undefined,
-              topP: input.resolved.version.topP
-                ? Number.parseFloat(input.resolved.version.topP)
-                : undefined,
+              ...generationSettings,
               maxOutputTokens: recoveryContext.maxOutputTokens,
               ...reasoningSettings,
+              providerOptions: mergeProviderOptions(
+                generationSettings.providerOptions,
+                reasoningSettings.providerOptions,
+              ),
               abortSignal: deadline.signal,
               telemetry: {
                 functionId: "ai-hub.agent-run.empty-response-recovery",

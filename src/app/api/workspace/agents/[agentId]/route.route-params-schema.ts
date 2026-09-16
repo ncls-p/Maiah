@@ -1,3 +1,4 @@
+import { generationSettingsSchema } from "@/modules/agent/generation-settings";
 import {
   handleRoute,
   requireResourcePermissionAsync,
@@ -7,10 +8,6 @@ import {
   delegationBindingInputSchema,
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
-import {
-  REASONING_PRESETS,
-  reasoningPresetSchema,
-} from "@/modules/agent/reasoning-presets";
 import {
   canEditAgentForScope,
   getVisibleAgentById,
@@ -98,20 +95,7 @@ export const updateAgentSchema = z.object({
   orchestrationPolicy: orchestrationPolicySchema.optional(),
   delegationBindings: z.array(delegationBindingInputSchema).optional(),
   toolChoice: z.enum(["auto", "required", "none"]).optional(),
-  generationSettings: z
-    .object({
-      topK: z.number().int().positive().optional(),
-      presencePenalty: z.number().optional(),
-      frequencyPenalty: z.number().optional(),
-      seed: z.number().int().optional(),
-      maxRetries: z.number().int().min(0).optional(),
-      stopSequences: z.array(z.string()).optional(),
-      reasoningPresets: z
-        .array(reasoningPresetSchema)
-        .max(REASONING_PRESETS.length)
-        .optional(),
-    })
-    .optional(),
+  generationSettings: generationSettingsSchema.optional(),
   responseFormat: z.enum(["text", "json_object"]).optional(),
   memoryPolicy: z
     .object({

@@ -1,3 +1,5 @@
+import { generationCallSettings } from "@/modules/agent/generation-settings";
+import { applyGenerationCompatibility } from "@/modules/agent/generation-compatibility-store";
 import { buildWorkflowBuilderCapabilities } from "@/modules/workflows/builder-capabilities";
 import { applyUsageLimits } from "@/modules/usage/limited-language-model";
 import { stepCountIs, streamText } from "ai";
@@ -231,9 +233,12 @@ export async function POST(
         .join("\n\n");
       const adapter = getAdapter(builder.provider.providerKind);
       const model = await applyUsageLimits(
-        adapter.createChatModel(
-          builder.provider.runtimeConfig,
-          builder.provider.modelId,
+        await applyGenerationCompatibility(
+          adapter.createChatModel(
+            builder.provider.runtimeConfig,
+            builder.provider.modelId,
+          ),
+          builder.version.id,
         ),
         {
           userId: session.user.id,
@@ -251,12 +256,7 @@ export async function POST(
           builder.version.maxOutputTokens ?? 4_000,
           4_000,
         ),
-        temperature: builder.version.temperature
-          ? Number.parseFloat(builder.version.temperature)
-          : undefined,
-        topP: builder.version.topP
-          ? Number.parseFloat(builder.version.topP)
-          : undefined,
+        ...generationCallSettings(builder.version),
         abortSignal: deadline.signal,
         stopWhen: stepCountIs(24),
         tools: {
