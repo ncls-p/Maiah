@@ -152,6 +152,8 @@ function routeTag(apiPath) {
 }
 
 function authModes(apiPath, source) {
+  if (apiPath === "/api/mcp") return ["apiKey"];
+  if (/allowApiKey:\s*false/.test(source)) return ["session"];
   if (apiPath.startsWith("/api/v1/")) return ["apiKey"];
   if (apiPath.startsWith("/api/auth/") || apiPath === "/api/health" || apiPath === "/api/openapi") {
     return [];

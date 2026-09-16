@@ -1,3 +1,4 @@
+import { companionTools, COMPANION_GUIDANCE } from "@/modules/companion/tools";
 import { fallbackSystemPrompt } from "@/lib/copy-defaults";
 import { logger } from "@/lib/logger";
 import { resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
@@ -113,7 +114,7 @@ export async function prepareStandardChatConfig(input: {
           }),
       })
     : { tools: {}, toolApproval: undefined };
-  const tools: ToolSet = boundToolConfig.tools;
+  const tools: ToolSet = { ...boundToolConfig.tools, ...(context.companion && shouldUseToolCalling ? companionTools(context.companion) : {}) };
   const availableToolNames = Object.keys(tools);
   logger.info("Chat request accepted", {
     requestId,
@@ -216,6 +217,7 @@ export async function prepareStandardChatConfig(input: {
   const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value ?? "en";
   const systemPrompt = [
     version.systemPrompt?.trim() || fallbackSystemPrompt(localeCookie),
+    context.companion ? COMPANION_GUIDANCE : null,
     skillsPrompt,
     responseFormatGuidance,
     guardrailGuidance,

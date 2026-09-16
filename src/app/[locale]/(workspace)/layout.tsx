@@ -1,3 +1,4 @@
+import { Companion } from "@/components/companion/companion";
 import { redirect } from "@/i18n/navigation";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
@@ -46,6 +47,7 @@ export default async function WorkspaceLayout({
       >
         <div className="page-content h-full">{children}</div>
       </AppShell>
+      <Companion userId={user.id} />
     </WorkspaceProvider>
   );
 }

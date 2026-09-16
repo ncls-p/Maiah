@@ -17,6 +17,7 @@ registerAiSdkDevTools();
 export const chatRequestSchema = z
   .object({
     workspaceId: z.uuid().optional(),
+    companionContextId: z.uuid().optional(),
     content: z.string().trim().max(MAX_INPUT_CHARACTERS),
     conversationId: z.uuid().nullable().optional(),
     ephemeral: z.boolean().optional(),
