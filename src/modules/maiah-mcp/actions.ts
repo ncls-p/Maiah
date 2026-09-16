@@ -20,7 +20,13 @@ export async function executeAction(
     (item) => item.operationId === input.operationId,
   );
   if (!action) throw new Error("Unknown or unavailable action");
-  const path = actionPath(action, input.parameters, input.query);
+  const query = { ...input.query };
+  if (
+    action.queryParameters.includes("workspaceId") &&
+    query.workspaceId === undefined
+  )
+    query.workspaceId = identity.workspaceId;
+  const path = actionPath(action, input.parameters, query);
   const serialized =
     input.body === undefined ? undefined : JSON.stringify(input.body);
   if (serialized && serialized.length > 256_000)

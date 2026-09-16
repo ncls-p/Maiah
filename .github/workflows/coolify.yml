@@ -1038,7 +1038,9 @@ jobs:
               '{name: $name, description: $description, instant_deploy: false, docker_compose_raw: $docker_compose_raw, force_domain_override: true, is_container_label_escape_enabled: true, urls: [{name: "app", url: $app_url}]}'
           )"
 
+          SERVICE_DEPLOY_ACTION="restart?latest=true"
           if [[ -z "$SERVICE_UUID" ]]; then
+            SERVICE_DEPLOY_ACTION="start"
             CREATE_BODY="$(
               jq -nc \
                 --arg name "${COOLIFY_SERVICE_NAME}" \
@@ -1133,16 +1135,15 @@ jobs:
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
           echo "Using sandbox runner image ${AI_HUB_SANDBOX_IMAGE}"
           echo "Using ServiceNow MCP gateway image ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}"
-          # Updating a running service and restarting its containers does not
-          # apply Coolify's pending configuration. Trigger a real resource
-          # deployment, then verify the release identity through health below.
+          # /deploy starts services but can leave a running stack on its old
+          # images. Restart the whole service with latest=true, equivalent to
+          # the UI's "Restart (pull latest)"; use start only for a new stack.
+          # Verify the actual release through health, not just the API receipt.
           DEPLOY_RESPONSE="$(
-            api POST "/deploy" \
-              "$(jq -nc --arg uuid "${SERVICE_UUID}" '{uuid: $uuid, force: true}')"
+            api POST "/services/${SERVICE_UUID}/${SERVICE_DEPLOY_ACTION}"
           )"
           DEPLOY_MESSAGE="$(
-            jq -r --arg uuid "${SERVICE_UUID}" \
-              '.deployments[]? | select(.resource_uuid == $uuid) | .message // empty' \
+            jq -r '.message // empty' \
               <<<"${DEPLOY_RESPONSE}"
           )"
           if [[ -z "${DEPLOY_MESSAGE}" ]]; then

@@ -14,7 +14,18 @@ export function availableActions(identity: McpIdentity) {
     (route) =>
       !actionExclusion(route.path) &&
       route.auth.some((auth) => auth === identity.authentication),
-  );
+  ).map((route) => {
+    // Some routes parse their project query inside imported helpers, outside
+    // the OpenAPI scanner. Workspace routes still receive the caller context.
+    const queryParameters: string[] = [...route.queryParameters];
+    if (
+      route.path.startsWith("/api/workspace/") &&
+      route.bodyKind === "none" &&
+      !queryParameters.includes("workspaceId")
+    )
+      queryParameters.push("workspaceId");
+    return { ...route, queryParameters };
+  });
 }
 export function describeAction(identity: McpIdentity, operationId: string) {
   const action = availableActions(identity).find(

@@ -38,17 +38,17 @@ describe("runtime packaging guardrails", () => {
     );
   });
 
-  it("applies pending Coolify service configuration through the deploy API", () => {
+  it("restarts existing Coolify services with current images and starts new stacks", () => {
     const workflow = projectFile(".github/workflows/coolify.yml");
 
-    expect(workflow).toContain('api POST "/deploy"');
-    expect(workflow).toContain("'{uuid: $uuid, force: true}'");
+    expect(workflow).toContain('SERVICE_DEPLOY_ACTION="restart?latest=true"');
+    expect(workflow).toMatch(
+      /if \[\[ -z "\$SERVICE_UUID" \]\]; then\s+SERVICE_DEPLOY_ACTION="start"/,
+    );
     expect(workflow).toContain(
-      ".deployments[]? | select(.resource_uuid == $uuid)",
+      'api POST "/services/${SERVICE_UUID}/${SERVICE_DEPLOY_ACTION}"',
     );
-    expect(workflow).not.toContain(
-      'api POST "/services/${SERVICE_UUID}/restart?latest=true"',
-    );
+    expect(workflow).not.toContain('api POST "/deploy"');
   });
 
   it("waits until Coolify serves the requested deployment version", () => {

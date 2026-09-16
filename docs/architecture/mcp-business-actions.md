@@ -6,7 +6,11 @@ model turn. `maiah_run_action` accepts `operationId` and one flat `input` object
 It routes path/query/body fields, fills declared project/organization context and
 normalizes the existing assistant numeric-string fields. Explicit scope overrides
 still go through the original HTTP route and its permissions. No parallel service
-layer or privileged service identity is introduced.
+layer or privileged service identity is introduced. Reads and other bodyless
+workspace actions always expose and default `workspaceId`, including routes whose
+query parser lives in an imported helper. The legacy execution tool uses the same
+default. Search falls back to ranked matches for multi-intent requests instead of
+returning an empty catalog; repeated synonyms do not inflate relevance scores.
 
 Known IDs and versions come from read/list results. Creation accepts the model,
 prompt, generation settings and capabilities together in the existing atomic

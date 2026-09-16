@@ -4,6 +4,7 @@ vi.mock("@/modules/organization/workspace-organization", () => ({
   organizationIdForWorkspace: org,
 }));
 import { runAction } from "@/modules/maiah-mcp/run-action";
+import { executeAction } from "@/modules/maiah-mcp/actions";
 import { searchActions } from "@/modules/maiah-mcp/search";
 import { multipartBody } from "@/modules/maiah-mcp/files";
 import { isApplicationPage } from "@/modules/companion/navigation";
@@ -16,6 +17,46 @@ const identity: McpIdentity = {
 };
 afterEach(() => vi.unstubAllGlobals());
 describe("MCP business actions", () => {
+  it("discovers actions for a request with multiple intents and resources", () => {
+    const results = searchActions(
+      identity,
+      "assistant lister rechercher lire créer assistant privé visibilité sélecteur modèle fournisseur température top_p max_output_tokens outils connexions",
+      0,
+      10,
+    );
+    const ids = results.actions.map((action) => action.operationId);
+    expect(ids).toContain("getWorkspaceAgents");
+    expect(ids).toContain("postWorkspaceAgents");
+  });
+  it("supplies project context when an assistant read parses its query in a helper", async () => {
+    const fetch = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(Response.json({ agent: { id: "agent" } })),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const discovered = searchActions(identity, "getWorkspaceAgentsAgentId")
+      .actions[0];
+    expect(discovered.inputSchema.properties).toHaveProperty("workspaceId");
+    await runAction(identity, {
+      operationId: discovered.operationId,
+      input: { agentId: "agent" },
+    });
+    await executeAction(identity, {
+      operationId: discovered.operationId,
+      parameters: { agentId: "agent" },
+      query: {},
+    });
+    for (const [url] of fetch.mock.calls)
+      expect(url.searchParams.get("workspaceId")).toBe(identity.workspaceId);
+    await runAction(identity, {
+      operationId: discovered.operationId,
+      input: { agentId: "agent", workspaceId: "other" },
+    });
+    expect(fetch.mock.calls[2][0].searchParams.get("workspaceId")).toBe(
+      "other",
+    );
+  });
   it.each([
     "créer un assistant privé LinkedIn",
     "create assistant",
