@@ -27,7 +27,6 @@ import { users } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -73,12 +72,7 @@ export const updateAgentSchema = z.object({
   modelId: z.uuid().optional(),
   temperature: z.string().optional(),
   topP: z.string().optional(),
-  maxOutputTokens: z
-    .number()
-    .int()
-    .min(0)
-    .max(MAX_GENERATION_OUTPUT_TOKENS)
-    .optional(),
+  maxOutputTokens: z.number().int().min(0).optional(),
   maxToolCalls: z.number().int().min(0).optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
@@ -100,13 +94,13 @@ export const updateAgentSchema = z.object({
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      summaryThresholdTokens: z.number().int().min(1_000).optional(),
-      summaryMaxTokens: z.number().int().min(128).optional(),
+      summaryThresholdTokens: z.number().int().positive().optional(),
+      summaryMaxTokens: z.number().int().positive().optional(),
       contextWindowTokens: z
-        .union([z.literal(0), z.number().int().min(2_000)])
+        .union([z.literal(0), z.number().int().positive()])
         .optional(),
-      maxMessages: z.number().int().min(2).optional(),
-      maxInputCharacters: z.number().int().min(1).max(200_000).optional(),
+      maxMessages: z.number().int().positive().optional(),
+      maxInputCharacters: z.number().int().positive().optional(),
     })
     .optional(),
   guardrails: z

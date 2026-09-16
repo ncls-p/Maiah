@@ -5,11 +5,10 @@ import {
   runtimeDeadlineAt,
   timeoutMsUntil,
 } from "@/modules/agent/runtime-policy";
-import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 import { describe, expect, it } from "vitest";
 
 describe("agent runtime policy", () => {
-  it("keeps tool calls configurable and caps output tokens", () => {
+  it("honors configured output and tool limits when the provider has no advertised ceiling", () => {
     expect(
       resolveAgentRuntimeLimits({
         maxToolCalls: 9_999,
@@ -18,11 +17,11 @@ describe("agent runtime policy", () => {
     ).toEqual({
       maxToolCalls: 9_999,
       maxSteps: 9_999 + agentRuntimePolicy.stepOverhead,
-      maxOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+      maxOutputTokens: 9_999_999,
     });
   });
 
-  it("caps the provider output limit for an automatic tool-free run", () => {
+  it("uses the advertised provider limit for an automatic tool-free run", () => {
     expect(
       resolveAgentRuntimeLimits({
         maxToolCalls: 0,
@@ -32,7 +31,7 @@ describe("agent runtime policy", () => {
     ).toEqual({
       maxToolCalls: 0,
       maxSteps: 1,
-      maxOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+      maxOutputTokens: 131_072,
     });
   });
 

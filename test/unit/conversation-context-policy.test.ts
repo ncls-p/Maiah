@@ -4,7 +4,7 @@ import type { ModelMessage } from "ai";
 import {
   CONTEXT_SAFETY_MARGIN_TOKENS,
   DEFAULT_MAX_INPUT_CHARACTERS,
-  MAX_GENERATION_OUTPUT_TOKENS,
+  DEFAULT_GENERATION_OUTPUT_TOKENS,
   fitModelHistoryToContext,
   limitModelHistory,
   resolveContextWindowTokens,
@@ -25,7 +25,7 @@ describe("conversation context policy", () => {
       64_000,
     );
     expect(resolveMaxInputCharacters({ maxInputCharacters: 999_999 })).toBe(
-      200_000,
+      999_999,
     );
   });
 
@@ -86,14 +86,16 @@ describe("conversation context policy", () => {
     });
 
     expect(result.messages).toEqual(messages);
-    expect(result.maxOutputTokens).toBe(MAX_GENERATION_OUTPUT_TOKENS);
+    expect(result.maxOutputTokens).toBeGreaterThan(
+      DEFAULT_GENERATION_OUTPUT_TOKENS,
+    );
   });
 
   it("keeps a safety margin between estimated input and output", () => {
     const result = fitModelHistoryToContext({
       messages: [{ role: "user", content: "a".repeat(400) }],
       contextWindowTokens: 10_000,
-      requestedOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+      requestedOutputTokens: DEFAULT_GENERATION_OUTPUT_TOKENS,
       systemPrompt: "",
     });
 
@@ -112,7 +114,9 @@ describe("conversation context policy", () => {
         systemPrompt: "",
       });
 
-      expect(result.maxOutputTokens).toBe(MAX_GENERATION_OUTPUT_TOKENS);
+      expect(result.maxOutputTokens).toBe(
+        contextWindowTokens - 64 - 6_543 - CONTEXT_SAFETY_MARGIN_TOKENS,
+      );
       expect(result.maxOutputTokens + 6_608).toBeLessThan(contextWindowTokens);
     },
   );
@@ -121,7 +125,7 @@ describe("conversation context policy", () => {
     const result = fitModelHistoryToContext({
       messages: [],
       modelMaxOutputTokens: 4_096,
-      requestedOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
+      requestedOutputTokens: DEFAULT_GENERATION_OUTPUT_TOKENS,
       systemPrompt: "",
     });
 

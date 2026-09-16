@@ -20,7 +20,20 @@ test("MCP creates a private configured assistant in one call and preserves versi
     data: {
       workspaceId,
       name: "MCP business actions test",
-      scopes: ["agents.create", "agents.get", "agents.update", "agents.list"],
+      scopes: [
+        "agents.create",
+        "agents.get",
+        "agents.update",
+        "agents.list",
+        "agents.chat",
+        "workflows.view",
+        "knowledgeBases.viewAllowed",
+        "tools.view",
+        "mcpServers.get",
+        "conversations.viewOwn",
+        "providers.viewMetadata",
+        "models.view",
+      ],
     },
   });
   expect(tokenResponse.status()).toBe(201);
@@ -40,6 +53,22 @@ test("MCP creates a private configured assistant in one call and preserves versi
   let createdId: string | undefined;
   try {
     await client.connect(transport);
+    for (const operationId of [
+      "getWorkspaceConversationFolders",
+      "getWorkspaceKnowledgeBases",
+      "getWorkspaceTools",
+      "getWorkspaceMcpServers",
+      "getWorkspaceSkills",
+      "getWorkspaceWorkflows",
+      "getWorkspaceScheduledTasks",
+      "getWorkspaceProviders",
+    ]) {
+      const result = await call("maiah_run_action", { operationId, input: {} });
+      expect(result, operationId + ": " + JSON.stringify(result)).toMatchObject(
+        { ok: true, status: 200 },
+      );
+    }
+
     const discovery = await call("maiah_search_actions", {
       query: "créer assistant privé",
     });
@@ -109,6 +138,13 @@ test("MCP creates a private configured assistant in one call and preserves versi
     );
     await expect(page.getByLabel("top_p", { exact: true })).toHaveValue("0.8");
     await page.getByLabel("top_k", { exact: true }).fill("45");
+    await page.getByLabel("temperature", { exact: true }).fill("0.7533");
+    await page.getByLabel("presence_penalty", { exact: true }).fill("4.25");
+    await page.getByLabel("max_output_tokens", { exact: true }).fill("50000");
+    await page.locator("#agent-max-input-characters").fill("999999");
+    await page.locator("#agent-summary-max-tokens").fill("17");
+    await page.locator("#agent-memory-summary-threshold").fill("31");
+
     await page
       .getByLabel("provider_options", { exact: true })
       .fill('{"openai":{"textVerbosity":"high","parallelToolCalls":false}}');
@@ -133,6 +169,19 @@ test("MCP creates a private configured assistant in one call and preserves versi
     await page.reload();
     await page.getByRole("button", { name: /^Advanced Technical ID/ }).click();
     await expect(page.getByLabel("top_k", { exact: true })).toHaveValue("45");
+    await expect(page.getByLabel("temperature", { exact: true })).toHaveValue(
+      "0.7533",
+    );
+    await expect(
+      page.getByLabel("presence_penalty", { exact: true }),
+    ).toHaveValue("4.25");
+    await expect(
+      page.getByLabel("max_output_tokens", { exact: true }),
+    ).toHaveValue("50000");
+    await expect(page.locator("#agent-max-input-characters")).toHaveValue(
+      "999999",
+    );
+    await expect(page.locator("#agent-summary-max-tokens")).toHaveValue("17");
     expect(
       JSON.parse(
         await page.getByLabel("provider_options", { exact: true }).inputValue(),

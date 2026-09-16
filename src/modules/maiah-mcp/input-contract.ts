@@ -1,4 +1,3 @@
-import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 import { z } from "zod";
 import { uploadSchema } from "./files";
 import { MCP_BODY_CONTRACTS } from "./generated-contracts";
@@ -82,7 +81,6 @@ export function inputContract(
     properties.maxOutputTokens = {
       type: "integer",
       minimum: 0,
-      maximum: MAX_GENERATION_OUTPUT_TOKENS,
     };
   }
   return {

@@ -1,7 +1,6 @@
 import type { Agent, AgentForm } from "./types";
 import { defaultGenParams } from "./types";
 import { normalizeReasoningPresets } from "@/modules/agent/reasoning-presets";
-import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 export type AgentVersionPayload = {
   excludedGenerationSettings?: string[];
@@ -52,7 +51,7 @@ function optionalNumericField(value: number | null | undefined): string {
 
 function outputTokenField(value: number | null | undefined): string {
   if (value === null || value === undefined) return "";
-  return String(Math.min(value, MAX_GENERATION_OUTPUT_TOKENS));
+  return String(value);
 }
 
 function buildGenerationSettings(activeVersion: AgentVersionPayload | null) {

@@ -17,6 +17,7 @@ export function ModelAdvancedMainSection6({
         <Input
           id="agent-top-k"
           type="number"
+          step="any"
           placeholder={t("providerDefault")}
           value={form.generationSettings.topK}
           onChange={(e) =>

@@ -4,7 +4,14 @@ Advanced controls display API names (`temperature`, `top_p`, `top_k`,
 `presence_penalty`, `frequency_penalty`, `seed`, `stop`,
 `max_output_tokens`, `max_retries`, `tool_choice`) with localized help.
 The existing editor/API fields retain their names for backwards compatibility.
-A blank optional setting leaves the provider default. Zero is preserved.
+A blank optional setting leaves the provider default. Zero is preserved. Numeric
+inputs impose no browser min/max or step increments. Counts retain integer/positive
+semantics required by the runtime; sampling ranges are left to the provider.
+There is no application-wide 16,384-token output cap or 200,000-character input
+cap. Explicit settings are saved unchanged; actual model output/context limits,
+workspace quotas and cancellation remain authoritative. The 16,384-token value is
+only a fallback when neither the assistant nor model specifies an output budget.
+Memory summary thresholds and sizes accept any positive integer.
 
 `generationSettings.providerOptions` is an optional JSON object in **AI SDK
 format**, grouped by provider namespace. For example:

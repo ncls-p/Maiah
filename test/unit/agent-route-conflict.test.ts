@@ -148,7 +148,11 @@ describe("agent configuration route conflicts", () => {
     expect(routeMocks.archiveAgent).not.toHaveBeenCalled();
   });
 
-  it("rejects output budgets above the application cap", async () => {
+  it("accepts output budgets above the former application cap", async () => {
+    vi.mocked(updateAgent).mockResolvedValueOnce({
+      agent: { id: agentId, promptSuggestionsJson: [] },
+      version: {},
+    } as never);
     const response = await PATCH(
       patchRequest({
         workspaceId,
@@ -159,8 +163,10 @@ describe("agent configuration route conflicts", () => {
       { params: Promise.resolve({ agentId }) },
     );
 
-    expect(response.status).toBe(400);
-    expect(updateAgent).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(updateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ maxOutputTokens: 500_000, maxToolCalls: 100 }),
+    );
   });
 
   it("returns a useful error when a skill is no longer accessible", async () => {

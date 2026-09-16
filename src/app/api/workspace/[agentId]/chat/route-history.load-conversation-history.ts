@@ -42,7 +42,7 @@ export async function loadConversationHistory(
       ? Math.floor(summaryOrLegacyLimit)
       : typeof summaryOrLegacyLimit === "object" &&
           Number.isFinite(summaryOrLegacyLimit.maxMessages)
-        ? Math.max(2, Math.floor(summaryOrLegacyLimit.maxMessages ?? 2))
+        ? Math.max(1, Math.floor(summaryOrLegacyLimit.maxMessages ?? 1))
         : null;
   const summaryEnabled =
     summaryOrLegacyLimit === true ||

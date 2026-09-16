@@ -4,12 +4,12 @@ import { reasoningPresetSchema, REASONING_PRESETS } from "./reasoning-presets";
 
 // Provider options are JSON, never headers, credentials or executable code.
 export const generationSettingsSchema = z.object({
-  topK: z.number().int().positive().optional(),
-  presencePenalty: z.number().min(-2).max(2).optional(),
-  frequencyPenalty: z.number().min(-2).max(2).optional(),
+  topK: z.number().int().nonnegative().optional(),
+  presencePenalty: z.number().optional(),
+  frequencyPenalty: z.number().optional(),
   seed: z.number().int().optional(),
-  maxRetries: z.number().int().min(0).max(10).optional(),
-  stopSequences: z.array(z.string().min(1).max(1000)).max(16).optional(),
+  maxRetries: z.number().int().min(0).optional(),
+  stopSequences: z.array(z.string().min(1)).optional(),
   reasoningPresets: z
     .array(reasoningPresetSchema)
     .max(REASONING_PRESETS.length)

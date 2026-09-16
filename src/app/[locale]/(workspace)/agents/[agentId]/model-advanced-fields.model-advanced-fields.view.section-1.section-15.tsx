@@ -33,8 +33,7 @@ export function ModelAdvancedMainSection15({
           <Input
             id="agent-context-window"
             type="number"
-            min={0}
-            step={1}
+            step="any"
             placeholder={
               selectedModel?.contextWindow
                 ? String(selectedModel.contextWindow)
@@ -65,9 +64,7 @@ export function ModelAdvancedMainSection15({
           <Input
             id="agent-max-input-characters"
             type="number"
-            min={1}
-            max={200000}
-            step={1}
+            step="any"
             value={form.memoryPolicy.maxInputCharacters}
             onChange={(event) =>
               update({ maxInputCharacters: event.target.value })
@@ -86,8 +83,7 @@ export function ModelAdvancedMainSection15({
           <Input
             id="agent-history-message-limit"
             type="number"
-            min={2}
-            step={1}
+            step="any"
             placeholder={t("unlimited")}
             value={form.memoryPolicy.maxMessages}
             onChange={(event) => update({ maxMessages: event.target.value })}
@@ -105,9 +101,7 @@ export function ModelAdvancedMainSection15({
           <Input
             id="agent-summary-max-tokens"
             type="number"
-            min={128}
-            max={16000}
-            step={1}
+            step="any"
             value={form.memoryPolicy.summaryMaxTokens}
             onChange={(event) =>
               update({ summaryMaxTokens: event.target.value })

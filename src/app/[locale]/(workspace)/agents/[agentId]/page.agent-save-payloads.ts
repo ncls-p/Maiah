@@ -36,7 +36,10 @@ export function buildEssentialPayload(
       providerOptions: form.generationSettings.providerOptions?.trim()
         ? JSON.parse(form.generationSettings.providerOptions)
         : undefined,
-      topK: Number(form.generationSettings.topK) || undefined,
+      topK:
+        form.generationSettings.topK === ""
+          ? undefined
+          : Number(form.generationSettings.topK),
       presencePenalty:
         form.generationSettings.presencePenalty === ""
           ? undefined
