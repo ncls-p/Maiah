@@ -1,3 +1,4 @@
+import { isApplicationPage } from "@/modules/companion/navigation";
 import {
   SENSITIVE_FIELD,
   redactPageText,
@@ -168,11 +169,10 @@ export async function applyUiAction(
   refresh: () => void,
 ) {
   if (action.action === "navigate") {
-    if (
-      !/^\/(en|fr)\/(?!auth(?:\/|$))[^\\?#]*$/.test(action.path) ||
-      action.path.includes("..")
-    )
-      throw new Error("Only application page navigation is allowed");
+    if (!isApplicationPage(action.path))
+      throw new Error(
+        "Unknown application page; use the exact page returned by MCP or a visible navigation link",
+      );
     navigate(action.path);
     return;
   }

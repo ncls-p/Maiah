@@ -69,7 +69,29 @@ describe("companion tools", () => {
       expect.objectContaining({ operationId: "getWorkspaces" }),
       expect.any(AbortSignal),
     );
-    expect(mocks.authorize).toHaveBeenCalledTimes(3);
+    expect(
+      JSON.stringify(
+        await run("maiah_run_action", {
+          operationId: "postWorkspaceAgents",
+          input: {
+            name: "LinkedIn",
+            systemPrompt: "Write posts",
+            sharingMode: "personal",
+          },
+        }),
+      ),
+    ).toContain("created");
+    expect(mocks.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ userId: "user" }),
+      expect.objectContaining({
+        body: expect.objectContaining({
+          name: "LinkedIn",
+          workspaceId: "workspace",
+        }),
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(mocks.authorize).toHaveBeenCalledTimes(4);
   });
   it("isolates page tools and forwards cancellation", async () => {
     mocks.page.mockResolvedValue({ path: "/en/agents" });

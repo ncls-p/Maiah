@@ -30,17 +30,17 @@ describe("conversation summary policy", () => {
     );
   });
 
-  it("enforces the supported minimum threshold", () => {
+  it("honors thresholds below the former arbitrary minimum", () => {
     expect(
       shouldSummarizeConversation(
         { enabled: true, summaryThresholdTokens: 10 },
-        999,
+        9,
       ),
     ).toBe(false);
     expect(
       shouldSummarizeConversation(
         { enabled: true, summaryThresholdTokens: 10 },
-        1_000,
+        10,
       ),
     ).toBe(true);
   });

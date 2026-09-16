@@ -129,6 +129,9 @@ jobs:
       - name: Verify OpenAPI route coverage
         run: npm run openapi:check
 
+      - name: Check generated MCP contracts and page catalog
+        run: npm run mcp:check
+
       - name: Verify permission inventory
         run: npm run permissions:check
 

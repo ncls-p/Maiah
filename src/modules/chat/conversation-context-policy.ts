@@ -1,12 +1,11 @@
 import type { ModelMessage } from "ai";
 
 export const DEFAULT_MAX_INPUT_CHARACTERS = 32_000;
-export const MAX_INPUT_CHARACTERS = 200_000;
 export const DEFAULT_SUMMARY_THRESHOLD_TOKENS = 24_000;
 export const DEFAULT_SUMMARY_MAX_TOKENS = 1_200;
 export const MIN_GENERATION_OUTPUT_TOKENS = 1_024;
 export const CONTEXT_SAFETY_MARGIN_TOKENS = 1_024;
-export const MAX_GENERATION_OUTPUT_TOKENS = 16_384;
+export const DEFAULT_GENERATION_OUTPUT_TOKENS = 16_384;
 
 export interface ConversationContextPolicy {
   enabled?: boolean;
@@ -33,10 +32,7 @@ export function resolveMaxInputCharacters(
 ) {
   const configured = policy?.maxInputCharacters;
   if (!Number.isFinite(configured)) return DEFAULT_MAX_INPUT_CHARACTERS;
-  return Math.min(
-    MAX_INPUT_CHARACTERS,
-    Math.max(1, Math.floor(configured ?? DEFAULT_MAX_INPUT_CHARACTERS)),
-  );
+  return Math.max(1, Math.floor(configured ?? DEFAULT_MAX_INPUT_CHARACTERS));
 }
 
 function contentCharacters(content: ModelMessage["content"]): number {
@@ -66,9 +62,8 @@ export function fitModelHistoryToContext(input: {
 }): { messages: ModelMessage[]; maxOutputTokens: number } {
   const modelMaxOutputTokens = Number.isFinite(input.modelMaxOutputTokens)
     ? Math.max(1, Math.floor(input.modelMaxOutputTokens ?? 1))
-    : MAX_GENERATION_OUTPUT_TOKENS;
+    : Infinity;
   const requestedOutputTokens = Math.min(
-    MAX_GENERATION_OUTPUT_TOKENS,
     modelMaxOutputTokens,
     Math.max(1, Math.floor(input.requestedOutputTokens)),
   );
@@ -76,8 +71,8 @@ export function fitModelHistoryToContext(input: {
     return { messages: input.messages, maxOutputTokens: requestedOutputTokens };
   }
   const contextWindowTokens = Math.max(
-    2_000,
-    Math.floor(input.contextWindowTokens ?? 2_000),
+    1,
+    Math.floor(input.contextWindowTokens ?? 1),
   );
   const fixedTokens = Math.ceil(input.systemPrompt.length / 4) + 64;
   const allMessageTokens = input.messages.reduce(

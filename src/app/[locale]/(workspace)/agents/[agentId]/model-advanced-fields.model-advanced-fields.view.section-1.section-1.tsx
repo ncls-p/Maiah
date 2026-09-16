@@ -11,7 +11,7 @@ export function ModelAdvancedMainSection1({
   return (
     <Field className="sm:col-span-2">
       <FieldLabel htmlFor="agent-stop-sequences" help={t("stopSequencesHelp")}>
-        {t("stopSequences")}
+        {"stop"}
       </FieldLabel>
       <FieldContent>
         <Textarea

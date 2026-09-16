@@ -6,7 +6,7 @@ import {
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import { type ToolBindingInput } from "@/modules/tool/use-cases";
 import type { AgentAccessScope } from "./access-scope";
-import type { ReasoningPreset } from "./reasoning-presets";
+import type { AgentGenerationSettings } from "./generation-settings";
 import { db } from "@/server/infrastructure/db";
 import {
   agents,
@@ -22,7 +22,9 @@ export type AgentVersionRow = typeof agentVersions.$inferSelect;
 type AgentSharingMode = "personal" | "marketplace" | "specific_user";
 type AgentKind = "assistant" | "orchestrator";
 export type AgentCurationLabel =
-  "recommended" | "organization_created" | "none";
+  | "recommended"
+  | "organization_created"
+  | "none";
 
 export interface CreateAgentInput {
   workspaceId: string;
@@ -39,6 +41,8 @@ export interface CreateAgentInput {
   topP?: string;
   maxOutputTokens?: number;
   maxToolCalls?: number;
+  generationSettings?: AgentGenerationSettings;
+  toolChoice?: AgentToolChoice;
   toolPreset?: AgentToolPreset;
   toolBindings?: ToolBindingInput[];
   knowledgeBindings?: string[];
@@ -67,16 +71,6 @@ export interface CloneAgentInput {
 
 type AgentToolChoice = "auto" | "required" | "none";
 type AgentResponseFormat = "text" | "json_object";
-
-interface AgentGenerationSettings {
-  topK?: number;
-  presencePenalty?: number;
-  frequencyPenalty?: number;
-  seed?: number;
-  maxRetries?: number;
-  stopSequences?: string[];
-  reasoningPresets?: ReasoningPreset[];
-}
 
 interface AgentMemoryPolicy {
   enabled?: boolean;

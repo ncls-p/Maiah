@@ -1,3 +1,4 @@
+import { generationSettingsSchema } from "@/modules/agent/generation-settings";
 import {
   handleRoute,
   requireResourcePermissionAsync,
@@ -7,10 +8,6 @@ import {
   delegationBindingInputSchema,
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
-import {
-  REASONING_PRESETS,
-  reasoningPresetSchema,
-} from "@/modules/agent/reasoning-presets";
 import {
   canEditAgentForScope,
   getVisibleAgentById,
@@ -30,7 +27,6 @@ import { users } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -76,12 +72,7 @@ export const updateAgentSchema = z.object({
   modelId: z.uuid().optional(),
   temperature: z.string().optional(),
   topP: z.string().optional(),
-  maxOutputTokens: z
-    .number()
-    .int()
-    .min(0)
-    .max(MAX_GENERATION_OUTPUT_TOKENS)
-    .optional(),
+  maxOutputTokens: z.number().int().min(0).optional(),
   maxToolCalls: z.number().int().min(0).optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
@@ -98,31 +89,18 @@ export const updateAgentSchema = z.object({
   orchestrationPolicy: orchestrationPolicySchema.optional(),
   delegationBindings: z.array(delegationBindingInputSchema).optional(),
   toolChoice: z.enum(["auto", "required", "none"]).optional(),
-  generationSettings: z
-    .object({
-      topK: z.number().int().positive().optional(),
-      presencePenalty: z.number().optional(),
-      frequencyPenalty: z.number().optional(),
-      seed: z.number().int().optional(),
-      maxRetries: z.number().int().min(0).optional(),
-      stopSequences: z.array(z.string()).optional(),
-      reasoningPresets: z
-        .array(reasoningPresetSchema)
-        .max(REASONING_PRESETS.length)
-        .optional(),
-    })
-    .optional(),
+  generationSettings: generationSettingsSchema.optional(),
   responseFormat: z.enum(["text", "json_object"]).optional(),
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      summaryThresholdTokens: z.number().int().min(1_000).optional(),
-      summaryMaxTokens: z.number().int().min(128).optional(),
+      summaryThresholdTokens: z.number().int().positive().optional(),
+      summaryMaxTokens: z.number().int().positive().optional(),
       contextWindowTokens: z
-        .union([z.literal(0), z.number().int().min(2_000)])
+        .union([z.literal(0), z.number().int().positive()])
         .optional(),
-      maxMessages: z.number().int().min(2).optional(),
-      maxInputCharacters: z.number().int().min(1).max(200_000).optional(),
+      maxMessages: z.number().int().positive().optional(),
+      maxInputCharacters: z.number().int().positive().optional(),
     })
     .optional(),
   guardrails: z

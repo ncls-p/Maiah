@@ -40,7 +40,9 @@
     "quality:file-length": "node scripts/check-file-length.mjs",
     "quality": "npm run quality:file-length && npm run quality:dead-code && npm run quality:duplicates",
     "permissions:generate": "tsx scripts/generate-permission-matrix.ts",
-    "permissions:check": "tsx scripts/generate-permission-matrix.ts --check"
+    "permissions:check": "tsx scripts/generate-permission-matrix.ts --check",
+    "mcp:generate": "node scripts/generate-mcp-contracts.mjs",
+    "mcp:check": "node scripts/generate-mcp-contracts.mjs --check"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^5.0.82",

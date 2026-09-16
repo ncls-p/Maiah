@@ -141,6 +141,7 @@ type AgentToolChoice = "auto" | "required" | "none";
 type AgentResponseFormat = "text" | "json_object";
 
 interface AgentGenerationSettings {
+  providerOptions?: string;
   topK: string;
   presencePenalty: string;
   frequencyPenalty: string;
@@ -180,6 +181,7 @@ interface AgentApprovalPolicy {
 }
 
 export type AgentForm = {
+  excludedGenerationSettings?: string[];
   name: string;
   slug: string;
   description: string;

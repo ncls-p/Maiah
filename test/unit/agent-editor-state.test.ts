@@ -29,7 +29,7 @@ const currentAgent: Agent = {
 };
 
 describe("mergeAgentEditorState", () => {
-  it("normalizes legacy output limits to the supported maximum", () => {
+  it("preserves configured output limits without silently replacing them", () => {
     const form = buildAgentFormFromVersion(currentAgent, {
       systemPrompt: null,
       providerId: null,
@@ -46,7 +46,7 @@ describe("mergeAgentEditorState", () => {
       approvalPolicyJson: null,
     });
 
-    expect(form.maxOutputTokens).toBe("16384");
+    expect(form.maxOutputTokens).toBe("1000000");
   });
 
   it("keeps editor permissions and resolved sharing data after a mutation", () => {

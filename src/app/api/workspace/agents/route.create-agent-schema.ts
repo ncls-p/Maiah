@@ -1,3 +1,4 @@
+import { generationSettingsSchema } from "@/modules/agent/generation-settings";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { AGENT_ACCESS_SCOPES } from "@/modules/agent/access-scope";
 import {
@@ -8,7 +9,6 @@ import { db } from "@/server/infrastructure/db";
 import { agentVersions, aiModels } from "@/server/infrastructure/db/schema";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
-import { MAX_GENERATION_OUTPUT_TOKENS } from "@/modules/chat/conversation-context-policy";
 
 const slugSchema = z
   .string()
@@ -39,14 +39,11 @@ export const createAgentSchema = z
     promptSuggestions: promptSuggestionsSchema.optional(),
     providerId: z.uuid().optional(),
     modelId: z.uuid().optional(),
+    generationSettings: generationSettingsSchema.optional(),
+    toolChoice: z.enum(["auto", "required", "none"]).optional(),
     temperature: z.string().optional(),
     topP: z.string().optional(),
-    maxOutputTokens: z
-      .number()
-      .int()
-      .min(0)
-      .max(MAX_GENERATION_OUTPUT_TOKENS)
-      .optional(),
+    maxOutputTokens: z.number().int().min(0).optional(),
     maxToolCalls: z.number().int().min(0).optional(),
     sharingMode: z
       .enum(["personal", "marketplace", "specific_user"])

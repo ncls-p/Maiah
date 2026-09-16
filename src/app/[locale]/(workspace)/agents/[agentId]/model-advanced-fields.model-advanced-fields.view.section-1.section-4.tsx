@@ -14,13 +14,13 @@ export function ModelAdvancedMainSection4({
         htmlFor="agent-frequency-penalty"
         help={t("frequencyPenaltyHelp")}
       >
-        {t("frequencyPenalty")}
+        {"frequency_penalty"}
       </FieldLabel>
       <FieldContent>
         <Input
           id="agent-frequency-penalty"
           type="number"
-          step={0.1}
+          step="any"
           placeholder={t("providerDefault")}
           value={form.generationSettings.frequencyPenalty}
           onChange={(e) =>

@@ -2,7 +2,6 @@ import { encryptValue } from "@/lib/crypto";
 import { handleRoute } from "@/lib/route-handler";
 import { getActiveVersion } from "@/modules/agent/use-cases";
 import {
-  MAX_INPUT_CHARACTERS,
   resolveMaxInputCharacters,
   type ConversationContextPolicy,
 } from "@/modules/chat/conversation-context-policy";
@@ -27,7 +26,7 @@ const paramsSchema = z.object({
 });
 
 const updateMessageSchema = z.object({
-  content: z.string().trim().min(1).max(MAX_INPUT_CHARACTERS),
+  content: z.string().trim().min(1),
 });
 
 async function replaceMessageTextContent(input: {

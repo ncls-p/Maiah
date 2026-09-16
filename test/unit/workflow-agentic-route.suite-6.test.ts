@@ -239,3 +239,7 @@ describe("workflow agentic route", () => {
 vi.mock("@/modules/usage/limited-language-model", () => ({
   applyUsageLimits: async (model: unknown) => model,
 }));
+
+vi.mock("@/modules/agent/generation-compatibility-store", () => ({
+  applyGenerationCompatibility: async (model: unknown) => model,
+}));

@@ -18,13 +18,13 @@ export function ModelAdvancedMainSection14({
     <>
       <Field>
         <FieldLabel htmlFor="agent-seed" help={t("seedHelp")}>
-          {t("seed")}
+          {"seed"}
         </FieldLabel>
         <FieldContent>
           <Input
             id="agent-seed"
             type="number"
-            step={1}
+            step="any"
             placeholder={t("providerDefault")}
             value={form.generationSettings.seed}
             onChange={(event) => update({ seed: event.target.value })}
@@ -33,13 +33,13 @@ export function ModelAdvancedMainSection14({
       </Field>
       <Field>
         <FieldLabel htmlFor="agent-max-retries" help={t("maxRetriesHelp")}>
-          {t("maxRetries")}
+          {"max_retries"}
         </FieldLabel>
         <FieldContent>
           <Input
             id="agent-max-retries"
             type="number"
-            step={1}
+            step="any"
             placeholder={t("providerDefault")}
             value={form.generationSettings.maxRetries}
             onChange={(event) => update({ maxRetries: event.target.value })}

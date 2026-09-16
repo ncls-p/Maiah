@@ -956,7 +956,11 @@
       "stopSequences": "Stop sequences",
       "stopSequencesHelp": "Generation stops as soon as one of these exact character sequences appears.",
       "oneSequencePerLine": "One sequence per line",
-      "resetDefaults": "Reset generation defaults"
+      "resetDefaults": "Reset generation defaults",
+      "providerOptionsHelp": "Provider-specific AI SDK options as JSON grouped by provider. Use only keys supported by that provider and model. Never put secrets here.",
+      "providerOptionsHint": "Example namespaces: openai, openaiCompatible, anthropic, bedrock. Keep SDK option names (textVerbosity, parallelToolCalls, thinking…). The reasoning level selected in chat takes precedence. Explicitly rejected sampling parameters are disabled for this assistant version.",
+      "providerOptionsInvalid": "Invalid JSON: provide an object containing an object per provider (maximum 16 KB).",
+      "excludedGenerationSettings": "Automatically disabled for this version: {settings}. Save a new version to try them again."
     },
     "selectModel": "Select a model",
     "statusReady": "Ready",

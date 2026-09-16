@@ -1,3 +1,5 @@
+import { multipartBody } from "./files";
+import { object } from "./input-contract";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { env } from "@/lib/env";
@@ -19,18 +21,23 @@ export async function executeAction(
   );
   if (!action) throw new Error("Unknown or unavailable action");
   const path = actionPath(action, input.parameters, input.query);
-  const body =
+  const serialized =
     input.body === undefined ? undefined : JSON.stringify(input.body);
+  if (serialized && serialized.length > 256_000)
+    throw new Error("Action body too large");
+  const isMultipart =
+    action.bodyKind === "multipart" && Array.isArray(object(input.body).files);
+  const body = isMultipart ? multipartBody(object(input.body)) : serialized;
   if (body && (action.method === "GET" || action.bodyKind === "none"))
     throw new Error("This action does not accept a JSON body");
-  if (body && body.length > 256_000) throw new Error("Action body too large");
+
   const response = await fetch(new URL(path, env.BETTER_AUTH_URL), {
     method: action.method,
     redirect: "error",
     cache: "no-store",
     headers: {
       ...identity.headers,
-      "Content-Type": "application/json",
+      ...(isMultipart ? {} : { "Content-Type": "application/json" }),
       Origin: new URL(env.BETTER_AUTH_URL).origin,
     },
     body,
@@ -38,6 +45,27 @@ export async function executeAction(
       ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
       : AbortSignal.timeout(30_000),
   });
+  if (
+    response.ok &&
+    (action.responseKind === "stream" ||
+      response.headers.has("content-disposition"))
+  ) {
+    await response.body?.cancel();
+    return {
+      ok: true,
+      status: response.status,
+      requestId: response.headers.get("x-request-id"),
+      result: {
+        download: {
+          path,
+          contentType: response.headers.get("content-type"),
+          requiresAuthentication: true,
+        },
+        instruction:
+          "Open the authenticated download link, or download it with the same API token. This is a file, not model-readable text.",
+      },
+    };
+  }
   const reader = response.body?.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;

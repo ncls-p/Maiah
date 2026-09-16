@@ -113,6 +113,7 @@ describe("Maiah MCP action boundary", () => {
           "maiah_search_actions",
           "maiah_describe_action",
           "maiah_execute_action",
+          "maiah_run_action",
         ],
       );
       const result = await client.callTool({

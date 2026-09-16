@@ -15,7 +15,7 @@ export function shouldSummarizeConversation(
 ) {
   if (!policy?.enabled || !Number.isFinite(inputTokens)) return false;
   const threshold = Math.max(
-    1_000,
+    1,
     Math.floor(
       policy.summaryThresholdTokens ?? DEFAULT_SUMMARY_THRESHOLD_TOKENS,
     ),
@@ -43,7 +43,7 @@ export async function generateConversationSummary(input: {
     ],
     temperature: 0,
     maxOutputTokens: Math.max(
-      128,
+      1,
       Math.floor(input.maxOutputTokens ?? DEFAULT_SUMMARY_MAX_TOKENS),
     ),
     abortSignal: deadline.signal,
