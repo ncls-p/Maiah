@@ -161,6 +161,8 @@ export function AppShell({
   sidebarNavConfig: initialSidebarNavConfig,
   impersonatedBy,
 }: AppShellProps) {
+  const [pageRevision, setPageRevision] = useState(0);
+  useEffect(() => { const refresh = () => setPageRevision(value => value + 1); window.addEventListener("maiah:refresh-page", refresh); return () => window.removeEventListener("maiah:refresh-page", refresh); }, []);
   const pathname = usePathname();
   const tShell = useTranslations("shell");
   const { workspaceId, sidebarNavConfig: organizationSidebarNavConfig } =
@@ -237,7 +239,7 @@ export function AppShell({
                 isChatRoute && "app-shell__main--chat",
               )}
             >
-              <WorkspacePageTransition>{children}</WorkspacePageTransition>
+              <WorkspacePageTransition key={pageRevision}>{children}</WorkspacePageTransition>
             </main>
             <OrbitMobileNavigation shell={shellValue} />
           </div>

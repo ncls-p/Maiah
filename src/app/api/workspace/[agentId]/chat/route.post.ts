@@ -1,3 +1,8 @@
+import {
+  requireCompanion,
+  CompanionAccessError,
+} from "@/modules/companion/settings";
+import type { CompanionExecution } from "@/modules/companion/tools";
 import { encryptValue } from "@/lib/crypto";
 import { serverErrorResponse } from "@/lib/server-error-response";
 import { currentHandoff } from "@/modules/genesys/sessions";
@@ -162,6 +167,32 @@ export async function POST(
       conversationAccess?.conversation.billingWorkspaceId ??
       parsed.data.workspaceId ??
       agent.workspaceId;
+    let companion: CompanionExecution | undefined;
+    if (parsed.data.companionContextId) {
+      if (auth.type !== "user" || conversationAccess?.role === "recipient")
+        return rejectChatRequest(403, "companion_session_required", {
+          error: "Companion requires your own conversation and a user session",
+        });
+      try {
+        await requireCompanion(actorUserId, billingWorkspaceId, agentId);
+      } catch (error) {
+        if (error instanceof CompanionAccessError)
+          return rejectChatRequest(403, "companion_unavailable", {
+            error: error.message,
+          });
+        throw error;
+      }
+      companion = {
+        contextId: parsed.data.companionContextId,
+        agentId,
+        identity: {
+          userId: actorUserId,
+          workspaceId: billingWorkspaceId,
+          authentication: "session",
+          headers: { cookie: req.headers.get("cookie") ?? "" },
+        },
+      };
+    }
     if (
       !(await runWithRequestAuth(
         auth,
@@ -170,7 +201,8 @@ export async function POST(
             actorUserId,
             billingWorkspaceId,
           )) &&
-          (billingWorkspaceId === agent.workspaceId ||
+          (Boolean(companion) ||
+            billingWorkspaceId === agent.workspaceId ||
             (await hasResourcePermissionForRequest(
               actorUserId,
               billingWorkspaceId,
@@ -199,6 +231,7 @@ export async function POST(
       agent.id,
     );
     if (
+      !companion &&
       !canUseAgent(agent, actorUserId) &&
       !directlyShared &&
       !canContinueSharedConversation
@@ -220,19 +253,25 @@ export async function POST(
     }
 
     const forbidden = await runWithRequestAuth(auth, () =>
-      canContinueSharedConversation
+      companion
         ? requireWorkspacePermissionAsync(
             actorUserId,
-            agent.workspaceId,
+            billingWorkspaceId,
             "agents.chat",
           )
-        : requireResourcePermissionAsync(
-            actorUserId,
-            agent.workspaceId,
-            "agents.chat",
-            "agent",
-            agentId,
-          ),
+        : canContinueSharedConversation
+          ? requireWorkspacePermissionAsync(
+              actorUserId,
+              agent.workspaceId,
+              "agents.chat",
+            )
+          : requireResourcePermissionAsync(
+              actorUserId,
+              agent.workspaceId,
+              "agents.chat",
+              "agent",
+              agentId,
+            ),
     );
     if (forbidden) {
       logger.warn("Chat request rejected", {
@@ -407,6 +446,7 @@ export async function POST(
       );
 
     const executionContext = {
+      companion,
       requestId,
       agentId,
       actorUserId,

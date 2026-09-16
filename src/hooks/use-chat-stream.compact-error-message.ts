@@ -44,6 +44,7 @@ export interface UseChatStreamOptions {
 }
 
 export type SubmitOptions = {
+  companionContextId?: string;
   ephemeral?: boolean;
   ephemeralTtlMinutes?: number;
   resendFromMessageId?: string;

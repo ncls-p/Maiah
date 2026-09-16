@@ -1,4 +1,5 @@
 "use client";
+import { McpConnectionHelp } from "@/components/companion/mcp-connection-help";
 
 import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import {
@@ -157,6 +158,7 @@ export function WorkspaceApiKeys() {
 
   return (
     <>
+      <McpConnectionHelp />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

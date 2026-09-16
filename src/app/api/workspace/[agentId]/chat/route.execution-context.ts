@@ -26,6 +26,7 @@ export type ClaimedContinuation = Extract<
 >;
 
 export type ChatExecutionContext = {
+  companion?: import("@/modules/companion/tools").CompanionExecution;
   requestId: string;
   agentId: string;
   actorUserId: string;

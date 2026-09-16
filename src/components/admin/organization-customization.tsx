@@ -1,4 +1,5 @@
 "use client";
+import { CompanionSettings } from "./companion-settings";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -93,6 +94,7 @@ export function OrganizationCustomization() {
               <ChatAutomationSettings />
               <SidebarNavigationSettings />
               <WorkflowBuilderSettings />
+              <CompanionSettings />
             </>
           ) : (
             <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
