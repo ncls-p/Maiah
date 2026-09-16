@@ -56,6 +56,7 @@ test("global companion performs live page and MCP actions, persists and respects
   let step = 0;
   let target = "";
   let seenTools: string[] = [];
+  let compatibleToolSchema = false;
   let memberMode = false;
   let memberCalled = false;
   let memberDenied = false;
@@ -67,6 +68,11 @@ test("global companion performs live page and MCP actions, persists and respects
     seenTools = (body.tools ?? []).map(
       (tool: { function: { name: string } }) => tool.function.name,
     );
+    compatibleToolSchema =
+      body.tools?.find(
+        (tool: { function: { name: string; strict?: boolean } }) =>
+          tool.function.name === "maiah_execute_action",
+      )?.function.strict === false;
     const toolMessages = (body.messages ?? []).filter(
       (message: { role: string }) => message.role === "tool",
     );
@@ -239,6 +245,7 @@ test("global companion performs live page and MCP actions, persists and respects
       panel.getByText("Companion task completed.", { exact: true }),
     ).toBeVisible({ timeout: 25000 });
     expect(staleActionRejected).toBe(true);
+    expect(compatibleToolSchema).toBe(true);
     expect(seenTools).toEqual(
       expect.arrayContaining([
         "maiah_page_context",
