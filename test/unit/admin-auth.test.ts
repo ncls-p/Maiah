@@ -1,3 +1,7 @@
+import { isPlatformAdminUser } from "@/server/infrastructure/db/platform-admin";
+vi.mock("@/server/infrastructure/db/platform-admin", () => ({
+  isPlatformAdminUser: vi.fn(),
+}));
 import { describe, expect, it, vi } from "vitest";
 
 // Mock dependencies
@@ -40,21 +44,29 @@ describe("admin/auth – isPlatformAdminSession", () => {
 
   it("returns true when user has admin role", async () => {
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(true);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(true);
     const session = { user: { id: "admin-1", role: "admin" } };
     expect(await testSession(session)).toBe(true);
   });
 
-  it("returns true when user is bootstrap admin", async () => {
+  it("returns true when bootstrap updated the persisted role", async () => {
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue("user-1");
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(true);
     const session = { user: { id: "user-1", role: "user" } };
     expect(await testSession(session)).toBe(true);
   });
 
+  it("ignores an obsolete admin role in the session after revocation", async () => {
+    vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(false);
+    expect(await testSession({ user: { id: "revoked", role: "admin" } })).toBe(
+      false,
+    );
+  });
+
   it("returns false when user is not admin and not bootstrap admin", async () => {
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue("other");
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(false);
     const session = { user: { id: "user-1", role: "user" } };
     expect(await testSession(session)).toBe(false);
   });
@@ -71,13 +83,13 @@ describe("admin/auth – canManageTenantGlobals", () => {
   });
 
   it("returns true when user is platform admin", async () => {
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(true);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(true);
     const session = { user: { id: "admin-1", role: "admin" } };
     expect(await testManage(session)).toBe(true);
   });
 
   it("returns true when user has manage permission via authorization", async () => {
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(false);
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
     vi.mocked(authzMod.authorization.checkPermission).mockResolvedValue({
       granted: true,
@@ -87,7 +99,7 @@ describe("admin/auth – canManageTenantGlobals", () => {
   });
 
   it("returns false when user lacks manage permission", async () => {
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(false);
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
     vi.mocked(authzMod.authorization.checkPermission).mockResolvedValue({
       granted: false,
@@ -97,7 +109,7 @@ describe("admin/auth – canManageTenantGlobals", () => {
   });
 
   it("passes correct workspaceId to authorization", async () => {
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(false);
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
     vi.mocked(authzMod.authorization.checkPermission).mockResolvedValue({
       granted: true,
@@ -147,7 +159,7 @@ describe("admin/auth – requireAdminApiSession", () => {
       },
     };
     vi.mocked(sessionMod.getSession).mockResolvedValue(session);
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(false);
     vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
     const result = await testAdmin();
     expect(result.ok).toBe(false);
@@ -175,7 +187,7 @@ describe("admin/auth – requireAdminApiSession", () => {
       },
     };
     vi.mocked(sessionMod.getSession).mockResolvedValue(session);
-    vi.mocked(adminUseCases.isAdminRole).mockReturnValue(true);
+    vi.mocked(isPlatformAdminUser).mockResolvedValue(true);
     const result = await testAdmin();
     expect(result.ok).toBe(true);
     if (result.ok) {

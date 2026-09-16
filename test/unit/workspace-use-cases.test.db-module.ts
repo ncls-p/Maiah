@@ -1,3 +1,6 @@
+vi.mock("@/server/infrastructure/db/platform-admin", () => ({
+  isPlatformAdminUser: vi.fn().mockResolvedValue(false),
+}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as _dbModule from "@/server/infrastructure/db";

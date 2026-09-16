@@ -1,9 +1,11 @@
+import { isPlatformAdminUser } from "@/server/infrastructure/db/platform-admin";
 import { needsFreshAuthorization } from "./authorization.fresh-context";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { cache } from "@/server/infrastructure/cache";
 import { db } from "@/server/infrastructure/db";
 import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import {
+  organizations,
   roleBindings,
   roles,
   teamMembers,
@@ -29,6 +31,7 @@ async function resolvePermissionsUncached(
   resourceId: string,
   cacheKey: string,
   fresh = false,
+  platformAdmin = false,
 ): Promise<Permission[]> {
   let organizationId: string | null =
     resourceType === "organization" ? resourceId : null;
@@ -55,6 +58,18 @@ async function resolvePermissionsUncached(
     workspaceId = resource.workspaceId;
     organizationId = resource.organizationId;
     parentResource = resource.parent;
+  }
+
+  if (platformAdmin) {
+    if (resourceType === "organization") {
+      const [organization] = await db
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, resourceId))
+        .limit(1);
+      if (!organization) return [];
+    }
+    return ["*"];
   }
 
   if (
@@ -183,6 +198,18 @@ export async function resolvePermissions(
   resourceId: string,
 ): Promise<Permission[]> {
   const cacheKey = `perm:${ctx.principalType}:${ctx.principalId}:${resourceType}:${resourceId}`;
+  if (
+    ctx.principalType === "user" &&
+    (await isPlatformAdminUser(ctx.principalId))
+  )
+    return resolvePermissionsUncached(
+      ctx,
+      resourceType,
+      resourceId,
+      cacheKey,
+      true,
+      true,
+    );
   if (needsFreshAuthorization())
     return resolvePermissionsUncached(
       ctx,

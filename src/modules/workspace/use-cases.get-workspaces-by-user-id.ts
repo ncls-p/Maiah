@@ -1,3 +1,4 @@
+import { isPlatformAdminUser } from "@/server/infrastructure/db/platform-admin";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -22,6 +23,7 @@ import {
 } from "./use-cases.workspace-scope";
 
 export async function getWorkspacesByUserId(userId: string) {
+  const platformAdmin = await isPlatformAdminUser(userId);
   const candidates = await db
     .select({
       workspace: workspaces,
@@ -48,12 +50,16 @@ export async function getWorkspacesByUserId(userId: string) {
     .where(
       and(
         isNull(workspaces.archivedAt),
-        or(
-          eq(workspaceMembers.status, "active"),
-          eq(organizationMembers.status, "active"),
-        ),
+        platformAdmin
+          ? undefined
+          : or(
+              eq(workspaceMembers.status, "active"),
+              eq(organizationMembers.status, "active"),
+            ),
       ),
     );
+
+  if (platformAdmin) return candidates;
 
   const visibility = await Promise.all(
     candidates.map(({ workspace }) =>

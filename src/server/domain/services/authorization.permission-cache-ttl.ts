@@ -1,7 +1,9 @@
+import { isPlatformAdminUser } from "@/server/infrastructure/db/platform-admin";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { db } from "@/server/infrastructure/db";
 import {
+  organizations,
   organizationMembers,
   workspaceMembers,
   workspaces,
@@ -54,6 +56,8 @@ export async function isActiveWorkspaceMember(
     organizationId = workspace.organizationId;
   }
 
+  if (await isPlatformAdminUser(userId)) return true;
+
   const [organizationMember] = await db
     .select({
       id: organizationMembers.id,
@@ -91,6 +95,14 @@ export async function isActiveOrganizationMember(
   userId: string,
   organizationId: string,
 ) {
+  if (await isPlatformAdminUser(userId)) {
+    const [organization] = await db
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+    return Boolean(organization);
+  }
   const [member] = await db
     .select({ id: organizationMembers.id })
     .from(organizationMembers)

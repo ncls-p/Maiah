@@ -1,6 +1,7 @@
+import { isPlatformAdminUser } from "@/server/infrastructure/db/platform-admin";
 import { NextResponse } from "next/server";
 
-import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
+import { ensureBootstrapAdmin } from "@/modules/admin/use-cases";
 import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
 import { getSession } from "@/modules/auth/session";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
@@ -9,10 +10,8 @@ type Session = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 
 export async function isPlatformAdminSession(session: Session | null) {
   if (!session) return false;
-  const bootstrappedAdminId = await ensureBootstrapAdmin();
-  return (
-    isAdminRole(session.user.role) || bootstrappedAdminId === session.user.id
-  );
+  await ensureBootstrapAdmin();
+  return isPlatformAdminUser(session.user.id);
 }
 
 export async function canManageTenantGlobals(
