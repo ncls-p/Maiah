@@ -1,3 +1,4 @@
+import { redactErrorText } from "@/lib/error-report";
 import { z } from "zod";
 export const pageContextSchema = z.object({
   path: z.string().max(2000),
@@ -47,3 +48,10 @@ export type CompanionState = {
 };
 export const SENSITIVE_FIELD =
   /password|passwd|secret|token|api.?key|credential|authorization|credit.?card|card.?number|cvv|cvc|iban|mot.?de.?passe|clé.?api|cle.?api/i;
+
+export function redactPageText(value: string) {
+  return redactErrorText(value).replace(
+    /\b(?:ahub_[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[A-Z0-9]{16})\b/g,
+    "[REDACTED]",
+  );
+}

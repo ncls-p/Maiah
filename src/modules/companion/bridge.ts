@@ -2,11 +2,11 @@ import { cache } from "@/server/infrastructure/cache";
 import { encryptValue, decryptValue } from "@/lib/crypto";
 import {
   SENSITIVE_FIELD,
+  redactPageText,
   type PageContext,
   type UiAction,
   type CompanionCommand,
 } from "./contracts";
-import { redactErrorText } from "@/lib/error-report";
 const key = (userId: string, workspaceId: string, contextId: string) =>
   `companion:${userId}:${workspaceId}:${contextId}`;
 export async function readPage(
@@ -36,16 +36,16 @@ export async function pollPage(
   }
   const redacted = {
     ...page,
-    title: redactErrorText(page.title),
-    text: page.text ? redactErrorText(page.text) : undefined,
-    headings: page.headings.map(redactErrorText),
+    title: redactPageText(page.title),
+    text: page.text ? redactPageText(page.text) : undefined,
+    headings: page.headings.map(redactPageText),
     elements: page.elements
       .filter((element) => !SENSITIVE_FIELD.test(element.label))
       .map((element) => ({
         ...element,
-        label: redactErrorText(element.label),
+        label: redactPageText(element.label),
         ...(element.value !== undefined
-          ? { value: redactErrorText(element.value) }
+          ? { value: redactPageText(element.value) }
           : {}),
       })),
   };

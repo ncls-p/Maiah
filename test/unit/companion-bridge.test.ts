@@ -46,6 +46,26 @@ const page: PageContext = {
 };
 beforeEach(() => values.clear());
 describe("companion page bridge", () => {
+  it("redacts known credentials and filters sensitive controls before caching", async () => {
+    await pollPage("a", "p", "t", {
+      ...page,
+      text: "Shown ahub_AAAAAAAAAAAAAAAAAAAAAAAA",
+      elements: [
+        ...page.elements,
+        {
+          id: "secret",
+          tag: "input",
+          role: "",
+          label: "API token",
+          value: "secret",
+          disabled: false,
+        },
+      ],
+    });
+    const saved = await readPage("a", "p", "t");
+    expect(saved.text).toBe("Shown [REDACTED]");
+    expect(saved.elements).toEqual(page.elements);
+  });
   it("isolates context by user, project and tab and clears it when disabled", async () => {
     await pollPage("alice", "project", "tab", page);
     expect([...values.values()][0]).toMatch(/^encrypted:/);

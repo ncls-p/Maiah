@@ -59,6 +59,7 @@ test("global companion performs live page and MCP actions, persists and respects
   let memberMode = false;
   let memberCalled = false;
   let memberDenied = false;
+  let staleActionRejected = false;
   const upstream = createServer(async (request, response) => {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
@@ -83,7 +84,15 @@ test("global companion performs live page and MCP actions, persists and respects
       }
       memberDenied = JSON.stringify(toolMessages).includes("403");
     }
-    if (step === 1) {
+    if (step === 2)
+      staleActionRejected =
+        /false|unavailable|changed/i.test(
+          JSON.stringify(toolMessages.at(-1)),
+        ) &&
+        (await page
+          .getByRole("textbox", { name: "Companion test field" })
+          .inputValue()) === "Original";
+    if (step === 1 || step === 3) {
       const content = toolMessages.at(-1)?.content;
       contexts.push(JSON.stringify(content));
       const context =
@@ -93,7 +102,25 @@ test("global companion performs live page and MCP actions, persists and respects
           element.label === "Companion test field",
       )?.id;
     }
+    if (step === 1)
+      await page.evaluate(() =>
+        history.replaceState(
+          null,
+          "",
+          `${location.pathname}?companion-stale-test=1`,
+        ),
+      );
     const operations = [
+      { name: "maiah_page_context", arguments: {} },
+      {
+        name: "maiah_ui_action",
+        arguments: {
+          action: "fill",
+          path: "/en/agents",
+          target,
+          value: "Edited visibly",
+        },
+      },
       { name: "maiah_page_context", arguments: {} },
       {
         name: "maiah_ui_action",
@@ -192,7 +219,7 @@ test("global companion performs live page and MCP actions, persists and respects
       host.style.cssText =
         "position:fixed;left:20px;top:100px;z-index:40;background:white";
       host.innerHTML =
-        '<input aria-label="Companion test field" value="Original"><input type="password" value="NEVER_SHARE_PASSWORD"><input aria-label="API token" value="NEVER_SHARE_TOKEN">';
+        '<input aria-label="Companion test field" value="Original"><input type="password" value="NEVER_SHARE_PASSWORD"><input aria-label="API token" value="NEVER_SHARE_TOKEN"><div data-companion-private>NEVER_SHARE_STATIC</div><code>ahub_AAAAAAAAAAAAAAAAAAAAAAAA</code>';
       document.body.appendChild(host);
     });
     await launcher.click();
@@ -211,6 +238,7 @@ test("global companion performs live page and MCP actions, persists and respects
     await expect(
       panel.getByText("Companion task completed.", { exact: true }),
     ).toBeVisible({ timeout: 25000 });
+    expect(staleActionRejected).toBe(true);
     expect(seenTools).toEqual(
       expect.arrayContaining([
         "maiah_page_context",
@@ -219,7 +247,7 @@ test("global companion performs live page and MCP actions, persists and respects
       ]),
     );
     expect(contexts.join(" ")).not.toMatch(
-      /NEVER_SHARE_PASSWORD|NEVER_SHARE_TOKEN/,
+      /NEVER_SHARE_PASSWORD|NEVER_SHARE_TOKEN|NEVER_SHARE_STATIC|ahub_A{24}/,
     );
     expect(
       (
@@ -244,16 +272,25 @@ test("global companion performs live page and MCP actions, persists and respects
       panel.getByText("Companion task completed.", { exact: true }),
     ).toBeVisible();
     let failHistory = true;
-    await page.route("**/api/workspace/conversations/*", async route => {
-      if (failHistory && /\/conversations\/[a-f0-9-]+$/.test(new URL(route.request().url()).pathname)) {
+    await page.route("**/api/workspace/conversations/*", async (route) => {
+      if (
+        failHistory &&
+        /\/conversations\/[a-f0-9-]+$/.test(
+          new URL(route.request().url()).pathname,
+        )
+      ) {
         failHistory = false;
-        await route.fulfill({status: 500, contentType: "application/json", body: JSON.stringify({error: "Temporary history failure"})});
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Temporary history failure" }),
+        });
       } else await route.continue();
     });
     await page.reload();
     await launcher.click();
     await expect(panel.getByText(/Temporary history failure/)).toBeVisible();
-    await panel.getByRole("button", {name: "Retry", exact: true}).click();
+    await panel.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(
       panel.getByText("Companion task completed.", { exact: true }),
     ).toBeVisible();

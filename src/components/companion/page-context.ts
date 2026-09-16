@@ -1,10 +1,11 @@
-import { redactErrorText } from "@/lib/error-report";
 import {
   SENSITIVE_FIELD,
+  redactPageText,
   type PageContext,
   type UiAction,
 } from "@/modules/companion/contracts";
-const ids = new WeakMap<Element, string>();
+let ids = new WeakMap<Element, string>();
+let capturedHref = "";
 const targets = new Map<string, Element>();
 let sequence = 0;
 export function sensitive(element: Element) {
@@ -67,6 +68,10 @@ function labelFor(element: Element) {
 export function capturePage(
   cursor: { x: number; y: number } | null,
 ): PageContext {
+  if (capturedHref !== location.href) {
+    ids = new WeakMap<Element, string>();
+    capturedHref = location.href;
+  }
   targets.clear();
   const text: string[] = [];
   let length = 0;
@@ -119,7 +124,7 @@ export function capturePage(
         label,
         ...(canRead
           ? {
-              value: redactErrorText(
+              value: redactPageText(
                 control.type === "checkbox" || control.type === "radio"
                   ? String(control.checked)
                   : control.value,
@@ -141,8 +146,8 @@ export function capturePage(
   };
   return {
     path: location.pathname,
-    title: redactErrorText(document.title).slice(0, 300),
-    text: redactErrorText(text.join(" ")).slice(0, 12000),
+    title: redactPageText(document.title).slice(0, 300),
+    text: redactPageText(text.join(" ")).slice(0, 12000),
     cursor: cursor
       ? {
           ...cursor,
@@ -171,7 +176,7 @@ export async function applyUiAction(
     navigate(action.path);
     return;
   }
-  if (location.pathname !== action.path)
+  if (location.pathname !== action.path || location.href !== capturedHref)
     throw new Error("The page changed; read its context again");
   if (action.action === "refresh") {
     refresh();

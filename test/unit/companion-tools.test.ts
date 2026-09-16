@@ -30,7 +30,7 @@ const tools = companionTools({
 const signal = new AbortController().signal;
 const run = (name: string, input: unknown) =>
   (
-    tools[name].execute as (
+    tools[name].execute as unknown as (
       input: unknown,
       options: { toolCallId: string; messages: []; abortSignal: AbortSignal },
     ) => Promise<unknown>
