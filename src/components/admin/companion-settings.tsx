@@ -22,7 +22,7 @@ type State = {
   enabled: boolean;
   agentId: string | null;
   canEnable: boolean;
-  availableAgents: { id: string; name: string; ready: boolean }[];
+  availableAgents: { id: string; name: string }[];
 };
 export function CompanionSettings() {
   const organizationId = useSettingsOrganizationId();
@@ -143,13 +143,8 @@ function OrganizationCompanionSettings({
                 <SelectGroup>
                   <SelectItem value="none">{t("disabled")}</SelectItem>
                   {state.availableAgents.map((agent) => (
-                    <SelectItem
-                      key={agent.id}
-                      value={agent.id}
-                      disabled={!agent.ready}
-                    >
+                    <SelectItem key={agent.id} value={agent.id}>
                       {agent.name}
-                      {!agent.ready ? ` — ${t("notReady")}` : ""}
                     </SelectItem>
                   ))}
                 </SelectGroup>

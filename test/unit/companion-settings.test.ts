@@ -126,7 +126,7 @@ describe("companion organization configuration", () => {
     });
     config();
     await expect(setCompanionAgent("org", "orchestrator", "u")).rejects.toThrow(
-      "configured assistant",
+      "assistant available to this organization",
     );
     expect(mocks.insert).not.toHaveBeenCalled();
     config();
@@ -144,6 +144,22 @@ describe("companion organization configuration", () => {
       expect.objectContaining({ valueJson: null }),
     );
   });
+  it.each(["version", "provider", "model", "tools"])(
+    "allows selecting an assistant despite %s readiness",
+    async (unavailableReason) => {
+      mocks.builders.mockResolvedValue({
+        availableAgents: [{ id: "agent", ready: false, unavailableReason }],
+      });
+      await setCompanionAgent("org", "agent", "u");
+      expect(mocks.chain.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: "companion:organization:org",
+          valueJson: "agent",
+          updatedById: "u",
+        }),
+      );
+    },
+  );
   it("persists global activation and preserves missing settings", async () => {
     expect(await readSetting("missing")).toBeUndefined();
     await writeSetting("companion:enabled", true, "admin");

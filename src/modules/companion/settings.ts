@@ -61,10 +61,10 @@ export async function setCompanionAgent(
   const state = await companionAdminState(organizationId);
   if (
     agentId &&
-    !state.availableAgents.some((agent) => agent.id === agentId && agent.ready)
+    !state.availableAgents.some((agent) => agent.id === agentId)
   )
     throw new CompanionConfigurationError(
-      "Select a configured assistant with a tool-capable model",
+      "Select an assistant available to this organization",
     );
   await writeSetting(orgKey(organizationId), agentId, userId);
 }
