@@ -230,6 +230,7 @@ describe("getMcpBindingContext", () => {
       "mcpServers.get",
       "mcp_server",
       "srv-1",
+      "ws-1",
     );
   });
 

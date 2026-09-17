@@ -1,3 +1,4 @@
+import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
 import { db } from "@/server/infrastructure/db";
 import {
   agentToolBindings,
@@ -163,13 +164,24 @@ export async function getMcpBindingContext(
     .where(
       and(
         eq(mcpServers.id, tool.mcpServerId),
-        workspaceId ? eq(mcpServers.workspaceId, workspaceId) : undefined,
+        workspaceId
+          ? resourceAvailabilityCondition({
+              type: "mcp_server",
+              id: mcpServers.id,
+              workspaceId: mcpServers.workspaceId,
+              activeWorkspaceId: workspaceId,
+              visibility: mcpServers.visibility,
+            })
+          : undefined,
         isNull(mcpServers.archivedAt),
       ),
     )
     .limit(1);
 
-  if (!server || (userId && !(await canViewMcpServer(server, userId)))) {
+  if (
+    !server ||
+    (userId && !(await canViewMcpServer(server, userId, workspaceId)))
+  ) {
     return null;
   }
   return { binding, tool, server };
@@ -192,13 +204,19 @@ export async function getAvailableMcpToolContext(
     .where(
       and(
         eq(mcpServers.id, tool.mcpServerId),
-        eq(mcpServers.workspaceId, workspaceId),
+        resourceAvailabilityCondition({
+          type: "mcp_server",
+          id: mcpServers.id,
+          workspaceId: mcpServers.workspaceId,
+          activeWorkspaceId: workspaceId,
+          visibility: mcpServers.visibility,
+        }),
         eq(mcpServers.enabled, true),
         isNull(mcpServers.archivedAt),
       ),
     )
     .limit(1);
-  return server && (await canViewMcpServer(server, userId))
+  return server && (await canViewMcpServer(server, userId, workspaceId))
     ? { tool, server }
     : null;
 }
