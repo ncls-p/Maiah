@@ -6,6 +6,10 @@ import logging
 import os
 import asyncio
 import json
+import time
+import re
+from urllib.parse import urlsplit
+from uuid import UUID, uuid4
 from importlib.resources import files
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -20,13 +24,15 @@ from servicenow_mcp.utils.config import ServerConfig
 from .context import GatewayContext, server_config_from_context
 from .form_tools import FORM_TOOLS
 from .rest_client import ServiceNowRest
+from .diagnostics import remote_failure_message
 
 logger = logging.getLogger("servicenow_mcp_gateway")
 
 class GatewayServiceNowMCP(ServiceNowMCP):
     """ServiceNow MCP with per-session package selection and call guard."""
 
-    def __init__(self, config: ServerConfig, *, context_present: bool, tool_package: str):
+    def __init__(self, config: ServerConfig, *, context_present: bool, tool_package: str, diagnostics=None):
+        self._diagnostics = {**(diagnostics or {}), "instanceHost": urlsplit(str(config.instance_url)).hostname}
         self._gateway_context_present = context_present
         self._gateway_tool_package = tool_package
         super().__init__(config)
@@ -95,6 +101,21 @@ class GatewayServiceNowMCP(ServiceNowMCP):
         )
 
     async def _call_tool_impl(self, name: str, arguments: Dict[str, Any]):
+        started = time.monotonic()
+        metadata = {**self._diagnostics, "toolName": name}
+        try:
+            result = await self._execute_tool(name, arguments)
+        except Exception:
+            logger.error("ServiceNow tool failed", extra={"diagnostics": {
+                **metadata, "durationMs": round((time.monotonic() - started) * 1000),
+            }})
+            raise
+        logger.info("ServiceNow tool completed", extra={"diagnostics": {
+            **metadata, "durationMs": round((time.monotonic() - started) * 1000),
+        }})
+        return result
+
+    async def _execute_tool(self, name: str, arguments: Dict[str, Any]):
         if not self._gateway_context_present:
             raise RuntimeError("Missing Maiah tool context for ServiceNow tool call")
         if name in FORM_TOOLS:
@@ -119,7 +140,11 @@ class GatewayServiceNowMCP(ServiceNowMCP):
             except (ValueError, TypeError):
                 continue
             if isinstance(payload, dict) and payload.get("success") is False:
-                raise RuntimeError("ServiceNow reported a failed operation. Check permissions and the remote record before retrying a write.")
+                message = remote_failure_message(payload)
+                status = re.search(r"HTTP (\d{3})", message)
+                logger.error(message, extra={"diagnostics": {**self._diagnostics, "toolName": name,
+                    "code": message.split(":", 1)[0], "remoteStatus": int(status.group(1)) if status else None}})
+                raise RuntimeError(message)
         return result
 
 
@@ -130,11 +155,20 @@ def tool_package_from_context(context: Optional[GatewayContext]) -> str:
     return str(package or os.getenv("SERVICENOW_MCP_TOOL_PACKAGE", "full"))
 
 
-def create_gateway_mcp(context: Optional[GatewayContext]) -> Server:
+def create_gateway_mcp(context: Optional[GatewayContext], diagnostic_id: Optional[str] = None) -> Server:
     config = server_config_from_context(context)
+    try:
+        diagnostic_id = str(UUID(diagnostic_id)) if diagnostic_id else str(uuid4())
+    except ValueError:
+        diagnostic_id = str(uuid4())
+    diagnostics = {"diagnosticId": diagnostic_id}
+    if context:
+        diagnostics.update({"workspaceId": context.workspaceId, "userId": context.userId,
+                            "connectionId": context.connectionId, "connectorId": context.connectorId})
     gateway = GatewayServiceNowMCP(
         config,
         context_present=context is not None,
         tool_package=tool_package_from_context(context),
+        diagnostics=diagnostics,
     )
     return gateway.start()

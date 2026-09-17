@@ -14,6 +14,7 @@ from starlette.routing import Mount, Route
 
 from .context import read_gateway_context
 from .gateway import create_gateway_mcp
+from .diagnostics import SafeJsonFormatter
 
 
 async def health(_request: Request) -> JSONResponse:
@@ -25,7 +26,7 @@ def create_app() -> Starlette:
 
     async def handle_sse(request: Request) -> None:
         context = read_gateway_context(request)
-        mcp_server = create_gateway_mcp(context)
+        mcp_server = create_gateway_mcp(context, request.headers.get("x-maiah-diagnostic-id"))
         async with sse.connect_sse(
             request.scope,
             request.receive,
@@ -48,7 +49,9 @@ def create_app() -> Starlette:
 
 
 def main() -> None:
-    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    handler = logging.StreamHandler()
+    handler.setFormatter(SafeJsonFormatter())
+    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), handlers=[handler], force=True)
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8080"))
     uvicorn.run(create_app(), host=host, port=port)
@@ -56,4 +59,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

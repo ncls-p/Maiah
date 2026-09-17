@@ -1,4 +1,6 @@
-import { logHandledWarning } from "@/lib/logger";
+import { logHandledWarning, logger } from "@/lib/logger";
+import { randomUUID } from "node:crypto";
+import { redactErrorText } from "@/lib/error-report";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
 import { resolveToolExecutionHeaders } from "@/modules/tool-connections/use-cases";
@@ -48,7 +50,7 @@ function mcpApplicationErrorMessage(
   return "MCP tool failed";
 }
 
-export async function executeMcpTool(input: {
+type McpExecutionInput = {
   serverId: string;
   toolId: string;
   workspaceId: string;
@@ -56,7 +58,43 @@ export async function executeMcpTool(input: {
   userId?: string;
   connectionId?: string;
   expectedInstanceUrl?: string;
-}) {
+};
+
+export async function executeMcpTool(input: McpExecutionInput) {
+  const diagnosticId = randomUUID();
+  const startedAt = Date.now();
+  const metadata = {
+    diagnosticId,
+    serverId: input.serverId,
+    toolId: input.toolId,
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+    connectionId: input.connectionId,
+  };
+  try {
+    const result = await executeMcpToolWithDiagnostics(input, diagnosticId);
+    logger.info("MCP tool completed", {
+      ...metadata,
+      durationMs: Date.now() - startedAt,
+    });
+    return result;
+  } catch (error) {
+    logger.error(
+      "MCP tool failed",
+      { ...metadata, durationMs: Date.now() - startedAt },
+      error instanceof Error ? error : new Error(String(error)),
+    );
+    throw new Error(
+      `${redactErrorText(error instanceof Error ? error.message : "MCP_TOOL_FAILED").slice(0, 350)} [diagnostic: ${diagnosticId}]`,
+      { cause: error },
+    );
+  }
+}
+
+async function executeMcpToolWithDiagnostics(
+  input: McpExecutionInput,
+  diagnosticId: string,
+) {
   const server = await getMcpServer(
     input.serverId,
     input.workspaceId,
@@ -94,7 +132,8 @@ export async function executeMcpTool(input: {
     : {};
 
   const result = await callRemoteMcpTool(server, tool.name, input.toolInput, {
-    headers,
+    headers: { ...headers, "x-maiah-diagnostic-id": diagnosticId },
+    diagnosticId,
     userId: input.userId,
     workspaceId: input.workspaceId,
   });

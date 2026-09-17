@@ -15,7 +15,10 @@ export type AuthSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 type RouteLogScope = "workspace" | "admin";
 
 export function requestIdFrom(req: NextRequest) {
-  return req.headers?.get?.("x-request-id") ?? crypto.randomUUID();
+  const supplied = req.headers?.get?.("x-request-id");
+  return supplied && /^[a-zA-Z0-9_-]{1,100}$/.test(supplied)
+    ? supplied
+    : crypto.randomUUID();
 }
 
 export function routePathFrom(req: NextRequest) {
@@ -68,7 +71,24 @@ export function logRouteCompleted(
   session?: AuthSession,
   auth?: AuthContext,
 ) {
-  logger.info(
+  const path = routePathFrom(req);
+  const routinePoll =
+    req.method === "GET" &&
+    response.status < 400 &&
+    Date.now() - startedAt < 1000 &&
+    (path === "/api/companion" ||
+      path === "/api/workspace/tool-invocations" ||
+      path === "/api/workspace/conversations" ||
+      /^\/api\/workspace\/conversations\/[^/]+\/handoff$/.test(path));
+  const log =
+    response.status >= 500
+      ? logger.error
+      : response.status >= 400
+        ? logger.warn
+        : routinePoll
+          ? logger.debug
+          : logger.info;
+  log(
     "API request completed",
     routeLogData(
       req,
