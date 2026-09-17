@@ -1,5 +1,5 @@
 import type { Edge, ReactFlowInstance } from "@xyflow/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
@@ -47,6 +47,7 @@ export function useWorkflowAgenticEditor(input: {
     loadRunDetail,
   } = input;
   const t = useTranslations("workflows");
+  const locale = useLocale();
   const [agenticMessages, setAgenticMessages] = useState<
     WorkflowAgenticHistoryMessage[]
   >([]);
@@ -109,7 +110,7 @@ export function useWorkflowAgenticEditor(input: {
           ...current.filter((request) => !persistedIds.has(request.id)),
         ];
       });
-      setAgenticTodoList(payload.todoList ?? null);
+      setAgenticTodoList(null);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("agentic.historyLoadFailed"),
@@ -165,6 +166,12 @@ export function useWorkflowAgenticEditor(input: {
       return;
     }
     if (event.type === "tool_start") {
+      setAgenticMessages((current) => {
+        const last = current.at(-1);
+        return last?.role === "assistant"
+          ? [...current.slice(0, -1), { ...last, content: "" }]
+          : current;
+      });
       setAgenticActivities((current) => [
         ...current.filter((item) => item.id !== event.id),
         {
@@ -213,7 +220,10 @@ export function useWorkflowAgenticEditor(input: {
     }
     if (event.type === "saved") {
       const saved = event.workflow as WorkflowDetail;
-      setWorkflow(saved);
+      setWorkflow((current) => ({
+        ...saved,
+        capabilities: current.capabilities,
+      }));
       setNodes(canvasNodes(saved.definition));
       setEdges(canvasEdges(saved.definition));
       return;
@@ -259,6 +269,7 @@ export function useWorkflowAgenticEditor(input: {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             workspaceId,
+            locale: locale === "en" ? "en" : "fr",
             ...(inputRequestId ? { inputRequestId } : { message: prompt }),
             draft: {
               name: workflow.name,
@@ -280,6 +291,16 @@ export function useWorkflowAgenticEditor(input: {
         throw new Error(payload?.error ?? t("agentic.failed"));
       }
 
+      let completed = false;
+      let saved = false;
+      let needsInput = false;
+      const consume = (event: WorkflowAgenticStreamEvent) => {
+        if (event.type === "done") completed = true;
+        if (event.type === "saved") saved = true;
+        if (event.type === "input_request" || event.type === "run_request")
+          needsInput = true;
+        handleAgenticEvent(event);
+      };
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -290,13 +311,15 @@ export function useWorkflowAgenticEditor(input: {
         buffer = lines.pop() ?? "";
         for (const line of lines) {
           if (!line.trim()) continue;
-          handleAgenticEvent(JSON.parse(line) as WorkflowAgenticStreamEvent);
+          consume(JSON.parse(line) as WorkflowAgenticStreamEvent);
         }
         if (done) break;
       }
       if (buffer.trim()) {
-        handleAgenticEvent(JSON.parse(buffer) as WorkflowAgenticStreamEvent);
+        consume(JSON.parse(buffer) as WorkflowAgenticStreamEvent);
       }
+      if (!completed) throw new Error(t("agentic.failed"));
+      if (saved && !needsInput) toast.success(t("agentic.completed"));
       setAgenticMessages((current) => {
         const last = current.at(-1);
         if (last?.role !== "assistant" || last.content.trim()) return current;
@@ -338,6 +361,8 @@ export function useWorkflowAgenticEditor(input: {
         agenticAbortRef.current = null;
       }
       setAgenticRunning(false);
+      setAgenticActivities([]);
+      setAgenticTodoList(null);
     }
   }
 

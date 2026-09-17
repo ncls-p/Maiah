@@ -39,7 +39,7 @@ import type {
   ResourceAccessSelection,
 } from "@/modules/iam/resource-access-scope";
 
-type ResourceType = "agent" | "knowledge_base" | "mcp_server";
+type ResourceType = "agent" | "knowledge_base" | "mcp_server" | "workflow";
 type SharingMember = { id: string; name: string; email: string };
 type ShareAccess = "view" | "edit";
 type ShareEntry = { userId: string; access: ShareAccess };

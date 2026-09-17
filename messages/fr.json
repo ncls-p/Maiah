@@ -3899,6 +3899,7 @@
     "active": "Publié",
     "version": "Version {version}",
     "open": "Ouvrir",
+    "access": "Accès",
     "editorDescription": "Glissez votre logique, configurez chaque étape puis publiez une version stable pour l’API.",
     "back": "Tous les workflows",
     "save": "Enregistrer",
@@ -3911,7 +3912,7 @@
     "publishFailed": "Impossible de publier le workflow",
     "run": "Tester",
     "runTitle": "Tester le workflow",
-    "runDescription": "Le test utilise la dernière version enregistrée, même si elle n’est pas encore publiée.",
+    "runDescription": "Le brouillon est enregistré puis exécuté avec ces données. Les actions externes configurées seront réellement effectuées.",
     "runInput": "Entrée JSON",
     "runInputSavedHint": "Ce JSON est l’entrée par défaut enregistrée du workflow. Vous pouvez le modifier ici, le conserver pour les prochains tests et demander à l’agent du workflow de le mettre à jour.",
     "runInputUnsaved": "JSON valide avec des modifications non enregistrées.",
@@ -3919,7 +3920,7 @@
     "saveRunInput": "Enregistrer l’entrée par défaut",
     "runStarted": "Exécution ajoutée à la file",
     "runFailed": "Impossible de lancer le workflow",
-    "runNow": "Lancer le test",
+    "runNow": "Enregistrer et tester",
     "invalidJson": "L’entrée doit être un JSON valide.",
     "palette": "Étapes",
     "paletteHint": "Choisissez une étape prête à l’emploi. Elle se relie automatiquement à l’étape sélectionnée lorsque c’est possible.",
@@ -3949,6 +3950,9 @@
     "url": "URL HTTPS",
     "language": "Langage",
     "code": "Code",
+    "codeFullscreen": "Plein écran",
+    "codeEditorTitle": "Éditeur de code",
+    "codeEditorDescription": "Coloration syntaxique, numéros de ligne et navigation clavier.",
     "path": "Chemin du champ",
     "operator": "Opérateur",
     "expectedValue": "Valeur attendue (JSON)",
@@ -4063,6 +4067,7 @@
       "operation": "Opération",
       "searchText": "Texte à rechercher",
       "replacement": "Texte de remplacement",
+      "separator": "Séparateur",
       "operand": "Opérande",
       "field": "Champ de chaque élément",
       "operator": "Comparaison",
@@ -4142,7 +4147,8 @@
         "stringifyJson": "Convertir en JSON"
       },
       "text": {
-        "transform": "Transformer du texte"
+        "transform": "Transformer du texte",
+        "split": "Découper un texte"
       },
       "number": {
         "calculate": "Calculer"
@@ -4150,7 +4156,8 @@
       "list": {
         "filter": "Filtrer une liste",
         "sort": "Trier une liste",
-        "slice": "Limiter une liste"
+        "slice": "Limiter une liste",
+        "join": "Assembler une liste"
       },
       "logic": {
         "condition": "Condition",
@@ -4193,7 +4200,8 @@
         "stringifyJson": "Convertit des données en texte JSON."
       },
       "text": {
-        "transform": "Nettoie, change la casse ou remplace du texte."
+        "transform": "Nettoie, change la casse ou remplace du texte.",
+        "split": "Découpe un texte en liste avec un séparateur."
       },
       "number": {
         "calculate": "Effectue un calcul numérique simple."
@@ -4201,7 +4209,8 @@
       "list": {
         "filter": "Garde les éléments correspondant à une règle.",
         "sort": "Trie une liste par champ et direction.",
-        "slice": "Extrait une portion d’une liste."
+        "slice": "Extrait une portion d’une liste.",
+        "join": "Réunit une liste en texte avec un séparateur."
       },
       "logic": {
         "condition": "Sépare le flux entre vrai et faux.",
@@ -4258,6 +4267,19 @@
       "unavailable": "Publiez un workflow accessible avant de le sélectionner.",
       "input": "Données à transmettre",
       "result": "Le champ résultat contient le runId enfant et sa sortie output (par identifiant d’étape). Un échec enfant fait aussi échouer cette étape."
+    },
+    "search": "Rechercher un workflow…",
+    "noMatches": "Aucun workflow ne correspond à votre recherche.",
+    "followRun": "Voir les résultats",
+    "retryRun": "Tester à nouveau",
+    "cancelRun": "Arrêter",
+    "cancelFailed": "Impossible d’arrêter cette exécution.",
+    "runRefreshFailed": "Le suivi est interrompu. Réessayez pour actualiser les résultats.",
+    "readOnly": "Consultation uniquement",
+    "accessScopes": {
+      "private": "Accès restreint",
+      "workspace": "Projet",
+      "organization": "Organisation"
     }
   },
   "scheduledTasks": {

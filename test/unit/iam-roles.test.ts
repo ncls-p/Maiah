@@ -35,6 +35,7 @@ describe("SYSTEM_ROLES", () => {
       "workspace.knowledge_editor",
       "workspace.member",
       "workspace.viewer",
+      "workspace.workflow_user",
     ]);
   });
 

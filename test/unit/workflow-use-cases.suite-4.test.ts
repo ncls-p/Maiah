@@ -150,6 +150,9 @@ describe("workflow worker processing", () => {
   it("persists runtime failure results and thrown errors", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
     database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "running" },
+    ]);
+    database.chain.returning.mockResolvedValueOnce([
       { ...run, status: "failed", error: "node failed" },
     ]);
     workflowMocks.createRuntime.mockReturnValueOnce({
@@ -167,6 +170,9 @@ describe("workflow worker processing", () => {
     );
 
     database.chain.limit.mockResolvedValueOnce([record()]);
+    database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "running" },
+    ]);
     workflowMocks.createRuntime.mockReturnValueOnce({
       run: vi.fn().mockRejectedValue(new Error("runtime exploded")),
     });
@@ -178,8 +184,18 @@ describe("workflow worker processing", () => {
     );
   });
 
+  it("does not execute when cancellation wins the claim race", async () => {
+    database.chain.limit.mockResolvedValueOnce([record()]);
+    database.chain.returning.mockResolvedValueOnce([]);
+    await processWorkflowRun(run.id);
+    expect(workflowMocks.createRuntime).not.toHaveBeenCalled();
+  });
+
   it("persists compilation failures before the runtime starts", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
+    database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "running" },
+    ]);
     workflowMocks.compile.mockImplementationOnce(() => {
       throw new Error("invalid workflow graph");
     });

@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -27,6 +28,7 @@ export function useWorkflowActions({
   nodes,
   edges,
   loadRuns,
+  loadRunDetail,
 }: {
   workspaceId: string;
   workflow: WorkflowDetail;
@@ -34,8 +36,12 @@ export function useWorkflowActions({
   nodes: WorkflowCanvasNodeType[];
   edges: Edge[];
   loadRuns: () => Promise<void>;
+  loadRunDetail: (runId: string) => Promise<void>;
 }) {
   const t = useTranslations("workflows");
+  const busyRef = useRef(false);
+  const canEdit = workflow.capabilities?.canEdit === true;
+  const canExecute = workflow.capabilities?.canExecute === true;
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [running, setRunning] = useState(false);
@@ -56,7 +62,8 @@ export function useWorkflowActions({
     return () => window.clearTimeout(timeout);
   }, [savedRunInput]);
 
-  async function save(): Promise<WorkflowDetail | null> {
+  async function persist(): Promise<WorkflowDetail | null> {
+    if (!canEdit) return null;
     if (!parsedRunInput.valid) {
       toast.error(t("invalidJson"));
       return null;
@@ -76,7 +83,10 @@ export function useWorkflowActions({
           }),
         },
       );
-      setWorkflow(payload.workflow);
+      setWorkflow((current) => ({
+        ...payload.workflow,
+        capabilities: current.capabilities,
+      }));
       toast.success(t("saved"));
       return payload.workflow;
     } catch (error) {
@@ -87,10 +97,22 @@ export function useWorkflowActions({
     }
   }
 
+  async function save() {
+    if (busyRef.current) return null;
+    busyRef.current = true;
+    try {
+      return await persist();
+    } finally {
+      busyRef.current = false;
+    }
+  }
+
   async function publish() {
+    if (!canEdit || busyRef.current) return;
+    busyRef.current = true;
     setPublishing(true);
     try {
-      if (!(await save())) return;
+      if (!(await persist())) return;
       const payload = await fetchJson<{ workflow: WorkflowDetail }>(
         `/api/workspace/workflows/${workflow.id}/publish`,
         {
@@ -104,33 +126,41 @@ export function useWorkflowActions({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("publishFailed"));
     } finally {
+      busyRef.current = false;
       setPublishing(false);
     }
   }
 
   async function runWorkflow() {
+    if (!canExecute || busyRef.current) return;
     if (!parsedRunInput.valid) {
       toast.error(t("invalidJson"));
       return;
     }
+    busyRef.current = true;
     setRunning(true);
     try {
-      if (!(await save())) return;
-      await fetchJson(`/api/workspace/workflows/${workflow.id}/runs`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          input: parsedRunInput.input,
-          useLatestDraft: true,
-        }),
-      });
+      if (canEdit && !(await persist())) return;
+      const payload = await fetchJson<{ run: { id: string } }>(
+        `/api/workspace/workflows/${workflow.id}/runs`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            input: parsedRunInput.input,
+            useLatestDraft: canEdit,
+          }),
+        },
+      );
       setRunSheetOpen(false);
       toast.success(t("runStarted"));
       await loadRuns();
+      await loadRunDetail(payload.run.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("runFailed"));
     } finally {
+      busyRef.current = false;
       setRunning(false);
     }
   }

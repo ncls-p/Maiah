@@ -292,3 +292,12 @@ Avant merge :
   signed reply, persistence after refresh, 390px mobile layout.
 - External acceptance: actual Genesys licence, OAuth roles/divisions, Architect
   routing, pickup and closure require a configured test tenant and consultant.
+
+## Workflows — DEO-40
+
+- **PostgreSQL** : nouveau workflow privé, refus pour un autre éditeur, partage nominatif et révocation, équipe et retour au privé, projet, découverte interprojets dans l’organisation et refus hors organisation.
+- **Navigateur** : saisie JSON invalide, enregistrement/test du brouillon, nœud actif et état final lorsque le panneau est fermé, résultats, relance avec les entrées précédentes, arrêt et disparition de la surbrillance active, affichage mobile sans débordement horizontal.
+- **Navigateur / unitaires** : génération avec confirmation finale persistée, suppression des activités et de la liste d’avancement à la fin, maintien des demandes d’informations et d’approbation, diagnostic d’échec accessible.
+- **Unitaires** : découpage de texte et assemblage de liste dans un graphe compilé, validation du chemin de sortie, catalogue FR/EN.
+- L’arrêt demande une interruption au moteur ; il n’annule pas les effets externes déjà produits. Une exécution annulée ne peut pas être réécrite comme réussie par le worker.
+- Limites de recette : l’exécution JavaScript/Python dépend du service sandbox ; les appels à un véritable fournisseur LLM restent couverts par la recette dédiée existante.

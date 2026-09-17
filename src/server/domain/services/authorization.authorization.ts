@@ -9,6 +9,7 @@ import {
   roles,
   teamMembers,
   workspaces,
+  workflows,
 } from "@/server/infrastructure/db/schema";
 import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import {
@@ -178,7 +179,38 @@ export const authorization = {
       if (distributed.includes(permission)) return { granted: true };
     }
     const permissions = await resolvePermissions(ctx, resourceType, resourceId);
-    const granted = permissions.some((p) => matchesPermission(p, permission));
+    let granted = permissions.some((p) => matchesPermission(p, permission));
+    if (
+      granted &&
+      resourceType === "workflow" &&
+      ctx.principalType === "user"
+    ) {
+      const [workflow] = await db
+        .select()
+        .from(workflows)
+        .where(eq(workflows.id, resourceId))
+        .limit(1);
+      const administrative = permissions.some((p) =>
+        matchesPermission(p, "workspaces.curate"),
+      );
+      const sharedUse =
+        workflow?.visibility === "workspace" &&
+        ["workflows.view", "workflows.execute"].includes(permission);
+      if (!workflow) granted = false;
+      else if (
+        !administrative &&
+        workflow.createdById !== ctx.principalId &&
+        !sharedUse
+      ) {
+        granted = await this.hasDirectPermission(
+          ctx,
+          permission,
+          "workflow",
+          resourceId,
+          workflow.workspaceId,
+        );
+      }
+    }
 
     return {
       granted,

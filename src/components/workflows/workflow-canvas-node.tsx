@@ -52,6 +52,8 @@ export const workflowNodeIconByType: Record<WorkflowNodeType, LucideIcon> = {
   "data.parseJson": BracesIcon,
   "data.stringifyJson": FileJsonIcon,
   "text.transform": CaseSensitiveIcon,
+  "text.split": Rows3Icon,
+  "list.join": ListPlusIcon,
   "number.calculate": CalculatorIcon,
   "list.filter": ListFilterIcon,
   "list.sort": ArrowDownUpIcon,
@@ -113,6 +115,7 @@ export function WorkflowCanvasNode({
   const isCondition = data.workflowType === "logic.condition";
   const isTerminal = data.workflowType === "logic.stop";
   const category = workflowNodeCatalogItem(data.workflowType).category;
+  const executionStatus = data.executionStatus;
 
   return (
     <div
@@ -123,7 +126,13 @@ export function WorkflowCanvasNode({
         selected
           ? "border-foreground/45 shadow-lg ring-4 ring-foreground/5"
           : "hover:shadow-md",
+        executionStatus === "running" &&
+          "border-sky-400 bg-sky-500/10 shadow-[0_0_0_5px_color-mix(in_oklab,var(--color-sky-500)_18%,transparent),0_0_32px_color-mix(in_oklab,var(--color-sky-500)_28%,transparent)] motion-safe:animate-pulse",
+        executionStatus === "completed" && "border-emerald-500/55",
+        executionStatus === "failed" &&
+          "border-destructive ring-4 ring-destructive/10",
       )}
+      data-execution-status={executionStatus}
     >
       {!isTrigger ? (
         <Handle
@@ -150,6 +159,11 @@ export function WorkflowCanvasNode({
           </p>
         </div>
       </div>
+      {executionStatus ? (
+        <span className="mt-2 block text-[10px] font-semibold tracking-wide uppercase text-muted-foreground">
+          {t(`stepStatus.${executionStatus}`)}
+        </span>
+      ) : null}
       {isCondition ? (
         <>
           <span className="absolute top-[38%] right-3 -translate-y-1/2 text-[9px] font-semibold text-primary">

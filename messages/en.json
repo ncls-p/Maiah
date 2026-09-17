@@ -3899,6 +3899,7 @@
     "active": "Published",
     "version": "Version {version}",
     "open": "Open",
+    "access": "Access",
     "editorDescription": "Arrange your logic, configure every step, then publish a stable API version.",
     "back": "All workflows",
     "save": "Save",
@@ -3911,7 +3912,7 @@
     "publishFailed": "Unable to publish workflow",
     "run": "Test",
     "runTitle": "Test workflow",
-    "runDescription": "The test uses the latest saved version, even when it has not been published yet.",
+    "runDescription": "Save and run the draft with this input. Configured external actions will actually run.",
     "runInput": "JSON input",
     "runInputSavedHint": "This JSON is the workflow's saved default input. You can change it here, save it for future tests, and ask the workflow agent to update it.",
     "runInputUnsaved": "Valid JSON with unsaved changes.",
@@ -3919,7 +3920,7 @@
     "saveRunInput": "Save default input",
     "runStarted": "Execution added to the queue",
     "runFailed": "Unable to start workflow",
-    "runNow": "Start test",
+    "runNow": "Save and test",
     "invalidJson": "Input must be valid JSON.",
     "palette": "Steps",
     "paletteHint": "Choose a ready-to-use step. It connects to the selected step automatically when possible.",
@@ -3949,6 +3950,9 @@
     "url": "HTTPS URL",
     "language": "Language",
     "code": "Code",
+    "codeFullscreen": "Full screen",
+    "codeEditorTitle": "Code editor",
+    "codeEditorDescription": "Syntax highlighting, line numbers, and keyboard navigation.",
     "path": "Field path",
     "operator": "Operator",
     "expectedValue": "Expected value (JSON)",
@@ -4063,6 +4067,7 @@
       "operation": "Operation",
       "searchText": "Text to find",
       "replacement": "Replacement text",
+      "separator": "Separator",
       "operand": "Operand",
       "field": "Field in each item",
       "operator": "Comparison",
@@ -4142,7 +4147,8 @@
         "stringifyJson": "Convert to JSON"
       },
       "text": {
-        "transform": "Transform text"
+        "transform": "Transform text",
+        "split": "Split text"
       },
       "number": {
         "calculate": "Calculate"
@@ -4150,7 +4156,8 @@
       "list": {
         "filter": "Filter a list",
         "sort": "Sort a list",
-        "slice": "Limit a list"
+        "slice": "Limit a list",
+        "join": "Join a list"
       },
       "logic": {
         "condition": "Condition",
@@ -4193,7 +4200,8 @@
         "stringifyJson": "Converts structured data into JSON text."
       },
       "text": {
-        "transform": "Trims, changes case, or replaces text."
+        "transform": "Trims, changes case, or replaces text.",
+        "split": "Split text into a list using a separator."
       },
       "number": {
         "calculate": "Performs a simple numeric calculation."
@@ -4201,7 +4209,8 @@
       "list": {
         "filter": "Keeps items that match a rule.",
         "sort": "Sorts a list by field and direction.",
-        "slice": "Extracts a portion of a list."
+        "slice": "Extracts a portion of a list.",
+        "join": "Join a list into text using a separator."
       },
       "logic": {
         "condition": "Branches the flow between true and false.",
@@ -4258,6 +4267,19 @@
       "unavailable": "Publish an accessible workflow before selecting it.",
       "input": "Data to send",
       "result": "The result field contains the child runId and output (indexed by step ID). A child failure also fails this step."
+    },
+    "search": "Search workflows…",
+    "noMatches": "No workflows match your search.",
+    "followRun": "View results",
+    "retryRun": "Test again",
+    "cancelRun": "Stop",
+    "cancelFailed": "Could not stop this run.",
+    "runRefreshFailed": "Live updates interrupted. Retry to refresh results.",
+    "readOnly": "Read only",
+    "accessScopes": {
+      "private": "Restricted access",
+      "workspace": "Project",
+      "organization": "Organization"
     }
   },
   "scheduledTasks": {

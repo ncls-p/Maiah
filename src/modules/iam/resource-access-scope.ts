@@ -10,6 +10,7 @@ import {
   roles,
   teamMembers,
   teams,
+  workflows,
 } from "@/server/infrastructure/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import {
@@ -23,7 +24,7 @@ import {
 export type ResourceAccessScope = AgentAccessScope;
 export type ResourceAccessOptions = AgentAccessOptions;
 export type ResourceAccessSelection = AgentAccessSelection;
-export type ScopedResourceType = "knowledge_base" | "mcp_server";
+export type ScopedResourceType = "knowledge_base" | "mcp_server" | "workflow";
 
 export const getResourceAccessOptions = getAgentAccessOptions;
 export const validateResourceAccessSelection = validateAgentAccessSelection;
@@ -45,8 +46,14 @@ export async function getResourceAccessSelection(input: {
         eq(roleBindings.resourceId, input.resourceId),
         eq(roleBindings.principalType, "group"),
         inArray(roles.name, [
-          "workspace.viewer",
-          standardRoleName("workspace.viewer"),
+          input.resourceType === "workflow"
+            ? "workspace.workflow_user"
+            : "workspace.viewer",
+          standardRoleName(
+            input.resourceType === "workflow"
+              ? "workspace.workflow_user"
+              : "workspace.viewer",
+          ),
         ]),
         eq(roles.scopeType, "workspace"),
       ),
@@ -59,12 +66,15 @@ export async function getResourceAccessSelection(input: {
   return { scope: "private" };
 }
 
-export async function applyResourceAccessSelection(input: {
-  resourceType: ScopedResourceType;
-  resourceId: string;
-  userId: string;
-  selection: ResourceAccessSelection;
-}) {
+export async function applyResourceAccessSelection(
+  input: {
+    resourceType: ScopedResourceType;
+    resourceId: string;
+    userId: string;
+    selection: ResourceAccessSelection;
+  },
+  executor: Pick<typeof db, "update" | "insert" | "delete"> = db,
+) {
   if (input.selection.scope !== "private")
     await requireResourceSharePermissions({
       ...input,
@@ -75,7 +85,12 @@ export async function applyResourceAccessSelection(input: {
     .from(roles)
     .where(
       and(
-        eq(roles.name, "workspace.viewer"),
+        eq(
+          roles.name,
+          input.resourceType === "workflow"
+            ? "workspace.workflow_user"
+            : "workspace.viewer",
+        ),
         eq(roles.scopeType, "workspace"),
         eq(roles.isSystem, true),
       ),
@@ -122,7 +137,7 @@ export async function applyResourceAccessSelection(input: {
           .where(inArray(teamMembers.teamId, affectedTeamIds))
       : [];
 
-  await db
+  await executor
     .delete(roleBindings)
     .where(
       and(
@@ -143,14 +158,18 @@ export async function applyResourceAccessSelection(input: {
         ? "organization"
         : "private";
   const table =
-    input.resourceType === "knowledge_base" ? knowledgeBases : mcpServers;
-  await db
+    input.resourceType === "knowledge_base"
+      ? knowledgeBases
+      : input.resourceType === "mcp_server"
+        ? mcpServers
+        : workflows;
+  await executor
     .update(table)
     .set({ isGlobal, visibility, updatedAt: new Date() })
     .where(eq(table.id, input.resourceId));
 
   if (input.selection.scope === "team" && input.selection.teamId) {
-    await db.insert(roleBindings).values({
+    await executor.insert(roleBindings).values({
       principalType: "group",
       principalId: input.selection.teamId,
       roleId: viewerRole.id,

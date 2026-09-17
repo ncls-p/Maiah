@@ -26,6 +26,7 @@ export function createWorkflowAgentStream<
   workspaceId: string;
   userId: string;
   builderAgentName: string;
+  locale?: "fr" | "en";
   initialWebResearchError: string | null;
 }) {
   const { result, state, workflowId, workspaceId, userId } = input;
@@ -61,6 +62,7 @@ export function createWorkflowAgentStream<
             assistantText += part.text;
             controller.enqueue(encodeEvent({ type: "text", delta: part.text }));
           } else if (part.type === "tool-call") {
+            assistantText = "";
             controller.enqueue(
               encodeEvent({
                 type: "tool_start",
@@ -160,14 +162,31 @@ export function createWorkflowAgentStream<
           });
           controller.enqueue(encodeEvent({ type: "run_request", request }));
         }
+        const english = input.locale === "en";
+        if (state.revision > 0 && !requestedInput && !requestedRun) {
+          const completion = english
+            ? "The workflow is saved and ready to test."
+            : "Le workflow est enregistré et prêt à être testé.";
+          const delta = `${assistantText.trim() ? "\n\n" : ""}${completion}`;
+          assistantText += delta;
+          controller.enqueue(encodeEvent({ type: "text", delta }));
+        }
         if (!assistantText.trim()) {
           const fallback = requestedInput
-            ? "J’ai besoin des informations demandées pour continuer."
+            ? english
+              ? "I need the requested information to continue."
+              : "J’ai besoin des informations demandées pour continuer."
             : requestedRun
-              ? "Le workflow est testé. J’attends votre validation avant de lancer l’exécution."
+              ? english
+                ? "Please approve the workflow execution to continue."
+                : "J’attends votre validation avant de lancer l’exécution."
               : state.revision > 0
-                ? "Le workflow a été mis à jour."
-                : "La demande a été analysée.";
+                ? english
+                  ? "The workflow has been updated."
+                  : "Le workflow a été mis à jour."
+                : english
+                  ? "The request has been analyzed."
+                  : "La demande a été analysée.";
           assistantText = fallback;
           controller.enqueue(encodeEvent({ type: "text", delta: fallback }));
         }

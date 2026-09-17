@@ -9,6 +9,7 @@ export type WorkflowSummary = {
   name: string;
   description: string | null;
   status: "draft" | "active" | "archived";
+  visibility?: "private" | "workspace" | "organization";
   latestVersion: number;
   activeVersion: number | null;
   createdAt: string;
@@ -16,8 +17,13 @@ export type WorkflowSummary = {
 };
 
 export type WorkflowDetail = WorkflowSummary & {
+  capabilities?: { canEdit: boolean; canExecute: boolean };
   version: number;
   definition: WorkflowDefinition;
+  access: {
+    scope: "private" | "project" | "organization" | "team";
+    teamId?: string | null;
+  };
 };
 
 export type WorkflowRun = {
@@ -54,4 +60,5 @@ export type WorkflowCanvasData = {
   workflowType: WorkflowNode["type"];
   parameters: Record<string, unknown>;
   settings: WorkflowNode["settings"];
+  executionStatus?: WorkflowRunStep["status"];
 };

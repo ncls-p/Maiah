@@ -215,6 +215,15 @@ export const SYSTEM_ROLES: Omit<Role, "createdAt" | "updatedAt">[] = [
   {
     id: "",
     scopeType: "workspace",
+    name: "workspace.workflow_user",
+    displayName: "Workflow User",
+    description: "Can view and run one explicitly shared workflow.",
+    permissions: ["workflows.view", "workflows.execute"],
+    isSystem: true,
+  },
+  {
+    id: "",
+    scopeType: "workspace",
     name: "workspace.agent_user",
     displayName: "Assistant User",
     description:

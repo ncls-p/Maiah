@@ -60,7 +60,7 @@ describe("workflow no-code catalog", () => {
     }
   });
   it("declares one complete, unique entry for every supported node", () => {
-    expect(WORKFLOW_NODE_CATALOG).toHaveLength(23);
+    expect(WORKFLOW_NODE_CATALOG).toHaveLength(25);
     expect(new Set(WORKFLOW_NODE_CATALOG.map((item) => item.type)).size).toBe(
       WORKFLOW_NODE_CATALOG.length,
     );

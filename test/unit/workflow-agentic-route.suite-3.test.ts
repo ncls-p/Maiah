@@ -252,6 +252,7 @@ describe("workflow agentic route", () => {
       "tool_result",
       "text",
       "saved",
+      "text",
       "done",
     ]);
     expect(mocks.searchWebWithSearxng).toHaveBeenCalledTimes(1);
@@ -272,6 +273,16 @@ describe("workflow agentic route", () => {
       }),
     );
     expect(mocks.appendWorkflowAgentMessage).toHaveBeenCalledTimes(2);
+    expect(events.at(-2)).toMatchObject({
+      type: "text",
+      delta: expect.stringContaining("enregistré et prêt à être testé"),
+    });
+    expect(mocks.appendWorkflowAgentMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        role: "assistant",
+        content: expect.stringContaining("enregistré et prêt à être testé"),
+      }),
+    );
   });
 });
 

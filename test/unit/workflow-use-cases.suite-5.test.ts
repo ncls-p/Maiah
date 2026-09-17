@@ -132,6 +132,9 @@ describe("workflow worker processing", () => {
   it("persists the underlying node error instead of only the runtime wrapper", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
     database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "running" },
+    ]);
+    database.chain.returning.mockResolvedValueOnce([
       { ...run, status: "failed" },
     ]);
     const sandboxError = new Error(

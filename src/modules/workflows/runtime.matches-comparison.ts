@@ -161,3 +161,32 @@ export const transformText: NodeFunction<
     output: writePath(input, String(params.outputPath ?? ""), transformed),
   };
 };
+
+export const splitText: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => ({
+  output: writePath(
+    input,
+    String(params.outputPath ?? ""),
+    String(readPath(input, String(params.path ?? "")) ?? "").split(
+      String(params.separator ?? ","),
+    ),
+  ),
+});
+
+export const joinList: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const value = readPath(input, String(params.path ?? ""));
+  if (!Array.isArray(value))
+    throw new Error("The selected value must be a list.");
+  return {
+    output: writePath(
+      input,
+      String(params.outputPath ?? ""),
+      value.map(String).join(String(params.separator ?? ", ")),
+    ),
+  };
+};

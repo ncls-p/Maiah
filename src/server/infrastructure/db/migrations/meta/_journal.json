@@ -519,6 +519,13 @@
       "when": 1789475100000,
       "tag": "0073_amazon_bedrock",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1789635600000,
+      "tag": "0074_workflow_access_scope",
+      "breakpoints": true
     }
   ]
 }

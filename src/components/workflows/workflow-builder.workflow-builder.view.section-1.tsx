@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { fetchJson } from "@/lib/api-client";
+import { toast } from "@/lib/toast";
+import { Button } from "@/components/ui/button";
 import { ToolPayloadViewer } from "@/components/tools/tool-payload-viewer";
 import { AlertCircleIcon } from "lucide-react";
 
@@ -18,21 +22,45 @@ export function WorkflowBuilderSection1({
 }: {
   model: WorkflowBuilderViewModel;
 }) {
+  const [cancelling, setCancelling] = useState(false);
   const {
     nodes,
     runDetail,
     runDetailLoading,
     runDetailOpen,
-    setRunDetail,
+    requestedRunId,
+    runDetailError,
+    loadRunDetail,
+    setRunInput,
+    setRunSheetOpen,
     setRunDetailOpen,
     t,
   } = model;
+  async function cancelRun() {
+    if (!runDetail || cancelling) return;
+    setCancelling(true);
+    try {
+      await fetchJson(`/api/workspace/workflow-runs/${runDetail.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: model.workspaceId,
+          status: "cancelled",
+        }),
+      });
+      await loadRunDetail(runDetail.id);
+      await model.loadRuns();
+    } catch {
+      toast.error(t("cancelFailed"));
+    } finally {
+      setCancelling(false);
+    }
+  }
   return (
     <Sheet
       open={runDetailOpen}
       onOpenChange={(open) => {
         setRunDetailOpen(open);
-        if (!open) setRunDetail(null);
       }}
     >
       <SheetContent className="sm:max-w-xl">
@@ -45,10 +73,62 @@ export function WorkflowBuilderSection1({
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="min-h-0 flex-1 px-5 pb-5">
-          {runDetailLoading || !runDetail ? (
+          {runDetailError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{runDetailError}</AlertDescription>
+              {requestedRunId ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    requestedRunId && void loadRunDetail(requestedRunId)
+                  }
+                >
+                  {t("refreshRuns")}
+                </Button>
+              ) : null}
+            </Alert>
+          ) : null}
+          {runDetailLoading ? (
             <p className="text-sm text-muted-foreground">{t("loading")}</p>
-          ) : (
+          ) : runDetail ? (
             <div className="flex flex-col gap-4">
+              <div
+                className="flex items-center justify-between gap-2"
+                aria-live="polite"
+              >
+                <Badge
+                  variant={
+                    runDetail.status === "failed" ? "destructive" : "secondary"
+                  }
+                >
+                  {t(`status.${runDetail.status}`)}
+                </Badge>
+                {["queued", "running"].includes(runDetail.status) &&
+                model.canExecute ? (
+                  <Button
+                    variant="outline"
+                    disabled={cancelling}
+                    onClick={() => void cancelRun()}
+                  >
+                    {t("cancelRun")}
+                  </Button>
+                ) : null}
+                {model.canExecute &&
+                !["queued", "running"].includes(runDetail.status) ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setRunInput(
+                        JSON.stringify(runDetail.inputJson ?? {}, null, 2),
+                      );
+                      setRunDetailOpen(false);
+                      setRunSheetOpen(true);
+                    }}
+                  >
+                    {t("retryRun")}
+                  </Button>
+                ) : null}
+              </div>
               {runDetail.error ? (
                 <Alert variant="destructive">
                   <AlertCircleIcon />
@@ -105,7 +185,7 @@ export function WorkflowBuilderSection1({
                 </div>
               ) : null}
             </div>
-          )}
+          ) : null}
         </ScrollArea>
       </SheetContent>
     </Sheet>

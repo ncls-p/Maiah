@@ -5,6 +5,34 @@ import {
 } from "./catalog.workflow-node-field-option";
 export const WORKFLOW_NODE_CATALOGPart2 = [
   {
+    type: "text.split",
+    label: "Découper un texte",
+    description: "Transforme un texte en liste à partir d’un séparateur.",
+    category: "data",
+    defaultParameters: { path: "message", separator: ",", outputPath: "items" },
+    fields: [
+      pathField(),
+      { key: "separator", control: "text", label: "separator" },
+      outputPathField,
+    ],
+  },
+  {
+    type: "list.join",
+    label: "Assembler une liste",
+    description: "Réunit les éléments d’une liste dans un texte.",
+    category: "data",
+    defaultParameters: {
+      path: "items",
+      separator: ", ",
+      outputPath: "message",
+    },
+    fields: [
+      pathField(),
+      { key: "separator", control: "text", label: "separator" },
+      outputPathField,
+    ],
+  },
+  {
     type: "number.calculate",
     label: "Calculer",
     description: "Effectue un calcul numérique simple.",

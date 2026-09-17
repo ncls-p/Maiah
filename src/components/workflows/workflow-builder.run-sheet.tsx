@@ -85,7 +85,9 @@ export function WorkflowBuilderRunSheet({
             <Button
               variant="outline"
               onClick={() => void save()}
-              disabled={actionBusy || !runInputValid || !runInputDirty}
+              disabled={
+                actionBusy || !runInputValid || !runInputDirty || !model.canEdit
+              }
             >
               {saving ? (
                 <RefreshCwIcon
@@ -99,7 +101,7 @@ export function WorkflowBuilderRunSheet({
             </Button>
             <Button
               onClick={() => void runWorkflow()}
-              disabled={actionBusy || !runInputValid}
+              disabled={actionBusy || !runInputValid || !model.canExecute}
             >
               {running ? (
                 <RefreshCwIcon
