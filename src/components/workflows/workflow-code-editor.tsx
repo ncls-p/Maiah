@@ -29,7 +29,10 @@ function Editor({
   onChange: (value: string) => void;
 }) {
   const lineRef = useRef<HTMLDivElement>(null);
-  const highlighted = useCodeWorkspaceHighlight(value, `workflow.${language}`);
+  const highlighted = useCodeWorkspaceHighlight(
+    value,
+    language === "python" ? "workflow.py" : "workflow.js",
+  );
   function sync(event: UIEvent<HTMLTextAreaElement>) {
     const pre = event.currentTarget
       .previousElementSibling as HTMLElement | null;
@@ -97,7 +100,7 @@ export function WorkflowCodeEditor({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="rounded-md bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground">
-            {language}
+            {language === "python" ? "Python" : "JavaScript"}
           </span>
           <Button
             type="button"

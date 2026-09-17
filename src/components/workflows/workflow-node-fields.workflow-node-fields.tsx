@@ -41,12 +41,14 @@ import {
 function FieldControl({
   nodeId,
   field,
+  language,
   value,
   agents,
   onChange,
 }: {
   nodeId: string;
   field: WorkflowNodeField;
+  language: string;
   value: unknown;
   agents: AgentOption[];
   onChange: (value: unknown) => void;
@@ -100,7 +102,7 @@ function FieldControl({
       <WorkflowCodeEditor
         id={id}
         value={String(value ?? "")}
-        language={String(field.key === "code" ? "javascript" : "text")}
+        language={language}
         onChange={onChange}
       />
     );
@@ -204,6 +206,7 @@ function NodeFields({
               nodeId={nodeId}
               field={field}
               value={parameters[field.key]}
+              language={String(parameters.language ?? "node")}
               agents={agents}
               onChange={(value) => onChange({ [field.key]: value })}
             />
