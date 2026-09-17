@@ -51,6 +51,19 @@ describe("runtime packaging guardrails", () => {
     expect(workflow).not.toContain('api POST "/deploy"');
   });
 
+  it("allows the bundled ServiceNow gateway in both production stacks", () => {
+    for (const file of [
+      ".coolify/stack.compose.yml",
+      "docker-compose.prod.yml",
+    ]) {
+      const compose = projectFile(file);
+      expect(compose).toContain(
+        "${MCP_TRUSTED_ORIGINS:-http://servicenow-mcp-gateway:8080}",
+      );
+      expect(compose).toMatch(/(?:environment:|<<:) \*app-environment/);
+    }
+  });
+
   it("waits until Coolify serves the requested deployment version", () => {
     const compose = projectFile(".coolify/stack.compose.yml");
     const healthRoute = projectFile("src/app/api/health/route.ts");
