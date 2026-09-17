@@ -1,5 +1,11 @@
 import { test } from "./access-memberships.fixtures";
 import { expect, type Page } from "@playwright/test";
+import {
+  assignmentsDialog,
+  closeOpenDialogs,
+  openPersonAccessDetails,
+  openPersonAssignments,
+} from "./access-ui";
 import { ensureE2EUser, ensureE2EMember, e2eMember, login } from "./fixtures";
 
 async function mutate(page: Page, data: Record<string, unknown>) {
@@ -49,13 +55,7 @@ test("manages multiple team and project memberships from people and teams", asyn
     .getByRole("combobox", { name: "Active project", exact: true })
     .click();
   await page.getByRole("option", { name: projectName, exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
-      exact: true,
-    })
-    .click();
-  const dialog = page.getByRole("dialog");
+  const dialog = await openPersonAssignments(page, e2eMember.name);
   for (const name of ["Membership team A", "Membership team B"]) {
     await dialog
       .getByRole("button", { name: `Add to team ${name}`, exact: true })
@@ -94,7 +94,7 @@ test("manages multiple team and project memberships from people and teams", asyn
       dialog.getByRole("button", { name: /^Remove access for / }),
     ).toBeVisible();
   }
-  await page.keyboard.press("Escape");
+  await closeOpenDialogs(page);
   await expect(dialog).toBeHidden();
   await expect(
     page.getByRole("combobox", { name: "Organization", exact: true }),
@@ -105,18 +105,18 @@ test("manages multiple team and project memberships from people and teams", asyn
     .click();
   await expect(
     page.getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
+      name: `Actions for ${e2eMember.name}`,
       exact: true,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", {
-      name: "Manage assignments for E2E Admin",
+      name: "Actions for E2E Admin",
       exact: true,
     }),
   ).not.toBeVisible();
   await page
-    .getByRole("combobox", { name: "Filter by project", exact: true })
+    .getByRole("combobox", { name: "Active project", exact: true })
     .click();
   await page
     .getByRole("option", { name: secondProject.name, exact: true })
@@ -126,14 +126,14 @@ test("manages multiple team and project memberships from people and teams", asyn
   ).toContainText(secondProject.name);
   await expect(
     page.getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
+      name: `Actions for ${e2eMember.name}`,
       exact: true,
     }),
   ).toBeVisible();
   await page.locator("#people-search").fill("does-not-exist");
   await expect(
     page.getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
+      name: `Actions for ${e2eMember.name}`,
       exact: true,
     }),
   ).not.toBeVisible();
@@ -142,16 +142,11 @@ test("manages multiple team and project memberships from people and teams", asyn
     .click();
   await expect(
     page.getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
+      name: `Actions for ${e2eMember.name}`,
       exact: true,
     }),
   ).toBeVisible();
-  await page
-    .getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
-      exact: true,
-    })
-    .click();
+  await openPersonAssignments(page, e2eMember.name);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await dialog.evaluate(
@@ -161,7 +156,7 @@ test("manages multiple team and project memberships from people and teams", asyn
   await expect(
     dialog.getByRole("combobox", { name: "Project to manage" }),
   ).toBeEnabled();
-  await page.keyboard.press("Escape");
+  await closeOpenDialogs(page);
   await expect(dialog).toBeHidden();
   await page.getByRole("tab", { name: "Teams", exact: true }).click();
   await page
@@ -170,19 +165,20 @@ test("manages multiple team and project memberships from people and teams", asyn
       exact: true,
     })
     .click();
-  await dialog
+  const teamDialog = assignmentsDialog(page);
+  await teamDialog
     .getByRole("combobox", { name: "Role in this project", exact: true })
     .click();
   await page.getByRole("option", { name: /Project viewer/i }).click();
-  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await teamDialog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(
-    dialog.getByRole("button", { name: /^Remove access for / }),
+    teamDialog.getByRole("button", { name: /^Remove access for / }),
   ).toBeVisible();
   await expect(
-    dialog.getByRole("combobox", { name: "Project to manage" }),
+    teamDialog.getByRole("combobox", { name: "Project to manage" }),
   ).toBeEnabled();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
+  await closeOpenDialogs(page);
+  await expect(teamDialog).toBeHidden();
   const snapshot = await (
     await page.request.get(`/api/workspace/iam?workspaceId=${workspaceId}`)
   ).json();
@@ -210,6 +206,13 @@ test("manages multiple team and project memberships from people and teams", asyn
     ),
   ).toBe(true);
   await page.getByRole("tab", { name: "People", exact: true }).click();
+  await expect(
+    page.getByRole("button", {
+      name: `Actions for ${e2eMember.name}`,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await openPersonAccessDetails(page, e2eMember.name);
   await page.route(
     "**/api/workspace/iam?**",
     (route) =>
@@ -263,10 +266,7 @@ test("manages multiple team and project memberships from people and teams", asyn
 test("creates, renames and deletes a project from Access", async ({ page }) => {
   await ensureE2EUser();
   await login(page);
-  await page.goto("/en/members");
-  await page
-    .getByRole("tab", { name: "Organizations and projects", exact: true })
-    .click();
+  await page.goto("/en/admin/settings");
   const name = `Project lifecycle ${Date.now()}`;
   await page
     .getByRole("textbox", { name: "Project name", exact: true })
@@ -280,19 +280,12 @@ test("creates, renames and deletes a project from Access", async ({ page }) => {
     .fill(name);
   await page.getByRole("button", { name: "Add project", exact: true }).click();
   await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
-  await page
-    .getByRole("tab", { name: "People and permissions", exact: true })
-    .click();
+  await page.goto("/en/members");
   const dialog = page.getByRole("dialog");
   await expect(
     page.getByRole("combobox", { name: "Active project", exact: true }),
   ).toHaveText(name);
-  await page
-    .getByRole("button", {
-      name: "Project and organization settings",
-      exact: true,
-    })
-    .click();
+  await page.goto("/en/admin/settings");
   await page.getByRole("button", { name: "Manage", exact: true }).click();
   await page
     .getByRole("menuitem", { name: "Rename project", exact: true })

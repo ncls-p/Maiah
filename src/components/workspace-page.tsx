@@ -21,6 +21,7 @@ export function WorkspacePage({
   children,
   className,
   headerVariant = "editorial",
+  showKicker,
 }: {
   title: string;
   accentTitle?: string;
@@ -31,8 +32,10 @@ export function WorkspacePage({
   children: ReactNode;
   className?: string;
   headerVariant?: "editorial" | "compact";
+  showKicker?: boolean;
 }) {
   const compact = headerVariant === "compact";
+  const kickerVisible = showKicker ?? true;
 
   return (
     <div
@@ -52,9 +55,11 @@ export function WorkspacePage({
         )}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="workspace-page-kicker" aria-hidden="true">
-            {eyebrow ?? `Maiah / ${title}`}
-          </span>
+          {kickerVisible ? (
+            <span className="workspace-page-kicker" aria-hidden="true">
+              {eyebrow ?? `Maiah / ${title}`}
+            </span>
+          ) : null}
           <h1
             className={cn(
               "workspace-page-heading text-pretty text-foreground",

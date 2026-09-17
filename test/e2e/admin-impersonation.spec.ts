@@ -37,7 +37,7 @@ test("admin impersonation displays a persistent banner and restores the original
     expect(forbidden.status()).toBe(403);
     await page.goto("/en/members");
     await page
-      .getByPlaceholder("Search people, email, role, or team…")
+      .locator("#people-search")
       .fill(e2eMember.email);
     await page
       .getByRole("button", {

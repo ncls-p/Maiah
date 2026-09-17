@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { test } from "./access-memberships.fixtures";
+import { directoryOrganizationSelect } from "./access-ui";
 import { ensureE2EAssistant, login } from "./fixtures";
 
 test("creates an organization and project with buttons and filters projects by organization", async ({
@@ -9,13 +10,11 @@ test("creates an organization and project with buttons and filters projects by o
   const { workspaceId } = await ensureE2EAssistant();
   await login(page);
   await page.request.patch("/api/workspaces", { data: { workspaceId } });
-  await page.goto("/en/members");
+  await page.goto("/en/admin/settings");
   const originalProject = await page
     .getByRole("combobox", { name: "Active project", exact: true })
+    .first()
     .innerText();
-  await page
-    .getByRole("tab", { name: "Organizations and projects", exact: true })
-    .click();
   const name = `Selection organization ${Date.now()}`;
   await page
     .getByRole("textbox", { name: "New organization name", exact: true })
@@ -37,9 +36,7 @@ test("creates an organization and project with buttons and filters projects by o
     action: "createOrganization",
     name,
   });
-  await expect(
-    page.getByRole("combobox", { name: "Organization", exact: true }),
-  ).toHaveText(name);
+  await expect(directoryOrganizationSelect(page)).toHaveText(name);
   await page
     .getByRole("textbox", { name: "Project name", exact: true })
     .fill("Selection demo");
@@ -56,9 +53,7 @@ test("creates an organization and project with buttons and filters projects by o
     organizationName: name,
     cookies: await page.context().cookies(),
   });
-  await page
-    .getByRole("tab", { name: "People and permissions", exact: true })
-    .click();
+  await page.goto("/en/members");
   const project = page.getByRole("combobox", {
     name: "Active project",
     exact: true,

@@ -103,6 +103,12 @@
     "apiKeys": "Clés API",
     "team": "Utilisateurs",
     "access": "Accès",
+    "accessTeams": "Équipes",
+    "accessRoles": "Rôles",
+    "accessResources": "Ressources",
+    "accessOrganizations": "Organisations",
+    "accessSharing": "Partage",
+    "accessLimits": "Limites d’usage",
     "usage": "Consommation",
     "activityLog": "Historique d’activité",
     "settings": "Mon compte",
@@ -2499,6 +2505,11 @@
     "platformSettingsTitle": "Paramètres de l’application",
     "platformSettingsDescription": "Réglages de l’organisation et de la plateforme.",
     "settingsPage": {
+      "tabs": {
+        "label": "Rubriques des réglages",
+        "organization": "Organisation",
+        "platform": "Plateforme"
+      },
       "loadFailed": "Impossible de charger les réglages",
       "loadErrorDescription": "Cette section n’a pas pu être chargée. Aucun réglage n’a été modifié.",
       "retry": "Réessayer",
@@ -2975,7 +2986,7 @@
   },
   "access": {
     "title": "Accès",
-    "description": "Gérez les personnes, les équipes et leurs droits.",
+    "description": "Qui a le droit de faire quoi dans ce projet.",
     "searchPlaceholder": "Écrivez pour rechercher…",
     "searchProjects": "Rechercher un projet",
     "organizationAccess": "Accès de l’organisation",
@@ -3013,7 +3024,7 @@
     },
     "assignmentsTitle": "Personnes",
     "assignmentsDescription": "Ajoutez des personnes et choisissez leur rôle dans ce projet.",
-    "searchPeople": "Rechercher une personne, un e-mail, un rôle ou une équipe…",
+    "searchPeople": "Rechercher une personne…",
     "searchPrincipal": "Rechercher un membre ou une équipe",
     "selectedCount": "{count, plural, one {# personne sélectionnée} other {# personnes sélectionnées}}",
     "grantSelected": "Donner l’accès à la sélection",
@@ -3078,7 +3089,7 @@
     "showMore": "Afficher {count} de plus",
     "noSearchResults": "Aucun résultat correspondant",
     "noSearchResultsDescription": "Essayez un autre nom, e-mail, rôle, droit ou équipe.",
-    "addPerson": "Ajouter une personne",
+    "addPerson": "Inviter",
     "addPersonTitle": "Ajouter une personne",
     "addPersonDescription": "Ajoutez d’abord le compte à l’organisation. Vous pourrez ensuite donner l’accès au projet depuis sa ligne.",
     "existingAccount": "Compte existant",
@@ -3129,7 +3140,6 @@
     "cancel": "Conserver l’accès",
     "confirmRemove": "Retirer l’accès",
     "teamsTitle": "Équipes",
-    "teamsDescription": "Regroupez les personnes pour leur donner les mêmes accès.",
     "searchTeams": "Rechercher une équipe ou un membre…",
     "createTeam": "Créer une équipe",
     "createTeamTitle": "Créer une équipe",
@@ -3155,7 +3165,6 @@
     "deleteTeamDescription": "L’équipe et toutes ses attributions d’accès seront supprimées. Ses membres resteront dans l’organisation.",
     "teamDeleted": "Équipe supprimée",
     "rolesTitle": "Rôles",
-    "rolesDescription": "Un rôle définit ce qu’une personne peut faire. Utilisez un rôle existant ou créez le vôtre.",
     "createRole": "Créer un rôle personnalisé",
     "createRoleTitle": "Créer un rôle personnalisé",
     "createRoleDescription": "Donnez au rôle un nom orienté résultat, choisissez sa portée, puis sélectionnez uniquement les droits nécessaires.",
@@ -3189,7 +3198,6 @@
     "deleteRoleDescription": "Seuls les rôles sans attribution active peuvent être supprimés.",
     "roleDeleted": "Rôle supprimé",
     "resourcesTitle": "Accès aux ressources",
-    "resourcesDescription": "Choisissez une ressource pour voir qui y a accès et modifier son partage.",
     "manageScope": "Gérer",
     "projectActions": "Projet actif",
     "organizationActions": "Organisation",
@@ -3680,7 +3688,7 @@
     },
     "matrix": {
       "title": "Permissions",
-      "description": "Les droits s’héritent de l’organisation vers les projets et leurs ressources. Vous pouvez déléguer uniquement vos droits à des membres moins privilégiés. Les actions « Administrer » regroupent les actions du même domaine.",
+      "description": "Les droits s’héritent de l’organisation vers les projets.",
       "caption": "{count} permissions à cette portée. Les droits sur une ressource peuvent être complétés par ses attributions directes.",
       "effective": "Mes droits effectifs",
       "delegable": "Délégable",
@@ -3759,23 +3767,10 @@
     },
     "navigation": {
       "label": "Rubriques des accès",
-      "hint": "Les droits se cumulent entre utilisateur, équipe et organisation. Choisissez le projet dans la rubrique Membres et droits.",
-      "access": {
-        "title": "Membres et droits",
-        "description": "Gérez les utilisateurs, leurs équipes, les rôles et les accès aux ressources du projet sélectionné."
-      },
-      "organizations": {
-        "title": "Organisations et projets",
-        "description": "Créez une organisation, ajoutez ses membres et ses projets. Le premier projet peut être créé plus tard."
-      },
-      "sharing": {
-        "title": "Partage entre organisations",
-        "description": "Choisissez une ressource et les organisations qui peuvent l’utiliser. Les droits de modification restent dans le projet d’origine."
-      },
-      "limits": {
-        "title": "Limites d’usage",
-        "description": "Définissez les plafonds LLM par utilisateur, équipe ou organisation, puis affinez par fournisseur et modèle."
-      }
+      "people": "Personnes",
+      "teams": "Équipes",
+      "roles": "Rôles",
+      "resources": "Ressources"
     },
     "filters": {
       "organization": "Organisation",
@@ -4434,7 +4429,7 @@
     "retry": "Réessayer",
     "loading": "Chargement…",
     "usageLimits": "Limites d’usage",
-    "usageLimitsHint": "Les plafonds se cumulent : chaque appel doit respecter toutes les règles qui lui correspondent. Les périodes suivent le calendrier UTC. Le budget est réservé avant chaque appel puis ajusté à la consommation reçue.",
+    "usageLimitsHint": "Les plafonds se cumulent. Les périodes suivent le calendrier UTC.",
     "subjectType": "Appliquer à",
     "subject": "Utilisateur, équipe ou organisation",
     "user": "Utilisateur",
@@ -4459,7 +4454,7 @@
     "deleteLimitTitle": "Supprimer cette limite ?",
     "deleteLimitDescription": "Ce plafond ne sera plus appliqué aux prochains appels. Les autres limites restent actives.",
     "distribution": "Partage entre organisations",
-    "distributionHint": "Donnez aux organisations sélectionnées accès à la lecture et à l’utilisation. Les droits de modification et les secrets restent dans l’organisation source. Un provider partagé donne accès à tous ses modèles ; un modèle partagé reste limité à ce modèle.",
+    "distributionHint": "Donnez aux organisations sélectionnées un accès en lecture et utilisation. Les droits de modification restent dans l’organisation source.",
     "sourceProject": "Projet source",
     "resourceType": "Type de ressource",
     "resource": "Ressource",

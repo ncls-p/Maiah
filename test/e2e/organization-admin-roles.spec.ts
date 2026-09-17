@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { expect, test } from "@playwright/test";
+import { openPersonAccessDetails } from "./access-ui";
 import {
   ensureE2EAssistant,
   databaseUrl,
@@ -33,22 +34,18 @@ test("organization administrators appoint other organization administrators from
     await loginWithCredentials(page, people[0]);
     await page.request.patch("/api/workspaces", { data: { workspaceId } });
     await page.goto("/en/members");
-    await expect(
-      page.getByRole("columnheader", {
-        name: "Organization role",
-        exact: true,
-      }),
-    ).toBeVisible();
-    await page
-      .getByPlaceholder("Search people, email, role, or team…")
-      .fill(people[1].email);
+    await page.locator("#people-search").fill(people[1].email);
+    await openPersonAccessDetails(page, people[1].name);
     await page
       .getByRole("button", {
         name: `Make ${people[1].name} an organization administrator`,
         exact: true,
       })
       .click();
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog", {
+      name: `Make ${people[1].name} an organization administrator`,
+      exact: true,
+    });
     await expect(dialog).toContainText(
       "appoint other organization administrators",
     );
@@ -82,26 +79,25 @@ test("organization administrators appoint other organization administrators from
       .getByRole("button", { name: "Make administrator", exact: true })
       .click();
     await expect(dialog).toBeHidden();
-    await page.screenshot({
-      path: "/tmp/maiah-organization-admin-desktop.png",
-      fullPage: true,
-    });
     await expect(
       page.getByRole("button", {
         name: `Make ${people[1].name} an organization administrator`,
         exact: true,
       }),
     ).toHaveCount(0);
+    await page.screenshot({
+      path: "/tmp/maiah-organization-admin-desktop.png",
+      fullPage: true,
+    });
     const second = await browser.newContext();
     contexts.push(second);
     const nextPage = await second.newPage();
     await loginWithCredentials(nextPage, people[1]);
     await nextPage.request.patch("/api/workspaces", { data: { workspaceId } });
     await nextPage.goto("/en/members");
-    await nextPage
-      .getByPlaceholder("Search people, email, role, or team…")
-      .fill(people[2].email);
+    await nextPage.locator("#people-search").fill(people[2].email);
     await nextPage.setViewportSize({ width: 390, height: 844 });
+    await openPersonAccessDetails(nextPage, people[2].name);
     const appoint = nextPage.getByRole("button", {
       name: `Make ${people[2].name} an organization administrator`,
       exact: true,
@@ -111,7 +107,12 @@ test("organization administrators appoint other organization administrators from
     await nextPage
       .getByRole("button", { name: "Make administrator", exact: true })
       .click();
-    await expect(nextPage.getByRole("dialog")).toBeHidden();
+    await expect(
+      nextPage.getByRole("dialog", {
+        name: `Make ${people[2].name} an organization administrator`,
+        exact: true,
+      }),
+    ).toBeHidden();
     await nextPage.screenshot({
       path: "/tmp/maiah-organization-admin-mobile.png",
       fullPage: true,

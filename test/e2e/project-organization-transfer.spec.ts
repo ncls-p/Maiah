@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { Client } from "pg";
+import { workspaceOrganizationSelect } from "./access-ui";
 import {
   databaseUrl,
   ensureE2EUser,
@@ -136,25 +137,27 @@ test("moves a whole project into an empty organization while retaining resources
     );
     expect(stale.status()).toBe(409);
     // Finish through the real project settings dialog.
-    await page.goto("/en/members");
-    await page
-      .getByRole("combobox", { name: "Organization", exact: true })
-      .click();
+    await page.goto("/en/admin/settings");
+    const organization = workspaceOrganizationSelect(page);
+    await organization.click();
     await page
       .getByRole("option", { name: `Transfer source ${suffix}`, exact: true })
       .click();
-    await page
-      .getByRole("combobox", { name: "Active project", exact: true })
-      .click();
+    await expect(organization).toHaveText(`Transfer source ${suffix}`);
+    const projectSelect = page.getByRole("combobox", {
+      name: "Active project",
+      exact: true,
+    });
+    await projectSelect.click();
     await page
       .getByRole("option", { name: `${project.name} edited`, exact: true })
       .click();
-    await page
-      .getByRole("button", {
-        name: "Project and organization settings",
-        exact: true,
-      })
-      .click();
+    const settings = page.getByRole("button", {
+      name: "Project and organization settings",
+      exact: true,
+    });
+    if ((await settings.getAttribute("aria-expanded")) !== "true")
+      await settings.click();
     await page
       .getByRole("button", { name: "Transfer project", exact: true })
       .click();
@@ -177,9 +180,7 @@ test("moves a whole project into an empty organization while retaining resources
       .getByRole("button", { name: "Transfer project", exact: true })
       .click();
     await expect(dialog).toBeHidden();
-    await expect(
-      page.getByRole("combobox", { name: "Organization", exact: true }),
-    ).toContainText(target.name);
+    await expect(workspaceOrganizationSelect(page)).toContainText(target.name);
     expect(
       (
         await sql.query("select organization_id from workspaces where id=$1", [

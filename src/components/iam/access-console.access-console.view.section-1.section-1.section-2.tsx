@@ -4,12 +4,6 @@ import { CopyIcon, PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  CardAction,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -62,12 +56,7 @@ export function AccessRolesSection2({
     snapshot.actions.organization["roles.create"];
   const canCreateProjectRole = snapshot.actions.workspace["roles.create"];
   return (
-    <CardHeader className="grid-cols-1! px-0 sm:grid-cols-[1fr_auto]!">
-      <CardTitle>{t("rolesTitle")}</CardTitle>
-      <CardDescription>{t("rolesDescription")}</CardDescription>
-      <>
-        <CardAction className="col-start-1 row-start-auto justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
-          <Dialog
+    <Dialog
             open={roleOpen}
             onOpenChange={(open) => {
               setRoleOpen(open);
@@ -289,9 +278,6 @@ export function AccessRolesSection2({
                 </DialogFooter>
               </form>
             </DialogContent>
-          </Dialog>
-        </CardAction>
-      </>
-    </CardHeader>
+    </Dialog>
   );
 }

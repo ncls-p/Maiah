@@ -1,8 +1,7 @@
 import { Client } from "pg";
-import { databaseUrl, e2eUser } from "./fixtures";
+import { databaseUrl, e2eUser, ensureE2EUser, login } from "./fixtures";
 import { test } from "./access-memberships.fixtures";
 import { expect } from "@playwright/test";
-import { ensureE2EUser, login } from "./fixtures";
 test("creates an empty organization, exposes organization agents across projects and manages usage limits", async ({
   page,
   cleanupOrganization,
@@ -70,10 +69,7 @@ test("creates an empty organization, exposes organization agents across projects
     `/api/workspace/agents/${agent.id}?workspaceId=${sibling.id}`,
   );
   expect(detail.ok(), await detail.text()).toBe(true);
-  await page.goto("/en/members");
-  await page
-    .getByRole("tab", { name: "Organization sharing", exact: true })
-    .click();
+  await page.goto("/en/admin/settings?tab=platform");
   await page
     .getByRole("combobox", { name: "Source project", exact: true })
     .click();
@@ -145,8 +141,7 @@ test("creates an empty organization, exposes organization agents across projects
     await sql.query("delete from conversations where id=$1", [conversationId]);
     await sql.end();
   }
-  await page.goto("/en/members");
-  await page.getByRole("tab", { name: "Usage limits", exact: true }).click();
+  await page.goto("/en/admin/settings?tab=platform");
   await expect(
     page.getByRole("button", { name: "Add usage limit", exact: true }),
   ).toBeVisible();

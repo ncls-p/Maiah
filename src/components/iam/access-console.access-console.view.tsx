@@ -4,7 +4,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { useAccessConsoleController } from "./access-console.access-console";
 import { AccessConsoleSection1 } from "./access-console.access-console.view.section-1";
-import { AccessConsoleSection2 } from "./access-console.access-console.view.section-2";
+
+export type AccessConsoleSection = "people" | "teams" | "roles" | "resources";
 
 export type AccessConsoleViewModel = Extract<
   ReturnType<typeof useAccessConsoleController>,
@@ -12,8 +13,10 @@ export type AccessConsoleViewModel = Extract<
 >;
 export function AccessConsoleView({
   model,
+  section = "people",
 }: {
   model: AccessConsoleViewModel;
+  section?: AccessConsoleSection;
 }) {
   const { canManageAnything, load, refreshError, t } = model;
   return (
@@ -37,8 +40,6 @@ export function AccessConsoleView({
         </Alert>
       ) : null}
 
-      <AccessConsoleSection2 model={model} />
-
       {!canManageAnything ? (
         <Alert>
           <ShieldCheckIcon aria-hidden="true" />
@@ -47,7 +48,7 @@ export function AccessConsoleView({
         </Alert>
       ) : null}
 
-      <AccessConsoleSection1 model={model} />
+      <AccessConsoleSection1 model={model} section={section} />
     </div>
   );
 }

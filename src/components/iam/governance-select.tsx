@@ -15,17 +15,21 @@ export function GovernanceSelect({
   onChange,
   options,
   disabled = false,
+  hideLabel = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { id: string; name: string }[];
   disabled?: boolean;
+  hideLabel?: boolean;
 }) {
   const id = useId();
   return (
     <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <FieldLabel htmlFor={id} className={hideLabel ? "sr-only" : undefined}>
+        {label}
+      </FieldLabel>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger id={id} className="w-full">
           <SelectValue placeholder={label} />

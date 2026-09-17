@@ -3,15 +3,12 @@
 import { personHasProjectAccess } from "@/modules/iam/filter-access-people";
 import { useAccessSnapshot } from "./use-access-snapshot";
 import { AccessProjectSelector } from "./access-project-selector";
-
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "@/lib/toast";
-
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { buildAccessPeople } from "@/modules/iam/access-view-model";
-import { AccessConsoleView } from "./access-console.access-console.view";
 import { PlatformAccessUser } from "./access-console.access-member";
 import {
   AccessConsoleSkeleton,
@@ -451,12 +448,4 @@ export function useAccessConsoleController({
     visibleTeamCount,
     workspaceId,
   } as const;
-}
-
-export function AccessConsole(
-  ...args: Parameters<typeof useAccessConsoleController>
-) {
-  const model = useAccessConsoleController(...args);
-  if (!("kind" in model)) return model;
-  return <AccessConsoleView model={model} />;
 }

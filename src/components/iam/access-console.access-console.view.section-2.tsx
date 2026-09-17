@@ -12,8 +12,10 @@ import {
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 export function AccessConsoleSection2({
   model,
+  settingsDefaultOpen = false,
 }: {
   model: AccessConsoleViewModel;
+  settingsDefaultOpen?: boolean;
 }) {
   const {
     canManageOrganizationLifecycle,
@@ -33,7 +35,7 @@ export function AccessConsoleSection2({
         }}
       />
 
-      <Collapsible className="w-full">
+      <Collapsible className="w-full" defaultOpen={settingsDefaultOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" className="group">
             <Settings2Icon data-icon="inline-start" aria-hidden="true" />

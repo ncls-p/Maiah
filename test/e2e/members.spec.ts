@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openPersonGrantAccess } from "./access-ui";
 import {
   e2eAccessManager,
   e2eMember,
@@ -32,13 +33,11 @@ test.describe("members page", () => {
   test("shows one unified access table", async ({ page }) => {
     await page.goto("/en/members");
     await expect(
-      page.locator('[data-slot="card-title"]').filter({ hasText: /^People$/ }),
+      page.getByRole("columnheader", { name: "Person", exact: true }),
     ).toBeVisible({
       timeout: 10_000,
     });
-    await expect(
-      page.getByPlaceholder("Search people, email, role, or team…"),
-    ).toBeVisible();
+    await expect(page.locator("#people-search")).toBeVisible();
   });
 
   test("explains organization inheritance in project settings", async ({
@@ -57,37 +56,37 @@ test.describe("members page", () => {
   test("offers scoped role assignment", async ({ page }) => {
     await page.goto("/en/members");
     await expect(
-      page.getByRole("button", { name: "Grant access" }),
-    ).toBeEnabled({ timeout: 10_000 });
+      page.getByRole("columnheader", {
+        name: "Role in this project",
+        exact: true,
+      }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toBeEnabled();
   });
 
-  test("shows people, teams, and roles tabs", async ({ page }) => {
+  test("shows people, teams, and roles links", async ({ page }) => {
     await page.goto("/en/members");
     await expect(
       page.getByRole("tab", { name: "People", exact: true }),
     ).toBeVisible();
     await expect(page.getByRole("tab", { name: "Teams" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Roles" })).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "Resources", exact: true }),
+    ).toBeVisible();
   });
 
-  test("completes a bulk role grant without requiring a hidden principal", async ({
-    page,
-  }) => {
+  test("assigns a project role from the people table", async ({ page }) => {
     await ensureE2EMember();
     await page.goto("/en/members");
 
-    await page.getByRole("checkbox", { name: "Select E2E Member" }).check();
-    await page.getByRole("button", { name: "Grant selected" }).click();
-    const dialog = page.getByRole("dialog", { name: "Grant access" });
-    await expect(
-      dialog.getByRole("combobox", { name: "Person or team" }),
-    ).toHaveCount(0);
-    await dialog.getByRole("combobox", { name: "Role" }).click();
-    await page
-      .getByRole("option", { name: "Project Viewer", exact: true })
-      .click();
-    await dialog.getByRole("button", { name: "Grant access" }).click();
-    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+    await page.locator("#people-search").fill(e2eMember.email);
+    const person = page.locator("tbody tr").filter({ hasText: e2eMember.email });
+    await person.getByRole("button", { name: /^Role for / }).click();
+    await page.getByRole("menuitemradio", { name: /^Viewer/ }).click();
+    await expect(person.getByRole("button", { name: /^Role for / })).toContainText(
+      "Viewer",
+    );
   });
 
   test("limits a project access manager to roles they can delegate", async ({
@@ -99,11 +98,8 @@ test.describe("members page", () => {
     await page.goto("/en/members");
 
     await expect(
-      page.getByRole("button", { name: "Grant access" }),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: "Add person" })).toHaveCount(
-      0,
-    );
+      page.getByRole("button", { name: "Invite" }),
+    ).toHaveCount(0);
 
     const workspacesResponse = await page.request.get("/api/workspaces");
     const workspaceRows = (await workspacesResponse.json()) as Array<{
@@ -118,7 +114,8 @@ test.describe("members page", () => {
     );
     const accessSnapshot = (await snapshotResponse.json()) as {
       members: Array<{ userId: string; email: string }>;
-      roles: Array<{ id: string; name: string }>;
+      roles: Array<{ id: string; name: string; displayName: string }>;
+      assignableRoleIds: string[];
     };
     const actorId = accessSnapshot.members.find(
       ({ email }) => email === e2eAccessManager.email,
@@ -128,6 +125,28 @@ test.describe("members page", () => {
     )?.id;
     expect(actorId).toBeTruthy();
     expect(administratorRoleId).toBeTruthy();
+    const assignable = accessSnapshot.roles.filter((role) =>
+      accessSnapshot.assignableRoleIds.includes(role.id),
+    );
+    expect(
+      assignable.some(
+        (role) => role.displayName === "Restricted Access Manager",
+      ),
+    ).toBe(true);
+    expect(
+      assignable.some(
+        (role) =>
+          role.displayName === "Project Administrator" ||
+          role.name === "workspace.admin",
+      ),
+    ).toBe(false);
+    expect(
+      assignable.some(
+        (role) =>
+          role.displayName === "Project Viewer" ||
+          role.name === "workspace.viewer",
+      ),
+    ).toBe(false);
     const escalationResponse = await page.request.post("/api/workspace/iam", {
       data: {
         action: "assignRole",
@@ -144,32 +163,18 @@ test.describe("members page", () => {
     await expect(page.getByRole("button", { name: "Create team" })).toHaveCount(
       0,
     );
-
-    await page.getByRole("tab", { name: "People", exact: true }).click();
-    await page.getByRole("button", { name: "Grant access" }).click();
-    const dialog = page.getByRole("dialog", { name: "Grant access" });
-    await dialog.getByRole("combobox", { name: "Role" }).click();
-    await expect(
-      page.getByRole("option", { name: "Restricted Access Manager" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("option", { name: "Project Administrator" }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("option", { name: "Project Viewer" }),
-    ).toHaveCount(0);
   });
 
   test("prevents an organization administrator from granting ownership", async ({
     page,
   }) => {
     await ensureE2EOrganizationAdmin();
+    await ensureE2EMember();
     await page.context().clearCookies();
     await loginWithCredentials(page, e2eOrganizationAdmin);
     await page.goto("/en/members");
 
-    await page.getByRole("button", { name: "Grant access" }).click();
-    const dialog = page.getByRole("dialog", { name: "Grant access" });
+    const dialog = await openPersonGrantAccess(page, e2eMember.name);
     await dialog.getByText("Advanced: organization or team").click();
     await dialog.getByRole("combobox", { name: "Scope" }).click();
     await page
@@ -195,8 +200,6 @@ test.describe("members page", () => {
     await expect(page.getByText("Access could not be loaded")).toBeVisible({
       timeout: 10_000,
     });
-    await expect(
-      page.getByRole("button", { name: "Grant access" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
   });
 });

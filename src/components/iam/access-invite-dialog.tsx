@@ -35,7 +35,7 @@ import type { AccessConsoleViewModel } from "./access-console.access-console.vie
 import { INITIAL_ACCOUNT_FORM } from "./access-console.resource-transfer-preview";
 import { MutatingButton } from "./access-console.scope-path";
 
-export function AccessPeopleTransferBranch2({
+export function AccessInviteDialog({
   model,
 }: {
   model: AccessConsoleViewModel;

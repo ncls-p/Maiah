@@ -22,9 +22,7 @@ test.describe("members page", () => {
     await ensureE2EMember();
     await page.goto("/en/members");
 
-    await page
-      .getByPlaceholder("Search people, email, role, or team…")
-      .fill(e2eMember.email);
+    await page.locator("#people-search").fill(e2eMember.email);
     const matchingRows = page.locator("tbody tr").filter({
       hasText: e2eMember.email,
     });
@@ -34,8 +32,7 @@ test.describe("members page", () => {
   test("opens built-in roles with their permission matrix", async ({
     page,
   }) => {
-    await page.goto("/en/members");
-    await page.getByRole("tab", { name: "Roles" }).click();
+    await page.goto("/en/members/roles");
 
     const roleRow = page.locator("tbody tr").filter({
       hasText: "Project Viewer",
@@ -70,7 +67,7 @@ test.describe("members page", () => {
       await activeProject.click();
       await page.getByRole("option", { name: "Maiah", exact: true }).click();
     }
-    await page.getByRole("tab", { name: "Resources" }).click();
+    await page.goto("/en/members/resources");
     await page
       .getByRole("textbox", { name: "Search resources" })
       .fill("Transfer preview assistant");
@@ -118,7 +115,7 @@ test.describe("members page", () => {
       await activeProject.click();
       await page.getByRole("option", { name: "Maiah", exact: true }).click();
     }
-    await page.getByRole("tab", { name: "Resources" }).click();
+    await page.goto("/en/members/resources");
     await page.getByText("More actions", { exact: true }).click();
     await page
       .getByRole("button", { name: "Move or clone everything" })
@@ -153,7 +150,7 @@ test.describe("members page", () => {
       await activeProject.click();
       await page.getByRole("option", { name: "Maiah", exact: true }).click();
     }
-    await page.getByRole("tab", { name: "Resources" }).click();
+    await page.goto("/en/members/resources");
     await page.getByText("More actions", { exact: true }).click();
     await page
       .getByRole("button", { name: "Move or clone everything" })

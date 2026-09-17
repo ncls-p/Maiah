@@ -137,6 +137,9 @@ const routeTitleKeys: Record<string, string> = {
   "/usage": "usage",
   "/audit": "activityLog",
   "/members": "access",
+  "/members/teams": "accessTeams",
+  "/members/roles": "accessRoles",
+  "/members/resources": "accessResources",
   "/settings": "settings",
   "/admin/settings": "adminSettings",
   "/setup": "setup",
@@ -186,6 +189,12 @@ export function getRouteBreadcrumbs(
     return [
       { labelKey: "workflows", href: "/workflows" },
       { labelKey: "workflowEditor" },
+    ];
+  }
+  if (pathname.startsWith("/members/") && pathname !== "/members") {
+    return [
+      { labelKey: "access", href: "/members" },
+      { labelKey: getRouteTitleKey(pathname) },
     ];
   }
   return undefined;
