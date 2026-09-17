@@ -174,7 +174,7 @@ test("switches between visual and agentic editing while keeping live changes", a
     await page.getByRole("button", { name: "Send" }).click();
 
     await expect(page.getByText("Using Workflow assistant")).toBeVisible();
-    await expect(page.getByText("Building the workflow")).toBeVisible();
+    await expect(page.getByText("Building the workflow")).not.toBeVisible();
     await expect(
       page.getByText("Prepare summary", { exact: true }),
     ).toBeVisible();

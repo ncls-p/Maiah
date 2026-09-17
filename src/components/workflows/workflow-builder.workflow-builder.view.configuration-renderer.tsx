@@ -1,3 +1,5 @@
+import { WorkflowCodeContextProvider } from "./workflow-assisted-code-editor";
+import { workflowCodeContext } from "./workflow-code-context";
 import { WorkflowVariablesContext } from "./workflow-value-field";
 import { workflowVariables } from "./workflow-variable-options";
 import { workflowDefinition } from "./workflow-builder.node-types";
@@ -70,13 +72,24 @@ export function useWorkflowConfigurationRenderer(
             selectedNode.id,
           )}
         >
-          <WorkflowNodeFields
-            nodeId={`${selectedNode.id}-${suffix}`}
-            catalogItem={catalogItem}
-            parameters={selectedNode.data.parameters}
-            agents={agents}
-            onChange={updateParameters}
-          />
+          <WorkflowCodeContextProvider
+            value={workflowCodeContext(
+              workflowDefinition(
+                model.nodes,
+                model.edges,
+                model.workflow.definition.defaultInput,
+              ),
+              selectedNode.id,
+            )}
+          >
+            <WorkflowNodeFields
+              nodeId={`${selectedNode.id}-${suffix}`}
+              catalogItem={catalogItem}
+              parameters={selectedNode.data.parameters}
+              agents={agents}
+              onChange={updateParameters}
+            />
+          </WorkflowCodeContextProvider>
         </WorkflowVariablesContext>
         <AdvancedSection
           label={t("expertSettings")}

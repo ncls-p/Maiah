@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { WorkflowCodeEditor } from "./workflow-code-editor";
 import type {
   WorkflowNodeCatalogItem,
   WorkflowNodeField,
@@ -40,12 +41,14 @@ import {
 function FieldControl({
   nodeId,
   field,
+  language,
   value,
   agents,
   onChange,
 }: {
   nodeId: string;
   field: WorkflowNodeField;
+  language: string;
   value: unknown;
   agents: AgentOption[];
   onChange: (value: unknown) => void;
@@ -94,17 +97,25 @@ function FieldControl({
       />
     );
   }
-  if (field.control === "textarea" || field.control === "code") {
+  if (field.control === "code") {
+    return (
+      <WorkflowCodeEditor
+        id={id}
+        value={String(value ?? "")}
+        language={language}
+        onChange={onChange}
+      />
+    );
+  }
+  if (field.control === "textarea") {
     return (
       <div className="space-y-2">
         <Textarea
           id={id}
           value={String(value ?? "")}
           onChange={(event) => onChange(event.target.value)}
-          className={
-            field.control === "code" ? "min-h-72 font-mono text-xs" : "min-h-32"
-          }
-          spellCheck={field.control !== "code"}
+          className="min-h-32"
+          spellCheck
         />
         {field.description === "templateHint" ? (
           <Select
@@ -195,6 +206,7 @@ function NodeFields({
               nodeId={nodeId}
               field={field}
               value={parameters[field.key]}
+              language={String(parameters.language ?? "node")}
               agents={agents}
               onChange={(value) => onChange({ [field.key]: value })}
             />

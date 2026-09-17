@@ -1,3 +1,4 @@
+import { WorkflowRunStatusBar } from "./workflow-run-status-bar";
 import {
   Background,
   BackgroundVariant,
@@ -91,7 +92,9 @@ export function WorkflowBuilderView({
         </TabsList>
         <TabsContent value="configuration" className="min-h-0 flex-1">
           <ScrollArea className="h-full">
-            {renderConfiguration(suffix)}
+            <fieldset disabled={!model.canEdit || model.actionBusy}>
+              {renderConfiguration(suffix)}
+            </fieldset>
           </ScrollArea>
         </TabsContent>
         <TabsContent value="runs" className="min-h-0 flex-1">
@@ -102,12 +105,7 @@ export function WorkflowBuilderView({
   }
 
   const canvas = (
-    <main
-      className={cn(
-        "relative h-full bg-muted/10",
-        editorMode === "visual" ? "min-h-[28rem] sm:min-h-[34rem]" : "min-h-0",
-      )}
-    >
+    <main className={cn("relative h-full bg-muted/10", "min-h-0")}>
       <ReactFlow<WorkflowCanvasNodeType>
         nodes={nodes}
         edges={edges}
@@ -134,11 +132,13 @@ export function WorkflowBuilderView({
         fitViewOptions={{ padding: 0.24 }}
         minZoom={0.25}
         maxZoom={1.8}
-        nodesDraggable
-        nodesConnectable
-        edgesReconnectable
+        nodesDraggable={model.canEdit && !model.actionBusy}
+        nodesConnectable={model.canEdit && !model.actionBusy}
+        edgesReconnectable={model.canEdit && !model.actionBusy}
         elementsSelectable
-        deleteKeyCode={["Backspace", "Delete"]}
+        deleteKeyCode={
+          model.canEdit && !model.actionBusy ? ["Backspace", "Delete"] : null
+        }
         snapToGrid
         snapGrid={[16, 16]}
         panOnScroll
@@ -166,12 +166,13 @@ export function WorkflowBuilderView({
     <div
       data-workflow-builder
       className={cn(
-        "flex h-[calc(100dvh-10rem)] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)]",
+        "flex h-[calc(100dvh-14rem)] min-h-[26rem] sm:h-[calc(100dvh-10rem)] sm:min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)]",
         isFullscreen &&
           "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0",
       )}
     >
       <WorkflowBuilderSection2 model={model} />
+      <WorkflowRunStatusBar model={model} />
 
       {editorMode === "agentic" ? (
         isDesktop ? (

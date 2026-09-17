@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
 import {
@@ -33,6 +33,24 @@ export async function processWorkflowRun(
     .limit(1);
   if (!record) throw new WorkflowNotFoundError("Workflow run not found");
   if (["completed", "cancelled"].includes(record.run.status)) return record.run;
+  const cancellation = new AbortController();
+  let checkingCancellation = false;
+  const monitor = setInterval(async () => {
+    if (checkingCancellation) return;
+    checkingCancellation = true;
+    try {
+      const [current] = await db
+        .select({ status: workflowRuns.status })
+        .from(workflowRuns)
+        .where(eq(workflowRuns.id, runId))
+        .limit(1);
+      if (current?.status === "cancelled") cancellation.abort();
+    } catch {
+      cancellation.abort();
+    } finally {
+      checkingCancellation = false;
+    }
+  }, 750);
   try {
     const { definition, blueprint } = compileWorkflowDefinition({
       workflowId: record.run.workflowId,
@@ -56,10 +74,17 @@ export async function processWorkflowRun(
         .returning();
       if (!claimed) return record.run;
     } else {
-      await db
+      const [claimed] = await db
         .update(workflowRuns)
         .set({ status: "running", startedAt: new Date(), error: null })
-        .where(eq(workflowRuns.id, runId));
+        .where(
+          and(
+            eq(workflowRuns.id, runId),
+            eq(workflowRuns.status, record.run.status),
+          ),
+        )
+        .returning();
+      if (!claimed) return record.run;
     }
     let failureDetail: string | null = null;
     const eventBus = createWorkflowEventBus((event) => {
@@ -82,7 +107,13 @@ export async function processWorkflowRun(
     const result = await runtime.run(
       blueprint,
       { input: record.run.inputJson ?? null },
-      { strict: true, concurrency: 4, signal: options.signal },
+      {
+        strict: true,
+        concurrency: 4,
+        signal: options.signal
+          ? AbortSignal.any([options.signal, cancellation.signal])
+          : cancellation.signal,
+      },
     );
     const completed = result.status === "completed";
     const failure =
@@ -95,7 +126,9 @@ export async function processWorkflowRun(
         error: completed ? null : failure || `Workflow ${result.status}`,
         completedAt: new Date(),
       })
-      .where(eq(workflowRuns.id, runId))
+      .where(
+        and(eq(workflowRuns.id, runId), ne(workflowRuns.status, "cancelled")),
+      )
       .returning();
     return run;
   } catch (error) {
@@ -106,8 +139,12 @@ export async function processWorkflowRun(
         error: errorMessage(error),
         completedAt: new Date(),
       })
-      .where(eq(workflowRuns.id, runId));
+      .where(
+        and(eq(workflowRuns.id, runId), ne(workflowRuns.status, "cancelled")),
+      );
     throw error;
+  } finally {
+    clearInterval(monitor);
   }
 }
 

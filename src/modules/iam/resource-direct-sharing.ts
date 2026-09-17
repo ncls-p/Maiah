@@ -30,6 +30,7 @@ const SHARE_PERMISSIONS = {
   agent: "agents.update",
   knowledge_base: "knowledgeBases.manage",
   mcp_server: "mcpServers.manage",
+  workflow: "workflows.update",
 } as const satisfies Partial<Record<AccessResourceType, string>>;
 
 export type DirectlyShareableResourceType = keyof typeof SHARE_PERMISSIONS;
@@ -67,7 +68,9 @@ async function sharingContext(
             ),
         ),
       ).then((grants) => grants.every(Boolean)),
-      authorization.hasDirectPermission(
+      (input.resourceType === "workflow"
+        ? authorization.hasPermission.bind(authorization)
+        : authorization.hasDirectPermission.bind(authorization))(
         { principalType: "user", principalId: input.actorUserId },
         SHARE_PERMISSIONS[input.resourceType],
         input.resourceType,
@@ -146,6 +149,7 @@ async function sharingRoles(
           "workspace.agent_user",
           "workspace.viewer",
           KNOWLEDGE_EDITOR_ROLE_NAME,
+          "workspace.workflow_user",
         ]),
         eq(roles.scopeType, "workspace"),
         eq(roles.isSystem, true),
@@ -155,7 +159,9 @@ async function sharingRoles(
   const rootRole =
     resourceType === "agent"
       ? roleRows.find(({ name }) => name === "workspace.agent_user")
-      : viewerRole;
+      : resourceType === "workflow"
+        ? roleRows.find(({ name }) => name === "workspace.workflow_user")
+        : viewerRole;
   if (!rootRole || !viewerRole) {
     throw new IamOperationError(
       "The project roles required for sharing are missing",

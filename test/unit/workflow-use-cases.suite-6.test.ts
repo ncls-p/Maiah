@@ -133,6 +133,9 @@ describe("workflow worker processing", () => {
   it("persists every relevant node event and completes the run", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
     database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "running" },
+    ]);
+    database.chain.returning.mockResolvedValueOnce([
       { ...run, status: "completed", outputJson: { result: true } },
     ]);
     workflowMocks.createRuntime.mockImplementation(({ eventBus }) => ({

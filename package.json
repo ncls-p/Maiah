@@ -8,9 +8,9 @@
     "npm": "11.18.0"
   },
   "scripts": {
-    "predev": "npm run swagger:assets",
+    "predev": "npm run swagger:assets && npm run workflow:assets",
     "dev": "tsx scripts/migrate.ts && next dev",
-    "prebuild": "npm run swagger:assets",
+    "prebuild": "npm run swagger:assets && npm run workflow:assets",
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "eslint",
@@ -42,7 +42,8 @@
     "permissions:generate": "tsx scripts/generate-permission-matrix.ts",
     "permissions:check": "tsx scripts/generate-permission-matrix.ts --check",
     "mcp:generate": "node scripts/generate-mcp-contracts.mjs",
-    "mcp:check": "node scripts/generate-mcp-contracts.mjs --check"
+    "mcp:check": "node scripts/generate-mcp-contracts.mjs --check",
+    "workflow:assets": "node scripts/build-workflow-language-service.mjs"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^5.0.82",
@@ -111,10 +112,13 @@
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^3.2.4",
     "drizzle-kit": "^0.31.4",
+    "esbuild": "^0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "jscpd": "^5.0.14",
     "knip": "^6.31.0",
+    "monaco-editor": "0.52.2",
+    "monaco-pyright-lsp": "0.1.7",
     "openai": "^6.47.0",
     "pg": "^8.16.3",
     "postcss": "^8.5.25",

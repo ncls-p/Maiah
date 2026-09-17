@@ -34,6 +34,7 @@ export const workflowAgenticRequestSchema = z
   .object({
     workspaceId: z.uuid(),
     message: z.string().trim().min(1).max(8_000).optional(),
+    locale: z.enum(["fr", "en"]).default("fr"),
     inputRequestId: z.uuid().optional(),
     draft: z.object({
       name: z.string().trim().max(255),

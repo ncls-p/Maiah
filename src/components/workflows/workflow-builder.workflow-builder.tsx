@@ -1,5 +1,7 @@
 "use client";
 
+import { workflowExecutionNodes } from "./workflow-execution-nodes";
+
 import {
   addEdge,
   MarkerType,
@@ -104,6 +106,16 @@ export function useWorkflowBuilderController({
   }, [t, workflow.id, workspaceId]);
 
   const {
+    loadRunDetail,
+    runDetail,
+    requestedRunId,
+    runDetailError,
+    runDetailLoading,
+    runDetailOpen,
+    setRunDetail,
+    setRunDetailOpen,
+  } = useWorkflowRunDetail({ workspaceId, loadRuns });
+  const {
     publish,
     publishing,
     runInput,
@@ -123,15 +135,8 @@ export function useWorkflowBuilderController({
     nodes,
     edges,
     loadRuns,
-  });
-  const {
     loadRunDetail,
-    runDetail,
-    runDetailLoading,
-    runDetailOpen,
-    setRunDetail,
-    setRunDetailOpen,
-  } = useWorkflowRunDetail({ workspaceId, loadRuns });
+  });
   const {
     agenticMessages,
     agenticPendingRequests,
@@ -162,7 +167,14 @@ export function useWorkflowBuilderController({
     loadRuns,
     loadRunDetail,
   });
+  const canEdit = workflow.capabilities?.canEdit === true;
+  const canExecute = workflow.capabilities?.canExecute === true;
   const actionBusy = saving || publishing || running || agenticRunning;
+
+  const executionNodes = useMemo(
+    () => workflowExecutionNodes(nodes, runDetail),
+    [nodes, runDetail],
+  );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void loadRuns(), 0);
@@ -206,7 +218,7 @@ export function useWorkflowBuilderController({
       180,
     );
     return () => window.clearTimeout(timeout);
-  }, [editorMode, flow, isFullscreen]);
+  }, [editorMode, flow, isFullscreen, isDesktop]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -226,6 +238,7 @@ export function useWorkflowBuilderController({
   );
 
   function addNode(type: WorkflowNodeType) {
+    if (!canEdit || actionBusy) return;
     if (type === "trigger.manual" && manualTriggerExists) return;
     const catalogItem = workflowNodeCatalogItem(type);
     const id = `${type.split(".").at(-1)}-${crypto.randomUUID().slice(0, 8)}`;
@@ -272,7 +285,7 @@ export function useWorkflowBuilderController({
   }
 
   function updateSelectedNode(patch: Partial<WorkflowCanvasNodeType["data"]>) {
-    if (!selectedNodeId) return;
+    if (!canEdit || actionBusy || !selectedNodeId) return;
     setNodes((current) =>
       current.map((node) =>
         node.id === selectedNodeId
@@ -290,7 +303,12 @@ export function useWorkflowBuilderController({
   }
 
   function removeSelectedNode() {
-    if (!selectedNode || selectedNode.data.workflowType === "trigger.manual")
+    if (
+      !canEdit ||
+      actionBusy ||
+      !selectedNode ||
+      selectedNode.data.workflowType === "trigger.manual"
+    )
       return;
     setNodes((current) =>
       current.filter((node) => node.id !== selectedNode.id),
@@ -305,6 +323,9 @@ export function useWorkflowBuilderController({
   }
   return {
     kind: "ready",
+    workspaceId,
+    canEdit,
+    canExecute,
     actionBusy,
     addNode,
     removeSelectedNode,
@@ -330,7 +351,7 @@ export function useWorkflowBuilderController({
     loadRunDetail,
     loadRuns,
     manualTriggerExists,
-    nodes,
+    nodes: executionNodes,
     onConnect,
     onEdgesChange,
     onNodesChange,
@@ -341,6 +362,8 @@ export function useWorkflowBuilderController({
     publishing,
     runAgenticBuilder,
     runDetail,
+    requestedRunId,
+    runDetailError,
     runDetailLoading,
     runDetailOpen,
     runInput,

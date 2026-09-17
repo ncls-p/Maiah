@@ -10,6 +10,8 @@ export const workflowNodeTypeSchema = z.enum([
   "data.parseJson",
   "data.stringifyJson",
   "text.transform",
+  "text.split",
+  "list.join",
   "number.calculate",
   "list.filter",
   "list.sort",
@@ -131,6 +133,12 @@ export const updateWorkflowSchema = z.object({
   name: z.string().trim().min(1).max(255).optional(),
   description: z.string().trim().max(2_000).nullable().optional(),
   definition: workflowDefinitionSchema.optional(),
+  access: z
+    .object({
+      scope: z.enum(["private", "project", "organization", "team"]),
+      teamId: z.uuid().nullable().optional(),
+    })
+    .optional(),
 });
 
 export const executeWorkflowSchema = z.object({

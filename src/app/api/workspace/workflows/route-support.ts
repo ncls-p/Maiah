@@ -1,3 +1,4 @@
+import { IamOperationError } from "@/modules/iam/use-cases.iam-operation-error";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
@@ -8,6 +9,11 @@ import {
 } from "@/modules/workflows/use-cases";
 
 export function workflowErrorResponse(error: unknown) {
+  if (error instanceof IamOperationError)
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status },
+    );
   if (error instanceof WorkflowNotFoundError) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }

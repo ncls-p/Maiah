@@ -1,5 +1,6 @@
 import {
   type AnyPgColumn,
+  boolean,
   index,
   integer,
   jsonb,
@@ -52,6 +53,11 @@ export const workflows = pgTable(
       .references(() => users.id),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
+    visibility: varchar("visibility", { length: 32 })
+      .$type<"private" | "workspace" | "organization">()
+      .notNull()
+      .default("private"),
+    isGlobal: boolean("is_global").notNull().default(false),
     status: workflowStatusEnum("status").notNull().default("draft"),
     latestVersion: integer("latest_version").notNull().default(1),
     activeVersion: integer("active_version"),

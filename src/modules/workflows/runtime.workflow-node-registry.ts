@@ -32,6 +32,8 @@ import {
   stringifyJson,
   templateData,
   transformText,
+  splitText,
+  joinList,
 } from "./runtime.matches-comparison";
 import { objectValue } from "./runtime.workflow-runtime-dependencies";
 
@@ -45,6 +47,8 @@ export const WORKFLOW_NODE_REGISTRY = {
   "data.parseJson": parseJson,
   "data.stringifyJson": stringifyJson,
   "text.transform": transformText,
+  "text.split": splitText,
+  "list.join": joinList,
   "number.calculate": calculateNumber,
   "list.filter": filterList,
   "list.sort": sortList,
@@ -173,6 +177,8 @@ export function assertNodeParameters(node: WorkflowNode) {
       node.type === "data.parseJson" ||
       node.type === "data.stringifyJson" ||
       node.type === "text.transform" ||
+      node.type === "text.split" ||
+      node.type === "list.join" ||
       node.type === "number.calculate" ||
       node.type === "list.filter" ||
       node.type === "list.sort" ||

@@ -16,6 +16,7 @@ import {
   resourceOrganizationShares,
   roleBindings,
   workspaces,
+  workflows,
 } from "@/server/infrastructure/db/schema";
 import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
@@ -99,7 +100,9 @@ export async function distributedResourcePermissions(
         ? knowledgeBases
         : type === "mcp_server"
           ? mcpServers
-          : null;
+          : type === "workflow"
+            ? workflows
+            : null;
   if (visibilityTable && orgIds.has(resource.organizationId)) {
     const [row] = await db
       .select({ visibility: visibilityTable.visibility })

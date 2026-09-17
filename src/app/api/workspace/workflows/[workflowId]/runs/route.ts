@@ -78,6 +78,16 @@ export async function POST(
         (await params).workflowId,
       );
       if (forbidden) return forbidden;
+      if (parsedBody.data.useLatestDraft) {
+        const draftForbidden = await requireResourcePermissionAsync(
+          session.user.id,
+          parsedBody.data.workspaceId,
+          "workflows.update",
+          "workflow",
+          parsedParams.data.workflowId,
+        );
+        if (draftForbidden) return draftForbidden;
+      }
       const run = await createWorkflowRun({
         workflowId: parsedParams.data.workflowId,
         workspaceId: parsedBody.data.workspaceId,

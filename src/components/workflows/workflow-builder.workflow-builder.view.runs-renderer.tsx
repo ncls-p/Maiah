@@ -39,6 +39,11 @@ export function useWorkflowRunsRenderer(model: WorkflowBuilderViewModel) {
           />
           {t("refreshRuns")}
         </Button>
+        {runsLoaded && runsLoadError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{runsLoadError}</AlertDescription>
+          </Alert>
+        ) : null}
         {!runsLoaded && runsLoading ? (
           <Empty className="min-h-48 p-5">
             <EmptyHeader>

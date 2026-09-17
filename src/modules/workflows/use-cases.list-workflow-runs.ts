@@ -19,7 +19,7 @@ export async function listWorkflowRuns(
   workflowId: string,
   workspaceId: string,
 ) {
-  await requireWorkflow(workflowId, workspaceId);
+  await requireWorkflow(workflowId, workspaceId, true);
   return db
     .select()
     .from(workflowRuns)

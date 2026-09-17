@@ -21,7 +21,9 @@ export async function requireResourceSharePermissions(input: {
   const name =
     input.resourceType === "agent"
       ? "workspace.agent_user"
-      : "workspace.viewer";
+      : input.resourceType === "workflow"
+        ? "workspace.workflow_user"
+        : "workspace.viewer";
   const workspaceId =
     input.workspaceId ??
     (await findAccessResource(input.resourceType, input.resourceId))

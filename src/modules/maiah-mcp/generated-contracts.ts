@@ -1807,7 +1807,9 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
     type: "object",
     properties: {
       workspaceId: { type: "string" },
-      resourceType: { enum: ["agent", "knowledge_base", "mcp_server"] },
+      resourceType: {
+        enum: ["agent", "knowledge_base", "mcp_server", "workflow"],
+      },
       resourceId: { type: "string" },
       userIds: { type: "array", items: { type: "string" } },
       shares: {
@@ -2712,6 +2714,15 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
     required: ["workspaceId", "toolSource", "toolId"],
     additionalProperties: false,
   },
+  patchWorkspaceWorkflowRunsRunId: {
+    type: "object",
+    properties: {
+      workspaceId: { type: "string" },
+      status: { type: "string", const: "cancelled" },
+    },
+    required: ["workspaceId", "status"],
+    additionalProperties: false,
+  },
   postWorkspaceWorkflows: {
     type: "object",
     properties: {
@@ -2749,6 +2760,8 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
                     "data.parseJson",
                     "data.stringifyJson",
                     "text.transform",
+                    "text.split",
+                    "list.join",
                     "number.calculate",
                     "list.filter",
                     "list.sort",
@@ -2857,6 +2870,15 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
         required: ["schemaVersion", "nodes", "edges"],
         additionalProperties: false,
       },
+      access: {
+        type: "object",
+        properties: {
+          scope: { enum: ["team", "organization", "private", "project"] },
+          teamId: { anyOf: [{ type: "null" }, { type: "string" }] },
+        },
+        required: ["scope"],
+        additionalProperties: false,
+      },
     },
     required: ["workspaceId"],
     additionalProperties: false,
@@ -2891,6 +2913,8 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
                         "data.parseJson",
                         "data.stringifyJson",
                         "text.transform",
+                        "text.split",
+                        "list.join",
                         "number.calculate",
                         "list.filter",
                         "list.sort",
@@ -3007,6 +3031,7 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
         additionalProperties: false,
       },
       message: { type: "string" },
+      locale: { enum: ["en", "fr"] },
       inputRequestId: { type: "string" },
     },
     required: ["workspaceId", "draft"],

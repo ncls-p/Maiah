@@ -1,4 +1,5 @@
 import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
+import { getResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
@@ -33,6 +34,10 @@ export type UpdateWorkflowInput = {
   name?: string;
   description?: string | null;
   definition?: WorkflowDefinition;
+  access?: {
+    scope: "private" | "project" | "organization" | "team";
+    teamId?: string | null;
+  };
 };
 
 function boundedErrorMessage(value: string, maxChars = 8_000) {
@@ -93,6 +98,7 @@ export async function requireWorkflow(
           ? resourceAvailabilityCondition({
               type: "workflow",
               id: workflows.id,
+              visibility: workflows.visibility,
               workspaceId: workflows.workspaceId,
               activeWorkspaceId: workspaceId,
             })
@@ -115,6 +121,7 @@ export async function listWorkflows(workspaceId: string) {
         resourceAvailabilityCondition({
           type: "workflow",
           id: workflows.id,
+          visibility: workflows.visibility,
           workspaceId: workflows.workspaceId,
           activeWorkspaceId: workspaceId,
         }),
@@ -142,6 +149,12 @@ export async function getWorkflowDetail(
   if (!version) throw new WorkflowConflictError("Workflow version is missing");
   return {
     ...workflow,
+    access: await getResourceAccessSelection({
+      resourceType: "workflow",
+      resourceId: workflow.id,
+      visibility: workflow.visibility,
+      isGlobal: workflow.isGlobal,
+    }),
     version: version.version,
     definition: workflowDefinitionSchema.parse(version.definitionJson),
   };

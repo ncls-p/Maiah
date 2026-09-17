@@ -271,6 +271,7 @@ export async function POST(
         },
       });
       const stream = createWorkflowAgentStream({
+        locale: parsedBody.data.locale,
         result,
         state,
         workflowId,

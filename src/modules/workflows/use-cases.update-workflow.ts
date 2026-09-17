@@ -9,6 +9,11 @@ import {
 
 import { workflowDefinitionSchema } from "./contracts";
 import { enqueueWorkflowRun } from "./queue";
+import {
+  applyResourceAccessSelection,
+  getResourceAccessSelection,
+  validateResourceAccessSelection,
+} from "@/modules/iam/resource-access-scope";
 import { compileWorkflowDefinition } from "./runtime";
 import {
   errorMessage,
@@ -23,7 +28,14 @@ import {
 
 export async function updateWorkflow(input: UpdateWorkflowInput) {
   const existing = await requireWorkflow(input.workflowId, input.workspaceId);
-  return db.transaction(async (tx) => {
+  if (input.access) {
+    await validateResourceAccessSelection({
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+      selection: input.access,
+    });
+  }
+  const updated = await db.transaction(async (tx) => {
     const [workflow] = await tx
       .update(workflows)
       .set({
@@ -58,6 +70,26 @@ export async function updateWorkflow(input: UpdateWorkflowInput) {
       });
     }
 
+    if (input.access) {
+      await applyResourceAccessSelection(
+        {
+          resourceType: "workflow",
+          resourceId: input.workflowId,
+          userId: input.userId,
+          selection: input.access,
+        },
+        tx,
+      );
+      workflow.visibility =
+        input.access.scope === "organization"
+          ? "organization"
+          : input.access.scope === "project"
+            ? "workspace"
+            : "private";
+      workflow.isGlobal = ["project", "organization"].includes(
+        input.access.scope,
+      );
+    }
     let definition = input.definition;
     if (!definition) {
       const [version] = await tx
@@ -82,6 +114,15 @@ export async function updateWorkflow(input: UpdateWorkflowInput) {
       definition,
     };
   });
+  return {
+    ...updated,
+    access: await getResourceAccessSelection({
+      resourceType: "workflow",
+      resourceId: updated.id,
+      visibility: updated.visibility,
+      isGlobal: updated.isGlobal,
+    }),
+  };
 }
 
 export async function publishWorkflow(workflowId: string, workspaceId: string) {

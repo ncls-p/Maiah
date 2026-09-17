@@ -228,6 +228,7 @@ Multipart uploads accept inline base64 up to 180 KB. Larger files use the existi
 | GET /api/workspace/usage | yes | yes | none |  |
 | PUT /api/workspace/user-tool-settings | yes | yes | inferred JSON |  |
 | GET /api/workspace/workflow-runs/{runId} | yes | yes | none |  |
+| PATCH /api/workspace/workflow-runs/{runId} | yes | yes | inferred JSON |  |
 | GET /api/workspace/workflows | yes | yes | none |  |
 | POST /api/workspace/workflows | yes | yes | inferred JSON |  |
 | DELETE /api/workspace/workflows/{workflowId} | yes | yes | none |  |

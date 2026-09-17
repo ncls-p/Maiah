@@ -44,6 +44,7 @@ export function WorkflowBuilderSection2({
     <div className="flex flex-wrap items-center gap-1 border-b border-border/70 px-3 py-3 sm:gap-3 sm:px-4">
       <div className="min-w-44 flex-1 sm:min-w-56">
         <Input
+          readOnly={!model.canEdit}
           value={workflow.name}
           onChange={(event) =>
             setWorkflow((current) => ({
@@ -77,7 +78,7 @@ export function WorkflowBuilderSection2({
           size="sm"
           className="h-7 px-1.5 shadow-none sm:px-2.5"
           aria-pressed={editorMode === "visual"}
-          disabled={agenticRunning}
+          disabled={agenticRunning || !model.canEdit}
           onClick={() => setEditorMode("visual")}
         >
           <MousePointer2Icon data-icon="inline-start" />
@@ -89,7 +90,7 @@ export function WorkflowBuilderSection2({
           size="sm"
           className="h-7 px-1.5 shadow-none sm:px-2.5"
           aria-pressed={editorMode === "agentic"}
-          disabled={agenticRunning}
+          disabled={agenticRunning || !model.canEdit}
           onClick={() => setEditorMode("agentic")}
         >
           <BotIcon data-icon="inline-start" />
@@ -147,7 +148,7 @@ export function WorkflowBuilderSection2({
       <Button
         variant="outline"
         onClick={() => void save()}
-        disabled={actionBusy}
+        disabled={actionBusy || !model.canEdit}
         className="max-sm:px-3"
       >
         {saving ? (
@@ -160,17 +161,21 @@ export function WorkflowBuilderSection2({
         </span>
       </Button>
       <Button
-        variant="outline"
         onClick={() => setRunSheetOpen(true)}
-        disabled={actionBusy}
+        disabled={
+          actionBusy ||
+          !model.canExecute ||
+          (!model.canEdit && !workflow.activeVersion)
+        }
         className="max-sm:px-3"
       >
         <PlayIcon data-icon="inline-start" />
-        <span className="max-sm:sr-only">{t("run")}</span>
+        <span>{t("run")}</span>
       </Button>
       <Button
+        variant="outline"
         onClick={() => void publish()}
-        disabled={actionBusy}
+        disabled={actionBusy || !model.canEdit}
         className="max-sm:px-3"
       >
         {publishing ? (

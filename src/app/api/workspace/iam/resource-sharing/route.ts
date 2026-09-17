@@ -8,7 +8,12 @@ import {
 } from "@/modules/iam/resource-direct-sharing";
 import { IamOperationError } from "@/modules/iam/use-cases";
 
-const resourceTypeSchema = z.enum(["agent", "knowledge_base", "mcp_server"]);
+const resourceTypeSchema = z.enum([
+  "agent",
+  "knowledge_base",
+  "mcp_server",
+  "workflow",
+]);
 const querySchema = z.object({
   workspaceId: z.uuid(),
   resourceType: resourceTypeSchema,

@@ -5,6 +5,7 @@ import {
   handleRoute,
   requireResourcePermissionAsync,
 } from "@/lib/route-handler";
+import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import { updateWorkflowSchema } from "@/modules/workflows/contracts";
 import {
   archiveWorkflow,
@@ -39,11 +40,23 @@ export async function GET(
         (await params).workflowId,
       );
       if (forbidden) return forbidden;
-      return NextResponse.json({
-        workflow: await getWorkflowDetail(
-          parsedParams.data.workflowId,
-          parsedQuery.data.workspaceId,
+      const workflow = await getWorkflowDetail(
+        parsedParams.data.workflowId,
+        parsedQuery.data.workspaceId,
+      );
+      const [canEdit, canExecute] = await Promise.all(
+        ["workflows.update", "workflows.execute"].map((permission) =>
+          hasResourcePermissionForRequest(
+            session.user.id,
+            parsedQuery.data.workspaceId,
+            permission,
+            "workflow",
+            workflow.id,
+          ),
         ),
+      );
+      return NextResponse.json({
+        workflow: { ...workflow, capabilities: { canEdit, canExecute } },
       });
     },
     {
