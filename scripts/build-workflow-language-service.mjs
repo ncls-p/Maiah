@@ -59,6 +59,13 @@ const libs = {};
 async function declarations(directory, prefix) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+    // Monaco supplies its own ECMAScript libraries. Loading TypeScript's lib.dom
+    // as an extra root would incorrectly expose browser globals in the sandbox.
+    if (
+      prefix.includes("/typescript/") &&
+      /^lib(?:\..*)?\.d\.ts$/.test(entry.name)
+    )
+      continue;
     const file = path.join(directory, entry.name);
     if (entry.isDirectory())
       await declarations(file, `${prefix}/${entry.name}`);

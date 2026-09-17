@@ -102,6 +102,24 @@ async function initialize(data) {
       },
     });
     await python.init(monaco);
+    // This browser filesystem intentionally contains declarations, not package
+    // implementations. Missing source is expected; missing imports remain errors.
+    await python.lspClient.connection.sendNotification(
+      "workspace/didChangeConfiguration",
+      {
+        settings: {
+          python: {
+            analysis: {
+              typeshedPaths: ["/typeshed-fallback"],
+              stubPath: "/typings",
+              diagnosticSeverityOverrides: {
+                reportMissingModuleSource: "none",
+              },
+            },
+          },
+        },
+      },
+    );
   }
   const model = monaco.editor.createModel(
     data.value,

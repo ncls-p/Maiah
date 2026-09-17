@@ -28,7 +28,7 @@ test("local assistance knows the workflow input, supports both languages and can
   });
   const { workflow } = await created.json();
   const code =
-    '/** @type {import("./workflow-context").Input} */\nconst input = { count: 1 };\ninput.missing();';
+    '/** @type {import("./workflow-context").Input} */\nconst input = { count: 1 };\ninput.missing();\nwindow.alert("not available in Node");';
   await page.request.patch(`/api/workspace/workflows/${workflow.id}`, {
     data: {
       workspaceId,
@@ -72,7 +72,7 @@ test("local assistance knows the workflow input, supports both languages and can
       exact: true,
     });
     await toggle.click();
-    await expect(page.getByText("1 error(s)", { exact: false })).toBeVisible({
+    await expect(page.getByText("2 error(s)", { exact: false })).toBeVisible({
       timeout: 45000,
     });
     await page.getByText("Workflow context", { exact: true }).click();
