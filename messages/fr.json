@@ -4280,7 +4280,15 @@
       "private": "Accès restreint",
       "workspace": "Projet",
       "organization": "Organisation"
-    }
+    },
+    "codeAssistance": "Assistance locale",
+    "codeAssistanceLoading": "Chargement de l’assistance locale…",
+    "codeAssistanceHint": "{count} erreur(s) · Ctrl+Espace : suggestions · workflow-input : entrée typée",
+    "codeWorkflowContext": "Contexte du workflow",
+    "codeInputHint": "Type estimé depuis le graphe et les données d’exemple. Les données dynamiques restent inconnues. Le code reçoit uniquement la sortie du nœud précédent via stdin. Le snippet workflow-input lit une entrée JSON ; pour du texte brut, lire stdin directement.",
+    "codeLibraryHint": "Bibliothèques du sandbox : Les bibliothèques sans types détaillés restent dynamiques.",
+    "codeTypedLibraries": "Types détaillés embarqués :",
+    "codeAssistanceFailed": "L’assistance n’a pas pu démarrer. Votre code est conservé dans l’éditeur simple. Désactivez puis réactivez l’assistance pour réessayer."
   },
   "scheduledTasks": {
     "title": "Tâches planifiées",

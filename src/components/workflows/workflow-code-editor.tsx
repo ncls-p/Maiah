@@ -1,7 +1,7 @@
 "use client";
 
 import { Maximize2Icon } from "lucide-react";
-import { useState, type UIEvent, useRef } from "react";
+import { useState, type UIEvent, useRef, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import { useCodeWorkspaceHighlight } from "@/components/chat/code-workspace-artifact-card.use-highlight";
@@ -13,7 +13,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { WorkflowAssistedCodeEditor } from "./workflow-assisted-code-editor";
 import { cn } from "@/lib/utils";
+
+let assistancePreference = false;
+function readAssistance() {
+  try {
+    return localStorage.getItem("workflow-code-assistance") === "true";
+  } catch {
+    return assistancePreference;
+  }
+}
+function subscribeAssistance(notify: () => void) {
+  window.addEventListener("storage", notify);
+  window.addEventListener("workflow-code-assistance-change", notify);
+  return () => {
+    window.removeEventListener("storage", notify);
+    window.removeEventListener("workflow-code-assistance-change", notify);
+  };
+}
 
 function Editor({
   id,
@@ -95,13 +113,58 @@ export function WorkflowCodeEditor({
 }) {
   const [open, setOpen] = useState(false);
   const t = useTranslations("workflows");
+  const assisted = useSyncExternalStore(
+    subscribeAssistance,
+    readAssistance,
+    () => false,
+  );
+  const [failed, setFailed] = useState(false);
+  function toggle() {
+    setFailed(false);
+    assistancePreference = !assisted;
+    try {
+      localStorage.setItem("workflow-code-assistance", String(!assisted));
+    } catch {
+      /* Storage is optional. */
+    }
+    window.dispatchEvent(new Event("workflow-code-assistance-change"));
+  }
+  function renderEditor(fullscreen = false) {
+    return assisted && !failed ? (
+      <WorkflowAssistedCodeEditor
+        key={language}
+        value={value}
+        language={language}
+        fullscreen={fullscreen}
+        onChange={onChange}
+        onError={() => setFailed(true)}
+      />
+    ) : (
+      <Editor
+        id={fullscreen ? `${id}-fullscreen` : id}
+        value={value}
+        language={language}
+        fullscreen={fullscreen}
+        onChange={onChange}
+      />
+    );
+  }
   return (
     <>
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="rounded-md bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground">
             {language === "python" ? "Python" : "JavaScript"}
           </span>
+          <Button
+            type="button"
+            variant={assisted ? "secondary" : "outline"}
+            size="sm"
+            aria-pressed={assisted}
+            onClick={toggle}
+          >
+            {t("codeAssistance")}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -112,21 +175,30 @@ export function WorkflowCodeEditor({
             {t("codeFullscreen")}
           </Button>
         </div>
-        <Editor id={id} value={value} language={language} onChange={onChange} />
+        {!open && renderEditor()}
+        {failed && (
+          <p role="alert" className="text-xs text-destructive">
+            {t("codeAssistanceFailed")}
+          </p>
+        )}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{t("codeEditorTitle")}</DialogTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              aria-pressed={assisted}
+              onClick={toggle}
+            >
+              {t("codeAssistance")}
+            </Button>
             <DialogDescription>{t("codeEditorDescription")}</DialogDescription>
           </DialogHeader>
-          <Editor
-            id={`${id}-fullscreen`}
-            value={value}
-            language={language}
-            fullscreen
-            onChange={onChange}
-          />
+          {open && renderEditor(true)}
         </DialogContent>
       </Dialog>
     </>

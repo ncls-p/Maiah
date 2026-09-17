@@ -4280,7 +4280,15 @@
       "private": "Restricted access",
       "workspace": "Project",
       "organization": "Organization"
-    }
+    },
+    "codeAssistance": "Local assistance",
+    "codeAssistanceLoading": "Loading local assistance…",
+    "codeAssistanceHint": "{count} error(s) · Ctrl+Space: suggestions · workflow-input: typed input",
+    "codeWorkflowContext": "Workflow context",
+    "codeInputHint": "Type inferred from the graph and sample data. Dynamic data remains unknown. Code receives only the preceding node output through stdin. The workflow-input snippet reads JSON; for plain text, read stdin directly.",
+    "codeLibraryHint": "Sandbox libraries: Libraries without detailed types remain dynamic.",
+    "codeTypedLibraries": "Bundled detailed types:",
+    "codeAssistanceFailed": "Assistance could not start. Your code is preserved in the simple editor. Turn assistance off and on to retry."
   },
   "scheduledTasks": {
     "title": "Scheduled tasks",

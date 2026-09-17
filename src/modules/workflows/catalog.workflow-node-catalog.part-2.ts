@@ -217,7 +217,7 @@ export const WORKFLOW_NODE_CATALOGPart2 = [
     category: "code",
     defaultParameters: {
       language: "node",
-      code: "const chunks = [];\nfor await (const chunk of process.stdin) chunks.push(chunk);\nconst input = JSON.parse(Buffer.concat(chunks).toString() || 'null');\nconsole.log(JSON.stringify({ input, processed: true }));",
+      code: "const chunks = [];\nfor await (const chunk of process.stdin) chunks.push(chunk);\n/** @type {import(\"./workflow-context\").Input} */\nconst input = JSON.parse(Buffer.concat(chunks).toString() || 'null');\nconsole.log(JSON.stringify({ input, processed: true }));",
     },
     fields: [
       {
