@@ -103,6 +103,15 @@ beforeEach(() => {
 });
 
 describe("listRemoteMcpTools", () => {
+  it("preserves the network cause behind the stable public connection error", async () => {
+    const cause = new Error("MCP_URL_NOT_ALLOWED");
+    sdkMocks.connect.mockRejectedValue(cause);
+    const error = await listRemoteMcpTools(server() as never).catch(
+      (error) => error,
+    );
+    expect(error.message).toBe("MCP_CONNECTION_FAILED");
+    expect(error.cause).toBe(cause);
+  });
   it("connects with SSE transport, lists tools, and closes the transport", async () => {
     sdkMocks.request.mockResolvedValueOnce({
       tools: [{ name: "search", description: "Search" }],

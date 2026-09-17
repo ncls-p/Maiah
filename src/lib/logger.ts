@@ -1,4 +1,6 @@
 import { env } from "./env";
+import { safeLogText, safeLogValue } from "./log-safety";
+import { getLogContext } from "./log-context";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -12,17 +14,19 @@ interface LogEntry {
 }
 
 function format(entry: LogEntry): string {
-  if (env.NODE_ENV === "test") return `${entry.level}: ${entry.message}`;
+  if (env.NODE_ENV === "test")
+    return `${entry.level}: ${safeLogText(entry.message)}`;
 
   const obj = {
+    ...getLogContext(),
+    ...(entry.data && { ...entry.data }),
     ts: entry.timestamp,
     lvl: entry.level,
     msg: entry.message,
     ...(entry.service && { svc: entry.service }),
     ...(entry.requestId && { rid: entry.requestId }),
-    ...(entry.data && { ...entry.data }),
   };
-  return JSON.stringify(obj);
+  return JSON.stringify(safeLogValue(obj));
 }
 
 function writeLog(stream: NodeJS.WriteStream, entry: LogEntry) {
@@ -31,7 +35,8 @@ function writeLog(stream: NodeJS.WriteStream, entry: LogEntry) {
 
 export const logger = {
   debug(message: string, data?: Record<string, unknown>) {
-    if (env.NODE_ENV === "production") return;
+    if (env.NODE_ENV === "production" && process.env.LOG_LEVEL !== "debug")
+      return;
     writeLog(process.stdout, {
       level: "debug",
       timestamp: new Date().toISOString(),
@@ -66,15 +71,7 @@ export const logger = {
       data: {
         ...(data || {}),
         ...(error && { error: error.message, stack: error.stack }),
-        ...(error?.cause instanceof Error && {
-          cause: {
-            message: error.cause.message,
-            ...("code" in error.cause && { code: error.cause.code }),
-            ...("constraint" in error.cause && {
-              constraint: error.cause.constraint,
-            }),
-          },
-        }),
+        ...(error?.cause !== undefined && { cause: error.cause }),
       },
     });
   },

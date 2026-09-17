@@ -142,7 +142,7 @@ class RecordFormsTest(unittest.IsolatedAsyncioTestCase):
     async def test_account_permission_error_is_not_reported_as_success(self):
         import requests
         with patch("requests.patch", side_effect=requests.HTTPError("403 Forbidden")):
-            with self.assertRaisesRegex(RuntimeError, "failed operation"):
+            with self.assertRaisesRegex(RuntimeError, "SERVICENOW_ACCESS_DENIED: HTTP 403"):
                 await self.call("update_user", user_id=RECORD, active=False)
 
     async def test_custom_user_fields_through_discovered_form(self):

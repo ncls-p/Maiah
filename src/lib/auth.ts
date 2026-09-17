@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { createAuthMiddleware } from "better-auth/api";
 import { audit } from "@/server/domain/services/audit";
 import { admin } from "better-auth/plugins/admin";
+import { logger } from "./logger";
 
 const betterAuthSchema = {
   user: schema.users,
@@ -36,6 +37,12 @@ function getTrustedOrigins() {
 }
 
 export const auth = betterAuth({
+  logger: {
+    level: "info",
+    log(level, message, ...details) {
+      logger[level](message, { service: "auth", details });
+    },
+  },
   appName: "Maiah",
   baseURL: env.BETTER_AUTH_URL,
   trustedOrigins: getTrustedOrigins(),

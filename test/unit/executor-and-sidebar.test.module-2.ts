@@ -172,9 +172,11 @@ describe("mcp/executor", async () => {
       {
         userId: "user-1",
         workspaceId: "ws-1",
+        diagnosticId: expect.any(String),
         headers: {
           "x-maiah-tool-context": "payload",
           "x-maiah-tool-context-signature": "sig",
+          "x-maiah-diagnostic-id": expect.any(String),
         },
       },
     );
@@ -229,8 +231,13 @@ describe("mcp/executor", async () => {
       toolInput: {},
     }).catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toBe(
-      "MCP tool failed: Invalid repoName format",
+    expect((error as Error).message).toMatch(
+      /^MCP tool failed: Invalid repoName format \[diagnostic: [0-9a-f-]{36}\]$/,
+    );
+    const options = vi.mocked(callRemoteMcpTool).mock.calls[0][3];
+    expect((error as Error).message).toContain(options!.diagnosticId);
+    expect(options!.headers!["x-maiah-diagnostic-id"]).toBe(
+      options!.diagnosticId,
     );
     expect((error as Error).message).not.toContain("must-not-leak");
   });

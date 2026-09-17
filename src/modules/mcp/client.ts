@@ -12,6 +12,7 @@ import {
 import { mcpFetch } from "./network";
 import { oauthHeaders } from "./oauth/tokens";
 import { decryptValue } from "@/lib/crypto";
+import { logger } from "@/lib/logger";
 import type { mcpServers } from "@/server/infrastructure/db/schema";
 
 type McpServerRow = typeof mcpServers.$inferSelect;
@@ -20,6 +21,7 @@ type McpClientOptions = {
   headers?: Record<string, string>;
   userId?: string;
   workspaceId?: string;
+  diagnosticId?: string;
 };
 
 const CONNECT_TIMEOUT_MS = 15_000;
@@ -137,10 +139,24 @@ async function connectClient(
     typeof lastError === "object" && lastError !== null && "code" in lastError
       ? lastError.code
       : undefined;
+  logger.error(
+    "MCP connection failed",
+    {
+      phase: "connect",
+      serverId: server.id,
+      transport: server.transport,
+      workspaceId: options.workspaceId,
+      userId: options.userId,
+      diagnosticId: options.diagnosticId,
+      remoteStatus: code,
+    },
+    lastError instanceof Error ? lastError : new Error(String(lastError)),
+  );
   throw new Error(
     code === 401 || code === 403
       ? "MCP_OAUTH_CONNECT_REQUIRED"
       : "MCP_CONNECTION_FAILED",
+    { cause: lastError },
   );
 }
 
@@ -166,12 +182,25 @@ async function withMcpClient<T>(
       typeof error === "object" && error !== null && "code" in error
         ? error.code
         : undefined;
+    logger.error(
+      "MCP protocol request failed",
+      {
+        phase: "request",
+        serverId: server.id,
+        workspaceId: options.workspaceId,
+        userId: options.userId,
+        diagnosticId: options.diagnosticId,
+        remoteStatus: code,
+      },
+      error instanceof Error ? error : new Error(String(error)),
+    );
     if (code === 401 || code === 403)
-      throw new Error("MCP_OAUTH_CONNECT_REQUIRED");
+      throw new Error("MCP_OAUTH_CONNECT_REQUIRED", { cause: error });
     throw new Error(
       error instanceof Error && /^MCP_[A-Z_]+$/.test(error.message)
         ? error.message
         : "MCP_REQUEST_FAILED",
+      { cause: error },
     );
   } finally {
     if (deadline) clearTimeout(deadline);
