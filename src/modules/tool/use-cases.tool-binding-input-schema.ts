@@ -1,3 +1,4 @@
+import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -52,6 +53,7 @@ export async function canViewCustomTool(
 export async function canViewMcpServer(
   server: { id: string; createdById: string; isGlobal: boolean },
   userId: string,
+  workspaceId?: string,
 ) {
   return (
     server.createdById === userId ||
@@ -61,6 +63,7 @@ export async function canViewMcpServer(
       "mcpServers.get",
       "mcp_server",
       server.id,
+      workspaceId,
     )
   );
 }
@@ -113,7 +116,13 @@ export async function getToolBindingsForVersion(
           .where(
             and(
               inArray(mcpTools.id, mcpToolIds),
-              eq(mcpServers.workspaceId, visibility.workspaceId),
+              resourceAvailabilityCondition({
+                type: "mcp_server",
+                id: mcpServers.id,
+                workspaceId: mcpServers.workspaceId,
+                activeWorkspaceId: visibility.workspaceId,
+                visibility: mcpServers.visibility,
+              }),
               isNull(mcpServers.archivedAt),
             ),
           )
@@ -140,6 +149,7 @@ export async function getToolBindingsForVersion(
               isGlobal: tool.isGlobal,
             },
             visibility.userId,
+            visibility.workspaceId,
           ))
             ? tool.id
             : null,

@@ -1,3 +1,4 @@
+import { resourceAvailabilityCondition } from "@/modules/iam/resource-availability";
 import { listToolExecutionConnections } from "@/modules/tool-connections/use-cases.build-signed-tool-context-headers";
 import { logHandledError } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
@@ -73,7 +74,13 @@ export async function insertToolBindingsForVersion(
                   and(
                     eq(mcpTools.id, binding.toolId),
                     eq(mcpTools.mcpServerId, binding.mcpServerId),
-                    eq(mcpServers.workspaceId, workspaceId),
+                    resourceAvailabilityCondition({
+                      type: "mcp_server",
+                      id: mcpServers.id,
+                      workspaceId: mcpServers.workspaceId,
+                      activeWorkspaceId: workspaceId,
+                      visibility: mcpServers.visibility,
+                    }),
                     eq(mcpServers.enabled, true),
                     isNull(mcpServers.archivedAt),
                   ),
@@ -100,6 +107,7 @@ export async function insertToolBindingsForVersion(
                 isGlobal: tool.isGlobal,
               },
               options.userId,
+              workspaceId,
             ))
           ) {
             throw new Error("MCP tool not found");
