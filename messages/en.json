@@ -119,7 +119,8 @@
     "customTools": "Custom tools",
     "scheduledTasks": "Scheduled tasks",
     "workflows": "Workflows",
-    "workflowEditor": "Workflow editor"
+    "workflowEditor": "Workflow editor",
+    "connections": "Connections"
   },
   "chat": {
     "title": "Chat",
@@ -2503,7 +2504,7 @@
     "organizationCustomization": {
       "title": "Organization customization",
       "description": "Name, appearance, navigation, and title and suggestion generation apply only to the selected organization.",
-      "organization": "Organization to customize",
+      "organization": "Organization",
       "retry": "Retry",
       "loading": "Loading…",
       "readOnly": "You can view this organization; customization requires management permissions."
@@ -2913,6 +2914,32 @@
       "retry": "Try again",
       "createFailed": "Unable to create API key",
       "revokeFailed": "Unable to revoke key"
+    },
+    "navigation": {
+      "label": "Settings sections",
+      "organization": "Organization",
+      "platform": "Platform",
+      "organizations": "Organizations",
+      "directory": "Projects and members",
+      "branding": "Branding",
+      "navigation": "Navigation",
+      "chat": "Conversations",
+      "workflows": "Workflow builder",
+      "companion": "Companion",
+      "connections": "Connections",
+      "registration": "Registration",
+      "health": "Service health",
+      "impact": "Impact and costs",
+      "rag": "Document retrieval",
+      "assistants": "Assistant governance",
+      "sharing": "Resource sharing",
+      "limits": "Usage limits",
+      "projects": "Projects",
+      "members": "Members"
+    },
+    "scope": {
+      "empty": "No accessible organization. Create an organization or request access.",
+      "unavailable": "This organization is unavailable or inaccessible. Choose an available organization."
     }
   },
   "customTools": {
@@ -4729,7 +4756,7 @@
     "title": "Connections",
     "description": "Configure Microsoft Entra ID and Genesys Cloud for each organization.",
     "organization": "Organization",
-    "scope": "Choose the organization whose connections you want to manage.",
+    "scope": "Settings apply only to the selected organization.",
     "readOnly": "Only authorized managers can manage connections for this organization."
   }
 }

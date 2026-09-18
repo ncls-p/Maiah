@@ -2,6 +2,7 @@
 export const APPLICATION_PAGES = [
   "/admin/connections",
   "/admin/settings",
+  "/admin/settings/[section]",
   "/agents",
   "/agents/[agentId]",
   "/api-keys",

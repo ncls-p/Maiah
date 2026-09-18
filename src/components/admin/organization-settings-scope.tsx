@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { GovernanceSelect } from "@/components/iam/governance-select";
@@ -26,16 +28,15 @@ export function OrganizationSettingsScope({
   children: (organization: Organization, refresh: () => void) => ReactNode;
 }) {
   const t = useTranslations("settings.organizationCustomization");
+  const tScope = useTranslations("admin.scope");
   const { workspaceId, workspaces } = useWorkspace();
   const activeOrganization = workspaces.find(
     (project) => project.id === workspaceId,
   )?.organizationId;
-  const [selection, setSelection] = useState<{
-    id: string;
-    context: string | undefined;
-  } | null>(null);
-  const selectedId =
-    selection?.context === activeOrganization ? selection?.id : null;
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const selectedId = searchParams.get("organizationId");
   const [rows, setRows] = useState<Organization[] | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -53,14 +54,13 @@ export function OrganizationSettingsScope({
       });
     return () => controller.abort();
   }, [revision, workspaceId]);
-  const organization =
-    rows?.find((row) => row.id === (selectedId ?? activeOrganization)) ??
-    rows?.[0];
+  const organization = selectedId
+    ? rows?.find((row) => row.id === selectedId)
+    : (rows?.find((row) => row.id === activeOrganization) ?? rows?.[0]);
   return (
     <section className="flex flex-col gap-5" aria-label={title}>
       <div className="rounded-xl border bg-card p-5">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="mt-2 mb-4 text-sm text-muted-foreground">{description}</p>
+        <p className="sr-only">{description}</p>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>
@@ -76,13 +76,22 @@ export function OrganizationSettingsScope({
             label={t("organization")}
             value={organization?.id ?? ""}
             options={organizationLabels(rows)}
-            onChange={(id) => setSelection({ id, context: activeOrganization })}
+            onChange={(id) => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("organizationId", id);
+              router.replace(`${pathname}?${params}`, { scroll: false });
+            }}
           />
-        ) : (
+        ) : !error ? (
           <p role="status">{t("loading")}</p>
-        )}
+        ) : null}
+        {rows && !organization && !error ? (
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
+            {selectedId ? tScope("unavailable") : tScope("empty")}
+          </p>
+        ) : null}
       </div>
-      {organization ? (
+      {organization && !error ? (
         <OrganizationSettingsContext.Provider
           key={organization.id}
           value={organization.id}

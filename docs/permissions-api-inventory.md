@@ -2,12 +2,13 @@
 
 Inventaire exhaustif des fichiers de routes. Cette table distingue les permissions nommées présentes dans la route et ses fichiers de gestionnaires voisins, des contrôles délégués à leurs modules. Elle ne remplace pas les conditions de propriété et de visibilité décrites dans le modèle d’accès.
 
-**149 routes.** Une route peut exposer plusieurs méthodes ; leur manifeste exact est vérifié par `npm run openapi:check`.
+**152 routes.** Une route peut exposer plusieurs méthodes ; leur manifeste exact est vérifié par `npm run openapi:check`.
 
 | Route | Permissions nommées | Contrôles / adaptateurs | Sources à examiner |
 | --- | --- | --- | --- |
 | /api/admin/chat-automation | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/app/api/admin/chat-automation/route.ts)<br>@/lib/route-handler<br>@/modules/organization/settings-scope<br>@/modules/chat/automation |
 | /api/admin/chat-automation/test | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/app/api/admin/chat-automation/test/route.ts)<br>@/lib/route-handler<br>@/modules/organization/settings-scope<br>@/modules/chat/automation |
+| /api/admin/microsoft-sso | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/app/api/admin/microsoft-sso/route.ts)<br>@/lib/route-handler<br>@/modules/organization/settings-scope<br>@/modules/auth/microsoft/config<br>@/modules/auth/microsoft/settings |
 | /api/admin/rag | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute, requireAdminApiSession | [Source](../src/app/api/admin/rag/route.ts)<br>@/lib/route-handler<br>@/modules/admin/auth<br>@/modules/knowledge/rag-config<br>@/modules/knowledge/use-cases |
 | /api/admin/resource-organizations | Contrôle délégué / session / propriété / accès public selon le gestionnaire | requireAdminApiSession | [Source](../src/app/api/admin/resource-organizations/route.ts)<br>@/modules/admin/auth<br>@/modules/iam/organization-resource-sharing<br>@/modules/iam/use-cases.iam-operation-error |
 | /api/admin/settings | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute, requireAdminApiSession | [Source](../src/app/api/admin/settings/route.ts)<br>@/lib/route-handler<br>@/modules/admin/auth<br>@/modules/admin/use-cases |
@@ -24,6 +25,8 @@ Inventaire exhaustif des fichiers de routes. Cette table distingue les permissio
 | /api/anthropic/v1/models/[...model] | models.view | Voir gestionnaire et modules | [Source](../src/app/api/anthropic/v1/models/[...model]/route.ts)<br>@/modules/anthropic-proxy/auth<br>@/modules/anthropic-proxy/model-catalog |
 | /api/anthropic/v1/models | models.view | Voir gestionnaire et modules | [Source](../src/app/api/anthropic/v1/models/route.ts)<br>@/modules/anthropic-proxy/auth<br>@/modules/anthropic-proxy/model-catalog |
 | /api/auth/[...all] | Contrôle délégué / session / propriété / accès public selon le gestionnaire | Voir gestionnaire et modules | [Source](../src/app/api/auth/[...all]/route.ts)<br>@/lib/auth<br>@/modules/admin/use-cases |
+| /api/auth/microsoft/providers | Contrôle délégué / session / propriété / accès public selon le gestionnaire | Voir gestionnaire et modules | [Source](../src/app/api/auth/microsoft/providers/route.ts)<br>@/lib/rate-limit<br>@/modules/auth/microsoft/settings |
+| /api/auth/microsoft/start | Contrôle délégué / session / propriété / accès public selon le gestionnaire | Voir gestionnaire et modules | [Source](../src/app/api/auth/microsoft/start/route.ts)<br>@/lib/rate-limit<br>@/modules/auth/microsoft/settings<br>@/modules/auth/microsoft/provider |
 | /api/companion/context | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/app/api/companion/context/route.ts)<br>@/lib/route-handler<br>@/modules/companion/settings<br>@/modules/companion/contracts<br>@/modules/companion/bridge |
 | /api/companion | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute | [Source](../src/app/api/companion/route.ts)<br>@/lib/route-handler<br>@/modules/companion/settings |
 | /api/companion/settings | Contrôle délégué / session / propriété / accès public selon le gestionnaire | handleRoute, isPlatformAdminSession | [Source](../src/app/api/companion/settings/route.ts)<br>@/lib/route-handler<br>@/modules/organization/settings-scope<br>@/modules/admin/auth<br>@/modules/companion/settings |

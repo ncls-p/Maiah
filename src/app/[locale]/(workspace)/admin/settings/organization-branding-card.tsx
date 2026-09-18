@@ -272,11 +272,16 @@ function OrganizationBrandingContent({ onSaved }: { onSaved?: () => void }) {
           onThemeConfigChange={setThemeConfig}
         />
       </div>
-      <OrganizationHeroEditor
-        value={heroConfig}
-        disabled={!branding.canManage}
-        onChange={setHeroConfig}
-      />
+      <details className="border-t">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring sm:px-6">
+          {t("hero.title")}
+        </summary>
+        <OrganizationHeroEditor
+          value={heroConfig}
+          disabled={!branding.canManage}
+          onChange={setHeroConfig}
+        />
+      </details>
       <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-5 py-4 sm:px-6">
         <p className="text-xs text-muted-foreground">
           {branding.canManage ? t("scopeHint") : t("readOnly")}

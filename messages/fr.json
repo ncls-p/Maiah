@@ -119,7 +119,8 @@
     "customTools": "Outils personnalisés",
     "scheduledTasks": "Tâches planifiées",
     "workflows": "Workflows",
-    "workflowEditor": "Éditeur de workflow"
+    "workflowEditor": "Éditeur de workflow",
+    "connections": "Connexions"
   },
   "chat": {
     "title": "Chat",
@@ -2503,7 +2504,7 @@
     "organizationCustomization": {
       "title": "Personnalisation par organisation",
       "description": "Le nom, l’identité visuelle, la navigation et les générations de titres et suggestions s’appliquent uniquement à l’organisation sélectionnée.",
-      "organization": "Organisation à personnaliser",
+      "organization": "Organisation",
       "retry": "Réessayer",
       "loading": "Chargement…",
       "readOnly": "Vous pouvez consulter cette organisation ; sa personnalisation nécessite les droits de gestion."
@@ -2913,6 +2914,32 @@
       "retry": "Réessayer",
       "createFailed": "Impossible de créer la clé API",
       "revokeFailed": "Impossible de révoquer la clé"
+    },
+    "navigation": {
+      "label": "Rubriques des paramètres",
+      "organization": "Organisation",
+      "platform": "Plateforme",
+      "organizations": "Organisations",
+      "directory": "Projets et membres",
+      "branding": "Identité visuelle",
+      "navigation": "Navigation",
+      "chat": "Conversations",
+      "workflows": "Éditeur de workflows",
+      "companion": "Compagnon",
+      "connections": "Connexions",
+      "registration": "Inscriptions",
+      "health": "État des services",
+      "impact": "Impact et coûts",
+      "rag": "Recherche documentaire",
+      "assistants": "Gouvernance des assistants",
+      "sharing": "Partage des ressources",
+      "limits": "Limites d’utilisation",
+      "projects": "Projets",
+      "members": "Membres"
+    },
+    "scope": {
+      "empty": "Aucune organisation accessible. Créez une organisation ou demandez un accès.",
+      "unavailable": "Cette organisation est introuvable ou inaccessible. Choisissez une organisation disponible."
     }
   },
   "customTools": {
@@ -4729,7 +4756,7 @@
     "title": "Connexions",
     "description": "Configurez Microsoft Entra ID et Genesys Cloud pour chaque organisation.",
     "organization": "Organisation",
-    "scope": "Choisissez l’organisation dont vous souhaitez gérer les connexions.",
+    "scope": "Les réglages s’appliquent uniquement à l’organisation sélectionnée.",
     "readOnly": "Seuls les responsables autorisés peuvent gérer les connexions de cette organisation."
   }
 }
