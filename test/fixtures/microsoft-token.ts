@@ -8,7 +8,7 @@ export function microsoftTokenFixture() {
     jwk: {
       ...publicKey.export({ format: "jwk" }),
       kid: "test-key",
-      alg: "RS256",
+      // Entra's real JWKS omits alg; the JWT header still declares RS256.
       use: "sig",
     },
     jwt(claims: Record<string, unknown>) {
