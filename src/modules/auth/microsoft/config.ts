@@ -52,3 +52,20 @@ export function microsoftIdentity(
     return null;
   return { email, accountId: `${config.tenantId}:${profile.oid}` };
 }
+
+export function isTrustedMicrosoftSettingsOrigin(
+  origin: string | null,
+  trustedOrigins: string[],
+) {
+  if (!origin) return false;
+  try {
+    const parsed = new URL(origin);
+    return (
+      ["https:", "http:"].includes(parsed.protocol) &&
+      parsed.origin === origin &&
+      trustedOrigins.some((trusted) => trusted.trim() === origin)
+    );
+  } catch {
+    return false;
+  }
+}

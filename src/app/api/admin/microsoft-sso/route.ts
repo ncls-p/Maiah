@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleRoute } from "@/lib/route-handler";
 import { requireOrganizationSettingsScope } from "@/modules/organization/settings-scope";
 import { isPlatformAdminUser } from "@/server/infrastructure/db/platform-admin";
-import { microsoftUpdateSchema } from "@/modules/auth/microsoft/config";
+import { env } from "@/lib/env";
+import {
+  microsoftUpdateSchema,
+  isTrustedMicrosoftSettingsOrigin,
+} from "@/modules/auth/microsoft/config";
 import {
   microsoftConfigView,
   readMicrosoftConfig,
@@ -35,9 +39,13 @@ export async function PATCH(req: NextRequest) {
     async () => {
       const scope = await requireOrganizationSettingsScope(req);
       if (!scope.ok) return scope.response;
-      // This endpoint accepts a secret: require same-origin JSON writes.
+      // Behind a reverse proxy req.url may use an internal origin. Trust only
+      // explicitly configured public origins, never forwarded host headers.
       if (
-        req.headers.get("origin") !== new URL(req.url).origin ||
+        !isTrustedMicrosoftSettingsOrigin(req.headers.get("origin"), [
+          new URL(env.BETTER_AUTH_URL).origin,
+          ...env.BETTER_AUTH_TRUSTED_ORIGINS.split(","),
+        ]) ||
         !req.headers.get("content-type")?.startsWith("application/json")
       )
         return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
