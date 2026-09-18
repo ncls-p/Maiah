@@ -1,4 +1,5 @@
 "use client";
+import { MicrosoftSsoSettings } from "./microsoft-sso-settings";
 import { CompanionSettings } from "./companion-settings";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -91,6 +92,7 @@ export function OrganizationCustomization() {
           />
           {organization.canManageSettings ? (
             <>
+              <MicrosoftSsoSettings />
               <ChatAutomationSettings />
               <SidebarNavigationSettings />
               <WorkflowBuilderSettings />

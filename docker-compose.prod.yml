@@ -13,8 +13,8 @@ x-app-environment: &app-environment
   OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-maiah}
   OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=${OTEL_SERVICE_NAMESPACE:-deodis},deployment.environment=${OTEL_DEPLOYMENT_ENVIRONMENT:-production},service.version=${OTEL_SERVICE_VERSION:-local}}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
-  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://maiah.shiftify.eco}
-  BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-https://maiah.shiftify.eco}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://maiah.deodis.com}
+  BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-https://maiah.deodis.com,https://maiah.shiftify.eco}
   DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_hub}
   DATABASE_SSL_REJECT_UNAUTHORIZED: disable
   APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY}

@@ -5,6 +5,7 @@ import { LogInIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type SyntheticEvent, useRef, useState } from "react";
 
+import { MicrosoftSignIn } from "@/components/auth/microsoft-signin";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -134,6 +135,7 @@ export default function SignInPage() {
           {loading ? t("signingIn") : t("signIn")}
         </Button>
       </form>
+      <MicrosoftSignIn email={email} />
     </AuthShell>
   );
 }
