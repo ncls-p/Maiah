@@ -160,6 +160,17 @@ describe("companion organization configuration", () => {
       );
     },
   );
+  it("hides the companion when the user disables it", async () => {
+    config();
+    mocks.chain.limit.mockResolvedValueOnce([{ valueJson: false }]);
+    expect(await getCompanionState("u", "w")).toMatchObject({
+      enabled: true,
+      userEnabled: false,
+      available: false,
+      agentId: "agent",
+    });
+    await expect(requireCompanion("u", "w")).rejects.toThrow("unavailable");
+  });
   it("persists global activation and preserves missing settings", async () => {
     expect(await readSetting("missing")).toBeUndefined();
     await writeSetting("companion:enabled", true, "admin");

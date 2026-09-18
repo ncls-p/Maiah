@@ -166,9 +166,9 @@ export function WorkflowBuilderView({
     <div
       data-workflow-builder
       className={cn(
-        "flex h-[calc(100dvh-14rem)] min-h-[26rem] sm:h-[calc(100dvh-10rem)] sm:min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)]",
+        "flex h-full min-h-[26rem] flex-1 flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)] sm:min-h-[36rem]",
         isFullscreen &&
-          "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0",
+          "fixed inset-0 z-50 h-dvh min-h-0 flex-none rounded-none border-0",
       )}
     >
       <WorkflowBuilderSection2 model={model} />

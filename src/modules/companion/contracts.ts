@@ -41,6 +41,7 @@ export type CompanionCommand = {
 };
 export type CompanionState = {
   enabled: boolean;
+  userEnabled: boolean;
   agentId: string | null;
   name: string | null;
   organizationId: string;

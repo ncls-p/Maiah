@@ -13,6 +13,7 @@ export class CompanionConfigurationError extends Error {}
 export const GLOBAL_KEY = "companion:enabled";
 const orgKey = (organizationId: string) =>
   `companion:organization:${organizationId}`;
+const userKey = (userId: string) => `companion:user:${userId}`;
 export async function readSetting(key: string) {
   const [row] = await db
     .select()
@@ -59,14 +60,20 @@ export async function setCompanionAgent(
   userId: string,
 ) {
   const state = await companionAdminState(organizationId);
-  if (
-    agentId &&
-    !state.availableAgents.some((agent) => agent.id === agentId)
-  )
+  if (agentId && !state.availableAgents.some((agent) => agent.id === agentId))
     throw new CompanionConfigurationError(
       "Select an assistant available to this organization",
     );
   await writeSetting(orgKey(organizationId), agentId, userId);
+}
+export async function setUserCompanionEnabled(
+  userId: string,
+  enabled: boolean,
+) {
+  await writeSetting(userKey(userId), enabled, userId);
+}
+export async function getUserCompanionEnabled(userId: string) {
+  return (await readSetting(userKey(userId))) !== false;
 }
 export async function getCompanionState(
   userId: string,
@@ -78,6 +85,7 @@ export async function getCompanionState(
   if (!organizationId) return null;
   const enabled = (await readSetting(GLOBAL_KEY)) === true;
   const configured = await readSetting(orgKey(organizationId));
+  const userEnabled = await getUserCompanionEnabled(userId);
   const agentId = typeof configured === "string" ? configured : null;
   const agent = agentId
     ? await getOrganizationWorkflowBuilderAgent(agentId, workspaceId)
@@ -90,11 +98,13 @@ export async function getCompanionState(
   );
   return {
     enabled,
+    userEnabled,
     organizationId,
     agentId: agent?.kind === "assistant" ? agent.id : null,
     name: agent?.name ?? null,
     available:
       enabled &&
+      userEnabled &&
       !!agent?.activeVersionId &&
       agent.kind === "assistant" &&
       allowed,

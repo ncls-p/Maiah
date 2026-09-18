@@ -18,7 +18,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ErrorDetailsButton } from "@/components/ui/error-details-button";
 import type { CompanionState } from "@/modules/companion/contracts";
 import { usePageBridge } from "./use-page-bridge";
-import { CompanionMoveButton } from "./companion-move-button";
 import { useCompanionHistory } from "./use-companion-history";
 import { useCompanionPosition } from "./use-companion-position";
 const noop = async () => {};
@@ -116,9 +115,13 @@ export function CompanionPanel({
   return (
     <aside
       data-companion-root
-      className="fixed z-50"
+      tabIndex={-1}
+      title={t("moveHint")}
+      className={`fixed z-50 cursor-grab active:cursor-grabbing${open ? "" : " touch-none"}`}
       style={position.style}
       aria-label={t("title")}
+      onPointerDown={position.pointerDown}
+      onKeyDown={position.keyDown}
     >
       <div
         style={{ display: open ? undefined : "none" }}
@@ -134,7 +137,6 @@ export function CompanionPanel({
         }}
       >
         <header className="flex shrink-0 items-center gap-2 border-b p-2">
-          <CompanionMoveButton position={position} />
           <div className="min-w-0 flex-1">
             <h2 id="companion-title" className="text-sm font-semibold">
               {t("title")}
@@ -274,7 +276,7 @@ export function CompanionPanel({
         </form>
       </div>
       {!open ? (
-        <div className="flex items-center gap-1 rounded-full border bg-background p-1 shadow-xl">
+        <div className="rounded-full border bg-background p-1 shadow-xl">
           <Button
             ref={launcher}
             size="icon"
@@ -285,7 +287,6 @@ export function CompanionPanel({
           >
             <BotIcon />
           </Button>
-          <CompanionMoveButton position={position} />
           {stream.sending ? (
             <span role="status" className="sr-only">
               {t("working")}

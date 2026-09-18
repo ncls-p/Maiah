@@ -78,6 +78,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       title={ready ? (workflow?.name ?? t("title")) : t("title")}
       headerVariant="compact"
       width="full"
+      fill
       actions={
         <div className="flex items-center gap-2">
           {ready && workflow?.capabilities?.canEdit && accessOptions ? (
