@@ -1,5 +1,4 @@
 import { and, eq, sql } from "drizzle-orm";
-import { microsoft } from "better-auth/social-providers";
 import { createAuth } from "@/lib/auth";
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
@@ -9,6 +8,7 @@ import {
   users,
 } from "@/server/infrastructure/db/schema";
 import { microsoftIdentity, type StoredMicrosoftConfig } from "./config";
+import { verifyMicrosoftToken } from "./verify-token";
 
 export async function createMicrosoftAuth(
   organizationId: string,
@@ -25,7 +25,6 @@ export async function createMicrosoftAuth(
     disableDefaultScope: true,
     scope: ["openid", "profile", "email", "User.Read"],
   };
-  const verifier = microsoft({ ...options, disableIdTokenSignIn: false });
   return createAuth({
     baseURL: config.loginOrigin,
     onAPIError: {
@@ -43,15 +42,9 @@ export async function createMicrosoftAuth(
       microsoft: {
         ...options,
         async getUserInfo(tokens) {
-          if (
-            !tokens.idToken ||
-            !(await verifier.verifyIdToken(tokens.idToken, undefined))
-          )
-            return null;
-          // Verification above checks signature, audience, issuer and expiry before reading claims.
-          const profile = JSON.parse(
-            Buffer.from(tokens.idToken.split(".")[1], "base64url").toString(),
-          ) as Record<string, unknown>;
+          if (!tokens.idToken) return null;
+          const profile = await verifyMicrosoftToken(tokens.idToken, config);
+          if (!profile) return null;
           if (!profile.email && tokens.accessToken) {
             const response = await fetch(
               "https://graph.microsoft.com/v1.0/me?$select=id,mail,userPrincipalName",

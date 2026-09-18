@@ -79,6 +79,7 @@
     "drizzle-orm": "^0.45.2",
     "flowcraft": "^2.10.1",
     "ioredis": "^5.6.0",
+    "jose": "^6.2.12",
     "jszip": "^3.10.1",
     "katex": "^0.17.0",
     "lucide-react": "^0.545.0",
