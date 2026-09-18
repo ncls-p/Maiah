@@ -18,7 +18,12 @@ export async function GET(request: Request) {
       { status: 404 },
     );
   const locale = url.searchParams.get("locale") === "en" ? "en" : "fr";
-  if (url.origin !== config.loginOrigin) {
+  // TLS terminates at the proxy; req.url can carry the internal HTTP origin.
+  // Compare the public Host with the configured canonical origin instead.
+  if (
+    request.headers.get("host")?.toLowerCase() !==
+    new URL(config.loginOrigin).host
+  ) {
     const canonical = new URL("/api/auth/microsoft/start", config.loginOrigin);
     canonical.searchParams.set("organizationId", id.data);
     canonical.searchParams.set("locale", locale);

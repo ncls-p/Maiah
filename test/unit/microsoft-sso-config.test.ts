@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   microsoftConfigSchema,
+  isTrustedMicrosoftSettingsOrigin,
   microsoftIdentity,
 } from "@/modules/auth/microsoft/config";
 const config = {
@@ -60,5 +61,32 @@ describe("Microsoft SSO identity boundaries", () => {
         config,
       ),
     ).toBeNull();
+  });
+});
+
+describe("Microsoft settings write origins", () => {
+  const trusted = ["https://maiah.deodis.com", " https://maiah.shiftify.eco "];
+  it("accepts both explicitly configured public origins behind the proxy", () => {
+    expect(
+      isTrustedMicrosoftSettingsOrigin("https://maiah.deodis.com", trusted),
+    ).toBe(true);
+    expect(
+      isTrustedMicrosoftSettingsOrigin("https://maiah.shiftify.eco", trusted),
+    ).toBe(true);
+  });
+  it("rejects missing, opaque, internal and untrusted origins", () => {
+    for (const origin of [
+      null,
+      "null",
+      "",
+      "http://localhost:3000",
+      "http://maiah.deodis.com",
+      "https://maiah.deodis.com.evil.test",
+      "https://evil.test",
+      "https://maiah.deodis.com/path",
+      "https://user@maiah.deodis.com",
+    ]) {
+      expect(isTrustedMicrosoftSettingsOrigin(origin, trusted)).toBe(false);
+    }
   });
 });
