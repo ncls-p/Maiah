@@ -135,7 +135,7 @@ export default function SignInPage() {
           {loading ? t("signingIn") : t("signIn")}
         </Button>
       </form>
-      <MicrosoftSignIn email={email} />
+      <MicrosoftSignIn />
     </AuthShell>
   );
 }

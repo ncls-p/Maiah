@@ -4720,6 +4720,8 @@
     "emailRequired": "Enter your work email.",
     "unavailable": "Microsoft sign-in is unavailable for this email domain. You can use your password.",
     "signInFailed": "Microsoft sign-in failed. Retry with your work account or contact your organization administrator.",
-    "emailLabel": "Work email"
+    "emailLabel": "Work email",
+    "cancel": "Cancel",
+    "continue": "Continue"
   }
 }

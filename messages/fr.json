@@ -4720,6 +4720,8 @@
     "emailRequired": "Saisissez votre e-mail professionnel.",
     "unavailable": "La connexion Microsoft n’est pas disponible pour ce domaine e-mail. Vous pouvez utiliser votre mot de passe.",
     "signInFailed": "La connexion Microsoft n’a pas abouti. Réessayez avec votre compte professionnel ou contactez l’administrateur de votre organisation.",
-    "emailLabel": "E-mail professionnel"
+    "emailLabel": "E-mail professionnel",
+    "cancel": "Annuler",
+    "continue": "Continuer"
   }
 }
