@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { WorkspacePage } from "@/components/workspace-page";
 import { getSession } from "@/modules/auth/session";
+import { SettingsCompanionCard } from "./settings-companion-card";
 import { SettingsPasswordCard } from "./settings-password-card";
 
 export default async function SettingsPage() {
@@ -21,6 +22,7 @@ export default async function SettingsPage() {
             {session?.user.email}
           </p>
         </section>
+        <SettingsCompanionCard />
         <SettingsPasswordCard />
       </div>
     </WorkspacePage>

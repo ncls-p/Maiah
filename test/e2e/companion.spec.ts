@@ -267,8 +267,8 @@ test("global companion performs live page and MCP actions, persists and respects
       document.getElementById("companion-test-fields")?.remove(),
     );
     const before = await panel.boundingBox();
-    await panel
-      .getByRole("button", { name: "Move companion" })
+    await page
+      .getByRole("complementary", { name: "Maiah companion" })
       .press("ArrowLeft");
     const after = await panel.boundingBox();
     expect(after!.x).toBeLessThan(before!.x);

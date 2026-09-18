@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -35,11 +34,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import type { ReactNode } from "react";
 import type { ResourceAccessPanelViewModel } from "./access-console.resource-access-panel.view";
 export function ResourceAccessPanelSection4({
   model,
+  toolbar,
 }: {
   model: ResourceAccessPanelViewModel;
+  toolbar?: ReactNode;
 }) {
   const {
     canManageResources,
@@ -67,8 +69,9 @@ export function ResourceAccessPanelSection4({
     t,
   } = model;
   return (
-    <CardContent className="flex flex-col gap-4 px-0">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
         <Field>
           <FieldLabel htmlFor="resource-type">{t("resourceType")}</FieldLabel>
           <Select
@@ -111,6 +114,8 @@ export function ResourceAccessPanelSection4({
             />
           </div>
         </Field>
+        </div>
+        {toolbar}
       </div>
 
       {resourcesError ? (
@@ -242,6 +247,6 @@ export function ResourceAccessPanelSection4({
           ) : null}
         </div>
       )}
-    </CardContent>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
-import { PlusIcon, UsersIcon } from "lucide-react";
+import { UsersIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Field,
@@ -65,25 +63,6 @@ export function AccessPeopleTransferBranch1({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setBulkAssignmentIds([]);
-            setAssignment({
-              principalType: "user",
-              principalId: "",
-              roleId: "",
-              scopeType: "workspace",
-            });
-          }}
-        >
-          <PlusIcon data-icon="inline-start" aria-hidden="true" />
-          {t("assignRole")}
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("assignRoleTitle")}</DialogTitle>

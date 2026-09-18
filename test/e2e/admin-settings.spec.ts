@@ -20,7 +20,7 @@ test.describe("admin settings page", () => {
   });
 
   test("shows registration settings", async ({ page }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings?tab=platform");
     await page.waitForTimeout(2000);
 
     // Registration section should be visible
@@ -30,7 +30,7 @@ test.describe("admin settings page", () => {
   });
 
   test("shows system health section", async ({ page }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings?tab=platform");
     await page.waitForTimeout(2000);
 
     // System health section
@@ -50,7 +50,7 @@ test.describe("admin settings page", () => {
   });
 
   test("shows assistant governance settings", async ({ page }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings?tab=platform");
     await page.waitForTimeout(2000);
 
     // Assistant governance section
@@ -82,7 +82,7 @@ test.describe("admin settings page", () => {
   test("configures embedding and reranking defaults explicitly", async ({
     page,
   }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings?tab=platform");
 
     await page.locator("#rag-embedding-model").fill("qwen3-embedding:4b");
     const reranking = page.getByLabel("Improve result ranking");
@@ -96,7 +96,7 @@ test.describe("admin settings page", () => {
   });
 
   test("explains technical RAG settings in context", async ({ page }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings?tab=platform");
 
     const help = page.getByRole("button", {
       name: "Maximum characters per indexed passage. Short passages are more precise; long passages preserve more context.",
@@ -109,7 +109,7 @@ test.describe("admin settings page", () => {
 
 test.describe("registration settings", () => {
   test("can toggle registration open/closed", async ({ page }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings?tab=platform");
     await page.waitForTimeout(2000);
 
     // Registration toggle buttons should exist

@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
+  openPersonGrantAccess,
+  openProjectOrganizationSettings,
+} from "./access-ui";
+import {
   e2eMember,
   ensureE2ELifecycleProject,
   ensureE2EMember,
@@ -30,14 +34,7 @@ test.describe("members page", () => {
       .getByRole("option", { name: "Lifecycle browser project", exact: true })
       .click();
 
-    if (
-      !(await page
-        .getByRole("button", { name: "Manage", exact: true })
-        .isVisible())
-    )
-      await page
-        .getByText("Project and organization settings", { exact: true })
-        .click();
+    await openProjectOrganizationSettings(page);
     await page.getByRole("button", { name: "Manage", exact: true }).click();
     await page.getByRole("menuitem", { name: "Rename project" }).click();
     const renameDialog = page.getByRole("dialog", { name: "Rename project" });
@@ -51,14 +48,7 @@ test.describe("members page", () => {
       "Lifecycle browser project renamed",
     );
 
-    if (
-      !(await page
-        .getByRole("button", { name: "Manage", exact: true })
-        .isVisible())
-    )
-      await page
-        .getByText("Project and organization settings", { exact: true })
-        .click();
+    await openProjectOrganizationSettings(page);
     await page.getByRole("button", { name: "Manage", exact: true }).click();
     await page.getByRole("menuitem", { name: "Delete project" }).click();
     const deleteDialog = page.getByRole("dialog", {
@@ -88,7 +78,7 @@ test.describe("members page", () => {
       await activeProject.click();
       await page.getByRole("option", { name: "Maiah", exact: true }).click();
     }
-    await page.getByRole("tab", { name: "Resources" }).click();
+    await page.goto("/en/members/resources");
 
     const resourceRow = page.locator("tbody tr").filter({
       hasText: "Removable assistant",
@@ -115,13 +105,13 @@ test.describe("members page", () => {
     await ensureE2EMember();
     await page.goto("/en/members");
 
-    await page.getByRole("button", { name: "Add person" }).click();
+    await page.getByRole("button", { name: "Invite" }).click();
     const personDialog = page.getByRole("dialog", { name: "Add a person" });
     await personDialog.getByLabel("Email").fill(e2eMember.email);
-    await personDialog.getByRole("button", { name: "Add person" }).click();
+    await personDialog.getByRole("button", { name: "Invite" }).click();
     await expect(personDialog).not.toBeVisible();
 
-    await page.getByRole("tab", { name: "Teams" }).click();
+    await page.getByRole("link", { name: "Teams" }).click();
     await page.getByRole("button", { name: "Create team" }).click();
     const teamDialog = page.getByRole("dialog", { name: "Create a team" });
     await teamDialog.getByLabel("Team name").fill(teamName);
@@ -132,19 +122,26 @@ test.describe("members page", () => {
     const teamCard = page
       .locator('[data-slot="card"]')
       .filter({ hasText: teamName });
-    await expect(teamCard.locator("details")).toHaveAttribute("open", "");
-    await teamCard.getByRole("combobox").click();
+    await expect(teamCard.locator("details")).not.toHaveAttribute("open");
+    await teamCard.getByRole("button", { name: "Edit", exact: true }).click();
+    const editTeam = page.getByRole("dialog", {
+      name: "Edit team",
+      exact: true,
+    });
+    await editTeam.getByRole("combobox").click();
     await page.getByRole("option", { name: e2eMember.name }).click();
-    await teamCard.getByRole("button", { name: "Add", exact: true }).click();
+    await editTeam.getByRole("button", { name: "Add", exact: true }).click();
+    await editTeam.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(editTeam).not.toBeVisible();
+    await teamCard.locator("summary").click();
     await expect(
       teamCard
         .locator('[data-slot="badge"]')
         .filter({ hasText: e2eMember.name }),
     ).toBeVisible();
 
-    await page.getByRole("tab", { name: "People", exact: true }).click();
-    await page.getByRole("button", { name: "Grant access" }).click();
-    const accessDialog = page.getByRole("dialog", { name: "Grant access" });
+    await page.getByRole("link", { name: "People", exact: true }).click();
+    const accessDialog = await openPersonGrantAccess(page, e2eMember.name);
     await accessDialog.getByText("Advanced: organization or team").click();
     await accessDialog.getByRole("combobox", { name: "Grant to" }).click();
     await page.getByRole("option", { name: "Team", exact: true }).click();
@@ -158,9 +155,7 @@ test.describe("members page", () => {
     await page.getByRole("option", { name: "Project Viewer" }).click();
     await accessDialog.getByRole("button", { name: "Grant access" }).click();
     await expect(accessDialog).not.toBeVisible();
-    await page
-      .getByPlaceholder("Search people, email, role, or team…")
-      .fill(teamName);
+    await page.locator("#people-search").fill(teamName);
     await expect(
       page.locator("tbody tr").filter({ hasText: e2eMember.email }),
     ).toHaveCount(1);

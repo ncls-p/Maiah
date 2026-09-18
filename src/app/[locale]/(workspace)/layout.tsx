@@ -45,7 +45,9 @@ export default async function WorkspaceLayout({
         isAdmin={isAdmin}
         impersonatedBy={session.session.impersonatedBy}
       >
-        <div className="page-content h-full">{children}</div>
+        <div className="page-content flex h-full min-h-0 flex-col">
+          {children}
+        </div>
       </AppShell>
       <Companion userId={user.id} />
     </WorkspaceProvider>

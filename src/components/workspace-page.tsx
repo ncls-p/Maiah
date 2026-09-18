@@ -21,6 +21,8 @@ export function WorkspacePage({
   children,
   className,
   headerVariant = "editorial",
+  showKicker,
+  fill = false,
 }: {
   title: string;
   accentTitle?: string;
@@ -31,8 +33,11 @@ export function WorkspacePage({
   children: ReactNode;
   className?: string;
   headerVariant?: "editorial" | "compact";
+  showKicker?: boolean;
+  fill?: boolean;
 }) {
   const compact = headerVariant === "compact";
+  const kickerVisible = showKicker ?? true;
 
   return (
     <div
@@ -42,6 +47,7 @@ export function WorkspacePage({
           ? "gap-4 py-4 sm:gap-5 sm:py-7 lg:py-8"
           : "gap-5 py-5 sm:gap-8 sm:py-10 lg:py-12",
         widthClass[width],
+        fill && "h-full min-h-0 flex-1",
         className,
       )}
     >
@@ -49,12 +55,15 @@ export function WorkspacePage({
         className={cn(
           "flex flex-col sm:flex-row sm:justify-between",
           compact ? "gap-3 sm:items-center" : "gap-5 sm:items-end",
+          fill && "shrink-0",
         )}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="workspace-page-kicker" aria-hidden="true">
-            {eyebrow ?? `Maiah / ${title}`}
-          </span>
+          {kickerVisible ? (
+            <span className="workspace-page-kicker" aria-hidden="true">
+              {eyebrow ?? `Maiah / ${title}`}
+            </span>
+          ) : null}
           <h1
             className={cn(
               "workspace-page-heading text-pretty text-foreground",
@@ -86,7 +95,14 @@ export function WorkspacePage({
           </div>
         ) : null}
       </header>
-      <div className="page-content__body">{children}</div>
+      <div
+        className={cn(
+          "page-content__body",
+          fill && "flex h-full min-h-0 flex-1 flex-col",
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

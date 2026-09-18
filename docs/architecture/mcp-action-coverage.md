@@ -37,6 +37,7 @@ Multipart uploads accept inline base64 up to 180 KB. Larger files use the existi
 | GET /api/auth/{all} | — | — | none | Protocol, authentication or infrastructure endpoint |
 | POST /api/auth/{all} | — | — | none | Protocol, authentication or infrastructure endpoint |
 | GET /api/companion | — | — | none | Protocol, authentication or infrastructure endpoint |
+| PATCH /api/companion | — | — | inferred JSON | Protocol, authentication or infrastructure endpoint |
 | PATCH /api/companion/context | — | — | inferred JSON | Protocol, authentication or infrastructure endpoint |
 | POST /api/companion/context | — | — | inferred JSON | Protocol, authentication or infrastructure endpoint |
 | GET /api/companion/settings | — | — | none | Protocol, authentication or infrastructure endpoint |

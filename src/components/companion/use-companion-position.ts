@@ -1,11 +1,17 @@
 "use client";
-import {
-  useEffect,
-  useState,
-  type PointerEvent,
-  type KeyboardEvent,
-} from "react";
+import { type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useState } from "react";
+
 const key = "maiah:companion-position";
+const dragThreshold = 5;
+
+function isEditable(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("textarea, input, select, [contenteditable='true']"))
+  );
+}
+
 export function useCompanionPosition(open: boolean) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     null,
@@ -15,7 +21,7 @@ export function useCompanionPosition(open: boolean) {
       8,
       Math.min(
         point.x,
-        innerWidth - Math.min(open ? 440 : 104, innerWidth - 16) - 8,
+        innerWidth - Math.min(open ? 440 : 56, innerWidth - 16) - 8,
       ),
     ),
     y: Math.max(
@@ -53,29 +59,49 @@ export function useCompanionPosition(open: boolean) {
     } catch {}
   }
   function pointerDown(event: PointerEvent<HTMLElement>) {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isEditable(event.target)) return;
     const element = event.currentTarget;
     const box = element
       .closest("[data-companion-root]")!
       .getBoundingClientRect();
     const start = { x: event.clientX, y: event.clientY };
-    element.setPointerCapture(event.pointerId);
-    const move = (next: globalThis.PointerEvent) =>
-      save({
-        x: box.left + next.clientX - start.x,
-        y: box.top + next.clientY - start.y,
-      });
-    const end = () => {
-      element.removeEventListener("pointermove", move);
-      element.removeEventListener("pointerup", end);
-      element.removeEventListener("pointercancel", end);
+    let dragging = false;
+    const move = (next: globalThis.PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      const dx = next.clientX - start.x;
+      const dy = next.clientY - start.y;
+      if (!dragging && dx * dx + dy * dy < dragThreshold * dragThreshold)
+        return;
+      if (!dragging) {
+        dragging = true;
+        element.setPointerCapture(event.pointerId);
+      }
+      next.preventDefault();
+      save({ x: box.left + dx, y: box.top + dy });
     };
-    element.addEventListener("pointermove", move);
-    element.addEventListener("pointerup", end);
-    element.addEventListener("pointercancel", end);
+    const end = (next: globalThis.PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (element.hasPointerCapture(event.pointerId))
+        element.releasePointerCapture(event.pointerId);
+      if (!dragging) return;
+      const suppress = (click: MouseEvent) => {
+        click.preventDefault();
+        click.stopPropagation();
+      };
+      element.addEventListener("click", suppress, {
+        capture: true,
+        once: true,
+      });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   }
   function keyDown(event: KeyboardEvent<HTMLElement>) {
-    if (!event.key.startsWith("Arrow")) return;
+    if (!event.key.startsWith("Arrow") || isEditable(event.target)) return;
     event.preventDefault();
     const box = event.currentTarget
       .closest("[data-companion-root]")!

@@ -1,7 +1,7 @@
 import { PencilIcon, SearchIcon, ShieldIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -14,8 +14,10 @@ import type { AccessConsoleViewModel } from "./access-console.access-console.vie
 import { ConfirmRemovalButton } from "./access-console.scope-path";
 export function AccessRolesSection1({
   model,
+  action,
 }: {
   model: AccessConsoleViewModel;
+  action?: ReactNode;
 }) {
   const {
     filteredRoles,
@@ -36,23 +38,26 @@ export function AccessRolesSection1({
     workspaceId,
   } = model;
   return (
-    <CardContent className="flex flex-col gap-4 px-0">
-      <div className="relative max-w-md">
-        <SearchIcon
-          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <Input
-          id="role-search"
-          className="pl-9"
-          value={roleQuery}
-          placeholder={t("searchRoles")}
-          aria-label={t("searchRoles")}
-          onChange={(event) => {
-            setRoleQuery(event.target.value);
-            setVisibleRoleCount(25);
-          }}
-        />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="relative w-full max-w-md">
+          <SearchIcon
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="role-search"
+            className="pl-9"
+            value={roleQuery}
+            placeholder={t("searchRoles")}
+            aria-label={t("searchRoles")}
+            onChange={(event) => {
+              setRoleQuery(event.target.value);
+              setVisibleRoleCount(25);
+            }}
+          />
+        </div>
+        {action}
       </div>
       {filteredRoles.length === 0 ? (
         <Empty className="min-h-52">
@@ -182,6 +187,6 @@ export function AccessRolesSection1({
           </Button>
         </div>
       ) : null}
-    </CardContent>
+    </div>
   );
 }

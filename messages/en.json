@@ -103,6 +103,12 @@
     "apiKeys": "API keys",
     "team": "Users",
     "access": "Access",
+    "accessTeams": "Teams",
+    "accessRoles": "Roles",
+    "accessResources": "Resources",
+    "accessOrganizations": "Organizations",
+    "accessSharing": "Sharing",
+    "accessLimits": "Usage limits",
     "usage": "Consumption",
     "activityLog": "Activity log",
     "settings": "My account",
@@ -2415,12 +2421,20 @@
   },
   "settings": {
     "title": "Personal settings",
-    "description": "Manage your account and password.",
+    "description": "Manage your account, companion, and password.",
     "languageTitle": "Language",
     "languageDescription": "Choose the interface language for your account.",
     "adminLinkTitle": "Platform administration",
     "adminLinkDescription": "Registration, automation, integrations, and system health are managed separately.",
     "goToAdminSettings": "Open platform settings",
+    "companionTitle": "Maiah companion",
+    "companionDescription": "Show or hide the companion on every page for this account.",
+    "companionEnable": "Show the companion",
+    "companionHint": "If an administrator has not enabled it for the organization, it stays hidden.",
+    "companionLoading": "Loading…",
+    "companionRetry": "Retry",
+    "companionLoadFailed": "Unable to load companion preference",
+    "companionSaveFailed": "Unable to save companion preference",
     "passwordTitle": "Password",
     "passwordDescription": "Change your sign-in password for this account.",
     "currentPassword": "Current password",
@@ -2499,6 +2513,11 @@
     "platformSettingsTitle": "App settings",
     "platformSettingsDescription": "Organization and platform settings.",
     "settingsPage": {
+      "tabs": {
+        "label": "Settings sections",
+        "organization": "Organization",
+        "platform": "Platform"
+      },
       "loadFailed": "Unable to load settings",
       "loadErrorDescription": "This section could not be loaded. No settings were changed.",
       "retry": "Try again",
@@ -2975,7 +2994,7 @@
   },
   "access": {
     "title": "Access",
-    "description": "Manage people, teams and their access.",
+    "description": "Who can do what in this project.",
     "searchPlaceholder": "Type to search…",
     "searchProjects": "Search projects",
     "organizationAccess": "Organization access",
@@ -3013,7 +3032,7 @@
     },
     "assignmentsTitle": "People",
     "assignmentsDescription": "Add people and choose their role in this project.",
-    "searchPeople": "Search people, email, role, or team…",
+    "searchPeople": "Search for a person…",
     "searchPrincipal": "Search members or teams",
     "selectedCount": "{count, plural, one {# person selected} other {# people selected}}",
     "grantSelected": "Grant selected",
@@ -3078,7 +3097,7 @@
     "showMore": "Show {count} more",
     "noSearchResults": "No matching results",
     "noSearchResultsDescription": "Try another name, email, role, permission, or team.",
-    "addPerson": "Add person",
+    "addPerson": "Invite",
     "addPersonTitle": "Add a person",
     "addPersonDescription": "First add the account to the organization. You can then grant project access from the person’s row.",
     "existingAccount": "Existing account",
@@ -3129,7 +3148,6 @@
     "cancel": "Keep access",
     "confirmRemove": "Remove access",
     "teamsTitle": "Teams",
-    "teamsDescription": "Group people together to give them the same access.",
     "searchTeams": "Search teams or members…",
     "createTeam": "Create team",
     "createTeamTitle": "Create a team",
@@ -3155,7 +3173,6 @@
     "deleteTeamDescription": "The team and all of its access assignments will be removed. Its members remain in the organization.",
     "teamDeleted": "Team deleted",
     "rolesTitle": "Roles",
-    "rolesDescription": "A role defines what someone can do. Use an existing role or create your own.",
     "createRole": "Create custom role",
     "createRoleTitle": "Create a custom role",
     "createRoleDescription": "Give the role a clear outcome-based name, choose its scope, then select only the permissions it needs.",
@@ -3189,7 +3206,6 @@
     "deleteRoleDescription": "Only roles with no active assignments can be deleted.",
     "roleDeleted": "Role deleted",
     "resourcesTitle": "Resource access",
-    "resourcesDescription": "Choose a resource to see who has access and change its sharing.",
     "manageScope": "Manage",
     "projectActions": "Active project",
     "organizationActions": "Organization",
@@ -3680,7 +3696,7 @@
     },
     "matrix": {
       "title": "Permissions",
-      "description": "Permissions inherit from the organization to its projects and resources. Delegate only permissions you hold to less privileged members. Manage actions include the registered actions in the same domain.",
+      "description": "Permissions inherit from the organization to its projects.",
       "caption": "{count} permissions at this scope. Direct resource assignments can add resource-specific access.",
       "effective": "My effective access",
       "delegable": "Delegable",
@@ -3759,23 +3775,10 @@
     },
     "navigation": {
       "label": "Access sections",
-      "hint": "Access combines user, team and organization roles. Choose the project in People and permissions.",
-      "access": {
-        "title": "People and permissions",
-        "description": "Manage people, their teams, roles and resource access for the selected project."
-      },
-      "organizations": {
-        "title": "Organizations and projects",
-        "description": "Create an organization and add its members and projects. The first project can be created later."
-      },
-      "sharing": {
-        "title": "Organization sharing",
-        "description": "Choose a resource and the organizations that can use it. Editing rights stay with the source project."
-      },
-      "limits": {
-        "title": "Usage limits",
-        "description": "Set LLM limits by user, team or organization, then narrow them by provider and model."
-      }
+      "people": "People",
+      "teams": "Teams",
+      "roles": "Roles",
+      "resources": "Resources"
     },
     "filters": {
       "organization": "Organization",
@@ -4434,7 +4437,7 @@
     "retry": "Retry",
     "loading": "Loading…",
     "usageLimits": "Usage limits",
-    "usageLimitsHint": "Limits apply together: each call must satisfy every matching rule. Periods follow the UTC calendar. Budget is reserved before each call and adjusted to reported usage.",
+    "usageLimitsHint": "Limits apply together. Periods follow the UTC calendar.",
     "subjectType": "Apply to",
     "subject": "User, team or organization",
     "user": "User",
@@ -4459,7 +4462,7 @@
     "deleteLimitTitle": "Delete this usage limit?",
     "deleteLimitDescription": "This cap will no longer apply to future calls. Other limits remain active.",
     "distribution": "Sharing across organizations",
-    "distributionHint": "Give selected organizations read and use access. Editing rights and secrets remain in the source organization. Sharing a provider includes all its models; sharing a model is limited to that model.",
+    "distributionHint": "Give selected organizations read and use access. Editing rights stay in the source organization.",
     "sourceProject": "Source project",
     "resourceType": "Resource type",
     "resource": "Resource",

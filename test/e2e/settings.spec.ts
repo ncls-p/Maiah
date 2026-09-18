@@ -23,6 +23,9 @@ test.describe("settings page", () => {
     await expect(
       page.getByRole("heading", { name: /Settings/i }).first(),
     ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("switch", { name: "Show the companion", exact: true }),
+    ).toBeVisible();
     if (projectName) {
       await expect(
         page.locator("header.app-shell__header").getByText(projectName, {

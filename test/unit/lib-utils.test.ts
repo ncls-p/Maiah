@@ -151,6 +151,10 @@ describe("workspace-nav pure functions", () => {
       expect(getRouteTitleKey("/agents")).toBe("assistants");
       expect(getRouteTitleKey("/providers")).toBe("aiConnections");
       expect(getRouteTitleKey("/usage")).toBe("usage");
+      expect(getRouteTitleKey("/members")).toBe("access");
+      expect(getRouteTitleKey("/members/teams")).toBe("accessTeams");
+      expect(getRouteTitleKey("/members/resources")).toBe("accessResources");
+      expect(getRouteTitleKey("/admin/settings")).toBe("adminSettings");
     });
 
     it("returns assistantConfig for agent config routes", () => {
@@ -200,6 +204,14 @@ describe("workspace-nav pure functions", () => {
     it("returns undefined for other routes", () => {
       expect(getRouteBreadcrumbs("/chat")).toBeUndefined();
       expect(getRouteBreadcrumbs("/agents")).toBeUndefined();
+      expect(getRouteBreadcrumbs("/members")).toBeUndefined();
+    });
+
+    it("returns breadcrumbs for access subpages", () => {
+      expect(getRouteBreadcrumbs("/members/teams")).toEqual([
+        { labelKey: "access", href: "/members" },
+        { labelKey: "accessTeams" },
+      ]);
     });
   });
 

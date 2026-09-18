@@ -189,6 +189,12 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
     required: ["agentId"],
     additionalProperties: false,
   },
+  patchCompanion: {
+    type: "object",
+    properties: { userEnabled: { type: "boolean" } },
+    required: ["userEnabled"],
+    additionalProperties: false,
+  },
   patchCompanionContext: {
     type: "object",
     properties: {

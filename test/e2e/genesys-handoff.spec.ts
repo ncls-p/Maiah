@@ -41,7 +41,7 @@ test("organization connection and human chat survive refresh and signed webhook 
     versionId = activeVersionId;
     await login(page);
     await page.request.patch("/api/workspaces", { data: { workspaceId } });
-    await page.goto("/en/members?section=organizations");
+    await page.goto("/en/admin/settings");
     const panel = page.getByRole("region", {
       name: "Genesys Cloud connection",
     });

@@ -1,89 +1,50 @@
 "use client";
 
-import { Building2Icon, GaugeIcon, Share2Icon, UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OrganizationDirectory } from "./organization-directory";
-import { ResourceDistributionPanel } from "./resource-distribution-panel";
-import { UsageLimitsPanel } from "./usage-limits-panel";
+import type { ReactNode } from "react";
+import { Link, usePathname } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
+import { Tabs, TabsList } from "@/components/ui/tabs";
 
-export function AccessPageNavigation({
-  children,
-  isPlatformAdmin,
-}: {
-  children: ReactNode;
-  isPlatformAdmin: boolean;
-}) {
+const items = [
+  { href: "/members", key: "people" },
+  { href: "/members/teams", key: "teams" },
+  { href: "/members/roles", key: "roles" },
+  { href: "/members/resources", key: "resources" },
+] as const;
+
+function activeHref(pathname: string) {
+  return items.find((item) => pathname === item.href)?.href ?? "/members";
+}
+
+export function AccessPageNavigation({ children }: { children: ReactNode }) {
   const t = useTranslations("access.navigation");
-  const searchParams = useSearchParams();
   const pathname = usePathname();
-  const sections = [
-    { value: "access", icon: UsersIcon },
-    { value: "organizations", icon: Building2Icon },
-    ...(isPlatformAdmin
-      ? [
-          { value: "sharing", icon: Share2Icon },
-          { value: "limits", icon: GaugeIcon },
-        ]
-      : []),
-  ];
-  const requested = searchParams.get("section");
-  const active =
-    sections.find(({ value }) => value === requested)?.value ?? "access";
-  const [visited, setVisited] = useState<string[]>([active]);
-  function select(value: string) {
-    setVisited((current) =>
-      current.includes(value) ? current : [...current, value],
-    );
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === "access") params.delete("section");
-    else params.set("section", value);
-    window.history.pushState(
-      null,
-      "",
-      params.size ? `${pathname}?${params}` : pathname,
-    );
-  }
-  const panels: Record<string, ReactNode> = {
-    access: children,
-    organizations: <OrganizationDirectory />,
-    sharing: <ResourceDistributionPanel />,
-    limits: <UsageLimitsPanel />,
-  };
+  const active = activeHref(pathname);
   return (
-    <Tabs value={active} onValueChange={select} className="min-w-0 gap-5">
-      <div className="min-w-0">
-        <TabsList
-          aria-label={t("label")}
-          className="grid w-full grid-cols-2 gap-1 p-1 sm:flex sm:w-fit"
-        >
-          {sections.map(({ value, icon: Icon }) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className="min-h-10 gap-2 px-3 py-2 whitespace-normal"
-            >
-              <Icon aria-hidden="true" className="size-4" />
-              <span>{t(`${value}.title`)}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </div>
-      <div className="min-w-0">
-        {sections.map(({ value }) => (
-          <TabsContent
-            key={value}
-            value={value}
-            forceMount
-            hidden={active !== value}
-            className="min-w-0 data-[state=inactive]:hidden"
-          >
-            {active === value || visited.includes(value) ? panels[value] : null}
-          </TabsContent>
-        ))}
-      </div>
-    </Tabs>
+    <div className="flex min-w-0 flex-col gap-5">
+      <nav aria-label={t("label")}>
+        <Tabs value={active} className="min-w-0 gap-0">
+          <TabsList variant="line" className="w-full justify-start">
+            {items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                data-slot="tabs-trigger"
+                data-active={item.href === active ? "" : undefined}
+                className={cn(
+                  "t-tab relative inline-flex min-h-10 items-center justify-center px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground",
+                  "after:absolute after:inset-x-4 after:bottom-[-0.45rem] after:h-px after:bg-foreground after:opacity-0 after:transition-opacity",
+                  item.href === active && "text-foreground after:opacity-100",
+                )}
+              >
+                {t(item.key)}
+              </Link>
+            ))}
+          </TabsList>
+        </Tabs>
+      </nav>
+      <div className="min-w-0">{children}</div>
+    </div>
   );
 }

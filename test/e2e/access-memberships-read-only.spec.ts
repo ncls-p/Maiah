@@ -1,5 +1,6 @@
 import { test } from "./access-memberships.fixtures";
 import { expect, type Page } from "@playwright/test";
+import { openPersonAssignments } from "./access-ui";
 import {
   ensureE2EUser,
   ensureE2EMember,
@@ -79,13 +80,7 @@ test("keeps membership and project management read-only without delegated permis
   await expect(
     page.getByRole("button", { name: "Manage", exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", {
-      name: `Manage assignments for ${e2eMember.name}`,
-      exact: true,
-    })
-    .click();
-  const dialog = page.getByRole("dialog");
+  const dialog = await openPersonAssignments(page, e2eMember.name);
   await expect(
     dialog.getByText("Access reader", { exact: true }),
   ).toBeVisible();

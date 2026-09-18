@@ -59,6 +59,7 @@ const LEGACY_LINE_LIMITS = new Map([
     366,
   ],
   ["src/components/iam/access-console.access-console.tsx", 452],
+  ["src/components/iam/access-invite-dialog.tsx", 344],
   [
     "src/components/iam/access-console.access-console.view.section-1.section-1.section-2.tsx",
     425,

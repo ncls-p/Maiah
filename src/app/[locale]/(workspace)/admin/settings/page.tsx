@@ -1,6 +1,11 @@
 import { OrganizationCustomization } from "@/components/admin/organization-customization";
 import { OrganizationAdministration } from "@/components/iam/organization-administration";
+import { OrganizationDirectory } from "@/components/iam/organization-directory";
+import { ResourceDistributionPanel } from "@/components/iam/resource-distribution-panel";
+import { UsageLimitsPanel } from "@/components/iam/usage-limits-panel";
+import { AdminSettingsTabs } from "@/components/admin/admin-settings-tabs";
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
 import { AssistantGovernanceSettings } from "@/components/admin/assistant-governance-settings";
 import { RagSettings } from "@/components/admin/rag-settings";
@@ -34,21 +39,32 @@ export default async function AdminSettingsPage() {
       description={t("platformSettingsDescription")}
       width="default"
     >
-      <div className="flex flex-col gap-6">
-        <OrganizationAdministration />
-        <OrganizationCustomization />
-        {platformSettings ? (
-          <>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <RegistrationSettings initialState={platformSettings[0]} />
-              <SystemHealthCard />
-              <UsageImpactSettings initialState={platformSettings[1]} />
-            </div>
-            <RagSettings initialState={platformSettings[2]} />
-            <AssistantGovernanceSettings />
-          </>
-        ) : null}
-      </div>
+      <Suspense>
+        <AdminSettingsTabs
+          organization={
+            <>
+              <OrganizationAdministration />
+              <OrganizationDirectory />
+              <OrganizationCustomization />
+            </>
+          }
+          platform={
+            platformSettings ? (
+              <>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <RegistrationSettings initialState={platformSettings[0]} />
+                  <SystemHealthCard />
+                  <UsageImpactSettings initialState={platformSettings[1]} />
+                </div>
+                <RagSettings initialState={platformSettings[2]} />
+                <AssistantGovernanceSettings />
+                <ResourceDistributionPanel />
+                <UsageLimitsPanel />
+              </>
+            ) : null
+          }
+        />
+      </Suspense>
     </WorkspacePage>
   );
 }
