@@ -62,7 +62,7 @@ test("a standard member can find personal settings and change their password", a
     expect(signIn.status(), await signIn.text()).toBe(200);
     const forbidden = await page.request.get("/api/admin/users");
     expect(forbidden.status()).toBe(403);
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings/branding");
     await expect(
       page.getByRole("button", { name: "Save branding", exact: true }),
     ).toHaveCount(0);
@@ -79,7 +79,7 @@ test("an organization administrator can edit organization settings without platf
 }) => {
   await ensureE2EOrganizationAdmin();
   await loginWithCredentials(page, e2eOrganizationAdmin);
-  await page.goto("/en/admin/settings");
+  await page.goto("/en/admin/settings/branding");
   await expect(
     page.getByRole("heading", { name: "Organization branding" }),
   ).toBeVisible();
@@ -89,4 +89,8 @@ test("an organization administrator can edit organization settings without platf
   await expect(page.getByText("Registration", { exact: true })).toHaveCount(0);
   const forbidden = await page.request.get("/api/admin/users");
   expect(forbidden.status()).toBe(403);
+  await page.goto("/en/admin/settings/registration");
+  await expect(
+    page.getByRole("heading", { name: "404", exact: true }),
+  ).toBeVisible();
 });

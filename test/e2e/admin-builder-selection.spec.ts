@@ -18,7 +18,7 @@ test("saves an assistant requiring model configuration as the organization build
   expect(response.status()).toBe(201);
   const { agent } = await response.json();
   try {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings/workflows");
     await page
       .getByRole("combobox", { name: "Builder assistant", exact: true })
       .click();
@@ -26,14 +26,12 @@ test("saves an assistant requiring model configuration as the organization build
     await expect(option).toBeEnabled();
     await option.click();
     await expect(page.getByText(/Selection can be saved/)).toBeVisible();
-    const section = page
-      .locator("section")
-      .filter({
-        has: page.getByRole("combobox", {
-          name: "Builder assistant",
-          exact: true,
-        }),
-      });
+    const section = page.locator("section").filter({
+      has: page.getByRole("combobox", {
+        name: "Builder assistant",
+        exact: true,
+      }),
+    });
     await section.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
       page.getByText("Workflow builder assistant saved", { exact: true }),

@@ -1,3 +1,5 @@
+import { isPlatformAdminSession } from "@/modules/admin/auth";
+import { getSession } from "@/modules/auth/session";
 import { Suspense } from "react";
 import { redirect } from "@/i18n/navigation";
 import { notFound } from "next/navigation";
@@ -24,6 +26,11 @@ export default async function SettingsSectionPage({
     !isPlatformSettingsSection(section)
   )
     notFound();
+  if (
+    isPlatformSettingsSection(section) &&
+    !(await isPlatformAdminSession(await getSession()))
+  )
+    notFound();
   const t = await getTranslations("admin.navigation");
   return (
     <section className="flex min-w-0 flex-col gap-5" aria-label={t(section)}>
@@ -35,7 +42,7 @@ export default async function SettingsSectionPage({
             <OrganizationAdministration />
           </>
         ) : section === "projects" || section === "members" ? (
-          <OrganizationDirectory section={section} />
+          <OrganizationDirectory key={section} section={section} />
         ) : isOrganizationSettingsSection(section) ? (
           <OrganizationSettingsPage section={section} />
         ) : (
