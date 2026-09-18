@@ -18,7 +18,7 @@ test("keeps access navigation and direct links usable on desktop and mobile", as
   const accessNav = page.getByRole("navigation", { name: "Access sections" });
   for (const name of ["People", "Teams", "Roles", "Resources"]) {
     await expect(
-      accessNav.getByRole("tab", { name, exact: true }),
+      accessNav.getByRole("link", { name, exact: true }),
     ).toBeVisible();
   }
   await expect(page).toHaveURL(/\/en\/members$/);
@@ -34,7 +34,7 @@ test("keeps access navigation and direct links usable on desktop and mobile", as
   await expect(
     page.getByRole("button", { name: "New project", exact: true }),
   ).toBeHidden();
-  await page.getByRole("tab", { name: "Teams", exact: true }).click();
+  await accessNav.getByRole("link", { name: "Teams", exact: true }).click();
   await expect(page).toHaveURL(/\/en\/members\/teams$/);
   await page.reload();
   await expect(page).toHaveURL(/\/en\/members\/teams$/);
@@ -75,7 +75,7 @@ test("keeps access navigation and direct links usable on desktop and mobile", as
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/en/members");
   await expect(
-    accessNav.getByRole("tab", { name: "Resources", exact: true }),
+    accessNav.getByRole("link", { name: "Resources", exact: true }),
   ).toBeVisible();
   await page.goto("/en/admin/settings?tab=platform");
   await expect(

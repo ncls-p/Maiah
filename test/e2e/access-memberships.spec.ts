@@ -2,6 +2,7 @@ import { test } from "./access-memberships.fixtures";
 import { expect, type Page } from "@playwright/test";
 import {
   assignmentsDialog,
+  accessSectionLink,
   closeOpenDialogs,
   openPersonAccessDetails,
   openPersonAssignments,
@@ -158,7 +159,7 @@ test("manages multiple team and project memberships from people and teams", asyn
   ).toBeEnabled();
   await closeOpenDialogs(page);
   await expect(dialog).toBeHidden();
-  await page.getByRole("tab", { name: "Teams", exact: true }).click();
+  await accessSectionLink(page, "Teams").click();
   await page
     .getByRole("button", {
       name: "Manage assignments for Membership team A",
@@ -205,7 +206,7 @@ test("manages multiple team and project memberships from people and teams", asyn
         item.principalId === member.userId && item.scope === "project",
     ),
   ).toBe(true);
-  await page.getByRole("tab", { name: "People", exact: true }).click();
+  await accessSectionLink(page, "People").click();
   await expect(
     page.getByRole("button", {
       name: `Actions for ${e2eMember.name}`,

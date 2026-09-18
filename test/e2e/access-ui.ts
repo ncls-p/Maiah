@@ -36,6 +36,14 @@ export function assignmentsDialog(page: Page) {
   return page.getByRole("dialog", { name: /^Assignments for / });
 }
 
+export function accessSectionLink(page: Page, name: string) {
+  return page
+    .getByRole("navigation", {
+      name: /Access sections|Rubriques des accès/,
+    })
+    .getByRole("link", { name, exact: true });
+}
+
 export async function openPersonAssignments(page: Page, name: string) {
   await openPersonAccessDetails(page, name);
   await page

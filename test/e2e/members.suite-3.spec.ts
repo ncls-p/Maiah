@@ -122,7 +122,7 @@ test.describe("members page", () => {
     await personDialog.getByRole("button", { name: "Invite" }).click();
     await expect(personDialog).not.toBeVisible();
 
-    await page.getByRole("tab", { name: "Teams" }).click();
+    await page.getByRole("link", { name: "Teams" }).click();
     await page.getByRole("button", { name: "Create team" }).click();
     const teamDialog = page.getByRole("dialog", { name: "Create a team" });
     await teamDialog.getByLabel("Team name").fill(teamName);
@@ -135,7 +135,10 @@ test.describe("members page", () => {
       .filter({ hasText: teamName });
     await expect(teamCard.locator("details")).not.toHaveAttribute("open");
     await teamCard.getByRole("button", { name: "Edit", exact: true }).click();
-    const editTeam = page.getByRole("dialog", { name: "Edit team", exact: true });
+    const editTeam = page.getByRole("dialog", {
+      name: "Edit team",
+      exact: true,
+    });
     await editTeam.getByRole("combobox").click();
     await page.getByRole("option", { name: e2eMember.name }).click();
     await editTeam.getByRole("button", { name: "Add", exact: true }).click();
@@ -148,7 +151,7 @@ test.describe("members page", () => {
         .filter({ hasText: e2eMember.name }),
     ).toBeVisible();
 
-    await page.getByRole("tab", { name: "People", exact: true }).click();
+    await page.getByRole("link", { name: "People", exact: true }).click();
     const accessDialog = await openPersonGrantAccess(page, e2eMember.name);
     await accessDialog.getByText("Advanced: organization or team").click();
     await accessDialog.getByRole("combobox", { name: "Grant to" }).click();

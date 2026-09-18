@@ -141,10 +141,10 @@ test.describe("access page", () => {
   }) => {
     await page.goto("/en/members");
     for (const name of ["People", "Teams", "Roles"]) {
-      await expect(page.getByRole("tab", { name, exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
     }
     await expect(
-      page.getByRole("tab", { name: "Resources", exact: true }),
+      page.getByRole("link", { name: "Resources", exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("tab", { name: "Platform accounts" }),

@@ -67,12 +67,12 @@ test.describe("members page", () => {
   test("shows people, teams, and roles links", async ({ page }) => {
     await page.goto("/en/members");
     await expect(
-      page.getByRole("tab", { name: "People", exact: true }),
+      page.getByRole("link", { name: "People", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Teams" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Roles" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Teams" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Roles" })).toBeVisible();
     await expect(
-      page.getByRole("tab", { name: "Resources", exact: true }),
+      page.getByRole("link", { name: "Resources", exact: true }),
     ).toBeVisible();
   });
 
@@ -81,12 +81,14 @@ test.describe("members page", () => {
     await page.goto("/en/members");
 
     await page.locator("#people-search").fill(e2eMember.email);
-    const person = page.locator("tbody tr").filter({ hasText: e2eMember.email });
+    const person = page
+      .locator("tbody tr")
+      .filter({ hasText: e2eMember.email });
     await person.getByRole("button", { name: /^Role for / }).click();
     await page.getByRole("menuitemradio", { name: /^Viewer/ }).click();
-    await expect(person.getByRole("button", { name: /^Role for / })).toContainText(
-      "Viewer",
-    );
+    await expect(
+      person.getByRole("button", { name: /^Role for / }),
+    ).toContainText("Viewer");
   });
 
   test("limits a project access manager to roles they can delegate", async ({
@@ -97,9 +99,7 @@ test.describe("members page", () => {
     await loginWithCredentials(page, e2eAccessManager);
     await page.goto("/en/members");
 
-    await expect(
-      page.getByRole("button", { name: "Invite" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
 
     const workspacesResponse = await page.request.get("/api/workspaces");
     const workspaceRows = (await workspacesResponse.json()) as Array<{
@@ -159,7 +159,7 @@ test.describe("members page", () => {
     });
     expect(escalationResponse.status()).toBe(403);
 
-    await page.getByRole("tab", { name: "Teams" }).click();
+    await page.getByRole("link", { name: "Teams" }).click();
     await expect(page.getByRole("button", { name: "Create team" })).toHaveCount(
       0,
     );

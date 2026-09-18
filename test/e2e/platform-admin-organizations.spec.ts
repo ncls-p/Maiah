@@ -91,7 +91,7 @@ test("another application admin sees and manages organizations without membershi
       other.getByRole("combobox", { name: "Active project", exact: true }),
     ).toHaveText("Foreign admin project");
     await expect(
-      other.getByRole("tab", { name: "People", exact: true }),
+      other.getByRole("link", { name: "People", exact: true }),
     ).toBeVisible();
     await client.query('update "user" set role = $1 where email = $2', [
       "user",

@@ -23,9 +23,7 @@ test("keeps people, teams, roles and account creation readable on narrow screens
       { name: "Ressources" },
     ];
     for (const section of sections) {
-      await page
-        .getByRole("tab", { name: section.name, exact: true })
-        .click();
+      await page.getByRole("link", { name: section.name, exact: true }).click();
       await expect
         .poll(() =>
           page.evaluate(
@@ -45,22 +43,20 @@ test("keeps people, teams, roles and account creation readable on narrow screens
       expect(clipped).toEqual([]);
     }
     if (width === 390) {
-      await page.getByRole("tab", { name: "Rôles", exact: true }).click();
+      await page.getByRole("link", { name: "Rôles", exact: true }).click();
       await page.screenshot({
         animations: "disabled",
         path: testInfo.outputPath("roles-mobile.png"),
         fullPage: true,
       });
-      await page.getByRole("tab", { name: "Personnes", exact: true }).click();
+      await page.getByRole("link", { name: "Personnes", exact: true }).click();
       await page.locator("tbody tr").first().scrollIntoViewIfNeeded();
       await page.screenshot({
         animations: "disabled",
         path: testInfo.outputPath("people-mobile.png"),
         fullPage: true,
       });
-      await page
-        .getByRole("button", { name: "Inviter", exact: true })
-        .click();
+      await page.getByRole("button", { name: "Inviter", exact: true }).click();
       const dialog = page.getByRole("dialog");
       await dialog.getByRole("tab", { name: "Créer un compte" }).click();
       await expect(dialog.getByLabel("Nom", { exact: true })).toBeVisible();
@@ -163,10 +159,10 @@ test("creates an account, assigns its role, then edits a team", async ({
   await page.reload();
   await page.locator("#people-search").fill(`colleague-${suffix}@example.test`);
   await expect(roleButton).toContainText("Editor");
-  await person
-    .getByRole("button", { name: /^Actions for / })
+  await person.getByRole("button", { name: /^Actions for / }).click();
+  await page
+    .getByRole("menuitem", { name: "Access details", exact: true })
     .click();
-  await page.getByRole("menuitem", { name: "Access details", exact: true }).click();
   const details = page.getByRole("dialog").filter({
     hasText: "Access details",
   });
@@ -174,7 +170,7 @@ test("creates an account, assigns its role, then edits a team", async ({
   await expect(details).not.toContainText("Project Viewer");
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole("tab", { name: "Teams", exact: true }).click();
+  await page.getByRole("link", { name: "Teams", exact: true }).click();
   await page.getByRole("button", { name: "Create team", exact: true }).click();
   const createTeam = page.getByRole("dialog");
   await createTeam.getByLabel("Team name").fill(`Support ${suffix}`);
