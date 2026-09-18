@@ -44,6 +44,18 @@ export function accessSectionLink(page: Page, name: string) {
     .getByRole("link", { name, exact: true });
 }
 
+export async function openProjectOrganizationSettings(page: Page) {
+  const manage = page.getByRole("button", { name: "Manage", exact: true });
+  if (await manage.isVisible()) return;
+  await page
+    .getByRole("button", {
+      name: "Project and organization settings",
+      exact: true,
+    })
+    .click();
+  await expect(manage).toBeVisible();
+}
+
 export async function openPersonAssignments(page: Page, name: string) {
   await openPersonAccessDetails(page, name);
   await page

@@ -6,6 +6,7 @@ import {
   closeOpenDialogs,
   openPersonAccessDetails,
   openPersonAssignments,
+  openProjectOrganizationSettings,
 } from "./access-ui";
 import { ensureE2EUser, ensureE2EMember, e2eMember, login } from "./fixtures";
 
@@ -287,6 +288,7 @@ test("creates, renames and deletes a project from Access", async ({ page }) => {
     page.getByRole("combobox", { name: "Active project", exact: true }),
   ).toHaveText(name);
   await page.goto("/en/admin/settings");
+  await openProjectOrganizationSettings(page);
   await page.getByRole("button", { name: "Manage", exact: true }).click();
   await page
     .getByRole("menuitem", { name: "Rename project", exact: true })
@@ -301,6 +303,7 @@ test("creates, renames and deletes a project from Access", async ({ page }) => {
   await expect(
     page.getByRole("combobox", { name: "Active project", exact: true }),
   ).toHaveText(`${name} renamed`);
+  await openProjectOrganizationSettings(page);
   await page.getByRole("button", { name: "Manage", exact: true }).click();
   await page
     .getByRole("menuitem", { name: "Delete project", exact: true })

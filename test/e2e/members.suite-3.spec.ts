@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { openPersonGrantAccess } from "./access-ui";
+import {
+  openPersonGrantAccess,
+  openProjectOrganizationSettings,
+} from "./access-ui";
 import {
   e2eMember,
   ensureE2ELifecycleProject,
@@ -31,14 +34,7 @@ test.describe("members page", () => {
       .getByRole("option", { name: "Lifecycle browser project", exact: true })
       .click();
 
-    if (
-      !(await page
-        .getByRole("button", { name: "Manage", exact: true })
-        .isVisible())
-    )
-      await page
-        .getByText("Project and organization settings", { exact: true })
-        .click();
+    await openProjectOrganizationSettings(page);
     await page.getByRole("button", { name: "Manage", exact: true }).click();
     await page.getByRole("menuitem", { name: "Rename project" }).click();
     const renameDialog = page.getByRole("dialog", { name: "Rename project" });
@@ -52,14 +48,7 @@ test.describe("members page", () => {
       "Lifecycle browser project renamed",
     );
 
-    if (
-      !(await page
-        .getByRole("button", { name: "Manage", exact: true })
-        .isVisible())
-    )
-      await page
-        .getByText("Project and organization settings", { exact: true })
-        .click();
+    await openProjectOrganizationSettings(page);
     await page.getByRole("button", { name: "Manage", exact: true }).click();
     await page.getByRole("menuitem", { name: "Delete project" }).click();
     const deleteDialog = page.getByRole("dialog", {
