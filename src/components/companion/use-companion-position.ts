@@ -66,20 +66,26 @@ export function useCompanionPosition(open: boolean) {
       .getBoundingClientRect();
     const start = { x: event.clientX, y: event.clientY };
     let dragging = false;
-    element.setPointerCapture(event.pointerId);
     const move = (next: globalThis.PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
       const dx = next.clientX - start.x;
       const dy = next.clientY - start.y;
       if (!dragging && dx * dx + dy * dy < dragThreshold * dragThreshold)
         return;
-      dragging = true;
+      if (!dragging) {
+        dragging = true;
+        element.setPointerCapture(event.pointerId);
+      }
       next.preventDefault();
       save({ x: box.left + dx, y: box.top + dy });
     };
-    const end = () => {
-      element.removeEventListener("pointermove", move);
-      element.removeEventListener("pointerup", end);
-      element.removeEventListener("pointercancel", end);
+    const end = (next: globalThis.PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (element.hasPointerCapture(event.pointerId))
+        element.releasePointerCapture(event.pointerId);
       if (!dragging) return;
       const suppress = (click: MouseEvent) => {
         click.preventDefault();
@@ -90,9 +96,9 @@ export function useCompanionPosition(open: boolean) {
         once: true,
       });
     };
-    element.addEventListener("pointermove", move);
-    element.addEventListener("pointerup", end);
-    element.addEventListener("pointercancel", end);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   }
   function keyDown(event: KeyboardEvent<HTMLElement>) {
     if (!event.key.startsWith("Arrow") || isEditable(event.target)) return;
