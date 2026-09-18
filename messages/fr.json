@@ -3842,7 +3842,8 @@
       "empty": "Aucun projet accessible ne correspond.",
       "active": "Projet actif",
       "failed": "Le changement de projet a échoué. Réessayez."
-    }
+    },
+    "connections": "Connexions"
   },
   "auth": {
     "eyebrow": "Espace IA d’entreprise",
@@ -4723,5 +4724,12 @@
     "emailLabel": "E-mail professionnel",
     "cancel": "Annuler",
     "continue": "Continuer"
+  },
+  "connections": {
+    "title": "Connexions",
+    "description": "Configurez Microsoft Entra ID et Genesys Cloud pour chaque organisation.",
+    "organization": "Organisation",
+    "scope": "Choisissez l’organisation dont vous souhaitez gérer les connexions.",
+    "readOnly": "Seuls les responsables autorisés peuvent gérer les connexions de cette organisation."
   }
 }

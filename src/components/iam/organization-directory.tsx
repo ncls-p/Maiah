@@ -1,5 +1,4 @@
 "use client";
-import { GenesysConnectionPanel } from "./genesys-connection-panel";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -199,7 +198,6 @@ export function OrganizationDirectory() {
                     </Button>
                   ))}
                 </div>
-                {selected.canManageSettings && <GenesysConnectionPanel key={selected.id} organizationId={selected.id} projects={selected.projects} />}
                 {selected.canManageMembers ? (
                   <form
                     className="flex flex-col gap-2"

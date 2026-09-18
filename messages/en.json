@@ -3842,7 +3842,8 @@
       "empty": "No matching accessible projects.",
       "active": "Active project",
       "failed": "Could not switch projects. Try again."
-    }
+    },
+    "connections": "Connections"
   },
   "auth": {
     "eyebrow": "Enterprise AI Workspace",
@@ -4723,5 +4724,12 @@
     "emailLabel": "Work email",
     "cancel": "Cancel",
     "continue": "Continue"
+  },
+  "connections": {
+    "title": "Connections",
+    "description": "Configure Microsoft Entra ID and Genesys Cloud for each organization.",
+    "organization": "Organization",
+    "scope": "Choose the organization whose connections you want to manage.",
+    "readOnly": "Only authorized managers can manage connections for this organization."
   }
 }

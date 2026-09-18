@@ -8,7 +8,7 @@ to the UI or stored in Git/Coolify environment variables.
 
 ## Organization setup
 
-In Administration → Settings → choose the organization → Microsoft Entra ID:
+In Account menu → Connections → choose the organization → Microsoft Entra ID:
 
 1. Enter client ID, tenant ID, the **secret value** (not the secret ID), email
    domains and the trusted HTTPS sign-in origin.

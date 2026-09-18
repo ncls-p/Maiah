@@ -1,3 +1,5 @@
+import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
 import { OrganizationCustomization } from "@/components/admin/organization-customization";
 import { OrganizationAdministration } from "@/components/iam/organization-administration";
 import { OrganizationDirectory } from "@/components/iam/organization-directory";
@@ -21,6 +23,7 @@ import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings"
 
 export default async function AdminSettingsPage() {
   const t = await getTranslations("admin");
+  const connections = await getTranslations("connections");
   const session = await getSession();
   const isAdmin = await isPlatformAdminSession(session);
 
@@ -38,6 +41,11 @@ export default async function AdminSettingsPage() {
       title={t("platformSettingsTitle")}
       description={t("platformSettingsDescription")}
       width="default"
+      actions={
+        <Button asChild variant="outline">
+          <Link href="/admin/connections">{connections("title")}</Link>
+        </Button>
+      }
     >
       <Suspense>
         <AdminSettingsTabs

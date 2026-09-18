@@ -13,6 +13,25 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
     required: ["enabled"],
     additionalProperties: false,
   },
+  patchAdminMicrosoftSso: {
+    type: "object",
+    properties: {
+      enabled: { type: "boolean" },
+      clientId: { type: "string" },
+      tenantId: { type: "string" },
+      loginOrigin: { type: "string" },
+      emailDomains: { type: "array", items: { type: "string" } },
+      clientSecret: { type: "string" },
+    },
+    required: [
+      "enabled",
+      "clientId",
+      "tenantId",
+      "loginOrigin",
+      "emailDomains",
+    ],
+    additionalProperties: false,
+  },
   patchAdminRag: {
     type: "object",
     properties: {
@@ -187,6 +206,12 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
     type: "object",
     properties: { agentId: { anyOf: [{ type: "null" }, { type: "string" }] } },
     required: ["agentId"],
+    additionalProperties: false,
+  },
+  postAuthMicrosoftProviders: {
+    type: "object",
+    properties: { email: { type: "string" }, locale: { enum: ["fr", "en"] } },
+    required: ["email"],
     additionalProperties: false,
   },
   patchCompanion: {
@@ -1124,24 +1149,6 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
           {
             type: "object",
             properties: {
-              en: {
-                type: "object",
-                properties: {
-                  kicker: { type: "string" },
-                  lineOne: { type: "string" },
-                  lineTwoPrefix: { type: "string" },
-                  accent: { type: "string" },
-                  lineTwoSuffix: { type: "string" },
-                },
-                required: [
-                  "kicker",
-                  "lineOne",
-                  "lineTwoPrefix",
-                  "accent",
-                  "lineTwoSuffix",
-                ],
-                additionalProperties: false,
-              },
               fr: {
                 type: "object",
                 properties: {
@@ -1160,8 +1167,26 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
                 ],
                 additionalProperties: false,
               },
+              en: {
+                type: "object",
+                properties: {
+                  kicker: { type: "string" },
+                  lineOne: { type: "string" },
+                  lineTwoPrefix: { type: "string" },
+                  accent: { type: "string" },
+                  lineTwoSuffix: { type: "string" },
+                },
+                required: [
+                  "kicker",
+                  "lineOne",
+                  "lineTwoPrefix",
+                  "accent",
+                  "lineTwoSuffix",
+                ],
+                additionalProperties: false,
+              },
             },
-            required: ["en", "fr"],
+            required: ["fr", "en"],
             additionalProperties: false,
           },
         ],
@@ -2108,7 +2133,7 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
       workspaceId: { type: "string" },
       title: { type: "string" },
       content: { type: "string" },
-      sourceType: { enum: ["text", "url"] },
+      sourceType: { enum: ["url", "text"] },
     },
     required: ["workspaceId", "title", "content"],
     additionalProperties: false,
@@ -3037,7 +3062,7 @@ export const MCP_BODY_CONTRACTS: Record<string, Record<string, unknown>> = {
         additionalProperties: false,
       },
       message: { type: "string" },
-      locale: { enum: ["en", "fr"] },
+      locale: { enum: ["fr", "en"] },
       inputRequestId: { type: "string" },
     },
     required: ["workspaceId", "draft"],
