@@ -7,7 +7,7 @@ export default async function MembersLimitsPage({
 }) {
   const { locale } = await params;
   redirect({
-    href: { pathname: "/admin/settings", query: { tab: "platform" } },
+    href: "/admin/settings/limits",
     locale,
   });
 }

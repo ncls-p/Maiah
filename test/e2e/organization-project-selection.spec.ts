@@ -38,6 +38,11 @@ test("creates an organization and project with buttons and filters projects by o
   });
   await expect(directoryOrganizationSelect(page)).toHaveText(name);
   await page
+    .getByRole("navigation", { name: "Settings sections" })
+    .getByRole("link", { name: "Projects", exact: true })
+    .click();
+  await expect(directoryOrganizationSelect(page)).toHaveText(name);
+  await page
     .getByRole("textbox", { name: "Project name", exact: true })
     .fill("Selection demo");
   await page.getByRole("button", { name: "Add project", exact: true }).click();

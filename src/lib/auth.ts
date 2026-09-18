@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { db, schema } from "@/server/infrastructure/db";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { createAuthMiddleware } from "better-auth/api";
@@ -36,64 +36,74 @@ function getTrustedOrigins() {
   return Array.from(origins);
 }
 
-export const auth = betterAuth({
-  logger: {
-    level: "info",
-    log(level, message, ...details) {
-      logger[level](message, { service: "auth", details });
+export function createAuth(
+  overrides: Pick<
+    BetterAuthOptions,
+    "socialProviders" | "account" | "baseURL" | "onAPIError"
+  > = {},
+) {
+  return betterAuth({
+    logger: {
+      level: "info",
+      log(level, message, ...details) {
+        logger[level](message, { service: "auth", details });
+      },
     },
-  },
-  appName: "Maiah",
-  baseURL: env.BETTER_AUTH_URL,
-  trustedOrigins: getTrustedOrigins(),
-  secret: env.BETTER_AUTH_SECRET,
-  database: drizzleAdapter(db, {
-    provider: "pg",
-    schema: betterAuthSchema,
-    camelCase: true,
-    transaction: true,
-  }),
-  advanced: {
-    database: {
-      generateId: "uuid",
-    },
-  },
-  emailAndPassword: {
-    enabled: true,
-    minPasswordLength: 8,
-    maxPasswordLength: 128,
-  },
-  plugins: [admin(), nextCookies()],
-  hooks: {
-    after: createAuthMiddleware(async (ctx) => {
-      if (
-        ctx.path !== "/admin/impersonate-user" &&
-        ctx.path !== "/admin/stop-impersonating"
-      )
-        return;
-      const result = ctx.context.returned as {
-        session?: { impersonatedBy?: string; userId?: string };
-        user?: { id?: string };
-      } | null;
-      if (!result?.session || !result.user?.id) return;
-      const starting = ctx.path === "/admin/impersonate-user";
-      const actor = starting ? result.session.impersonatedBy : result.user.id;
-      const target = starting ? result.user.id : ctx.context.session?.user.id;
-      if (!actor || !target) return;
-      await audit.emit({
-        actorPrincipalType: "user",
-        actorPrincipalId: actor,
-        action: starting
-          ? "user.impersonation.started"
-          : "user.impersonation.stopped",
-        resourceType: "user",
-        resourceId: target,
-        outcome: "success",
-      });
+    appName: "Maiah",
+    baseURL: env.BETTER_AUTH_URL,
+    trustedOrigins: getTrustedOrigins(),
+    secret: env.BETTER_AUTH_SECRET,
+    database: drizzleAdapter(db, {
+      provider: "pg",
+      schema: betterAuthSchema,
+      camelCase: true,
+      transaction: true,
     }),
-  },
-  session: {
-    expiresIn: 60 * 60 * 24 * 7,
-    updateAge: 60 * 60 * 24,
-  },
-});
+    advanced: {
+      database: {
+        generateId: "uuid",
+      },
+    },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
+    },
+    plugins: [admin(), nextCookies()],
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        if (
+          ctx.path !== "/admin/impersonate-user" &&
+          ctx.path !== "/admin/stop-impersonating"
+        )
+          return;
+        const result = ctx.context.returned as {
+          session?: { impersonatedBy?: string; userId?: string };
+          user?: { id?: string };
+        } | null;
+        if (!result?.session || !result.user?.id) return;
+        const starting = ctx.path === "/admin/impersonate-user";
+        const actor = starting ? result.session.impersonatedBy : result.user.id;
+        const target = starting ? result.user.id : ctx.context.session?.user.id;
+        if (!actor || !target) return;
+        await audit.emit({
+          actorPrincipalType: "user",
+          actorPrincipalId: actor,
+          action: starting
+            ? "user.impersonation.started"
+            : "user.impersonation.stopped",
+          resourceType: "user",
+          resourceId: target,
+          outcome: "success",
+        });
+      }),
+    },
+    session: {
+      expiresIn: 60 * 60 * 24 * 7,
+      updateAge: 60 * 60 * 24,
+    },
+    ...overrides,
+  });
+}
+
+export const auth = createAuth();

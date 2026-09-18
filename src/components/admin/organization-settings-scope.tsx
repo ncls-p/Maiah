@@ -1,17 +1,14 @@
 "use client";
-import { CompanionSettings } from "./companion-settings";
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { GovernanceSelect } from "@/components/iam/governance-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { OrganizationBrandingCard } from "@/app/[locale]/(workspace)/admin/settings/organization-branding-card";
-import { ChatAutomationSettings } from "./chat-automation-settings";
-import { WorkflowBuilderSettings } from "./workflow-builder-settings";
-import { SidebarNavigationSettings } from "./sidebar-navigation-settings";
-
 import { organizationLabels } from "@/components/iam/organization-labels";
 import { OrganizationSettingsContext } from "./organization-settings-context";
 
@@ -21,18 +18,25 @@ type Organization = {
   canManageSettings: boolean;
   projects: { id: string; name: string }[];
 };
-export function OrganizationCustomization() {
+export function OrganizationSettingsScope({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: (organization: Organization, refresh: () => void) => ReactNode;
+}) {
   const t = useTranslations("settings.organizationCustomization");
+  const tScope = useTranslations("admin.scope");
   const { workspaceId, workspaces } = useWorkspace();
   const activeOrganization = workspaces.find(
     (project) => project.id === workspaceId,
   )?.organizationId;
-  const [selection, setSelection] = useState<{
-    id: string;
-    context: string | undefined;
-  } | null>(null);
-  const selectedId =
-    selection?.context === activeOrganization ? selection?.id : null;
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const selectedId = searchParams.get("organizationId");
   const [rows, setRows] = useState<Organization[] | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -50,16 +54,13 @@ export function OrganizationCustomization() {
       });
     return () => controller.abort();
   }, [revision, workspaceId]);
-  const organization =
-    rows?.find((row) => row.id === (selectedId ?? activeOrganization)) ??
-    rows?.[0];
+  const organization = selectedId
+    ? rows?.find((row) => row.id === selectedId)
+    : (rows?.find((row) => row.id === activeOrganization) ?? rows?.[0]);
   return (
-    <section className="flex flex-col gap-5" aria-label={t("title")}>
+    <section className="flex flex-col gap-5" aria-label={title}>
       <div className="rounded-xl border bg-card p-5">
-        <h2 className="text-lg font-semibold">{t("title")}</h2>
-        <p className="mt-2 mb-4 text-sm text-muted-foreground">
-          {t("description")}
-        </p>
+        <p className="sr-only">{description}</p>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>
@@ -75,30 +76,27 @@ export function OrganizationCustomization() {
             label={t("organization")}
             value={organization?.id ?? ""}
             options={organizationLabels(rows)}
-            onChange={(id) => setSelection({ id, context: activeOrganization })}
+            onChange={(id) => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("organizationId", id);
+              router.replace(`${pathname}?${params}`, { scroll: false });
+            }}
           />
-        ) : (
+        ) : !error ? (
           <p role="status">{t("loading")}</p>
-        )}
+        ) : null}
+        {rows && !organization && !error ? (
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
+            {selectedId ? tScope("unavailable") : tScope("empty")}
+          </p>
+        ) : null}
       </div>
-      {organization ? (
+      {organization && !error ? (
         <OrganizationSettingsContext.Provider
           key={organization.id}
           value={organization.id}
         >
-          <OrganizationBrandingCard
-            onSaved={() => setRevision((value) => value + 1)}
-          />
-          {organization.canManageSettings ? (
-            <>
-              <ChatAutomationSettings />
-              <SidebarNavigationSettings />
-              <WorkflowBuilderSettings />
-              <CompanionSettings />
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
-          )}
+          {children(organization, () => setRevision((value) => value + 1))}
         </OrganizationSettingsContext.Provider>
       ) : null}
     </section>

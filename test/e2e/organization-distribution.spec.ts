@@ -69,7 +69,7 @@ test("creates an empty organization, exposes organization agents across projects
     `/api/workspace/agents/${agent.id}?workspaceId=${sibling.id}`,
   );
   expect(detail.ok(), await detail.text()).toBe(true);
-  await page.goto("/en/admin/settings?tab=platform");
+  await page.goto("/en/admin/settings/sharing");
   await page
     .getByRole("combobox", { name: "Source project", exact: true })
     .click();
@@ -141,7 +141,7 @@ test("creates an empty organization, exposes organization agents across projects
     await sql.query("delete from conversations where id=$1", [conversationId]);
     await sql.end();
   }
-  await page.goto("/en/admin/settings?tab=platform");
+  await page.goto("/en/admin/settings/limits");
   await expect(
     page.getByRole("button", { name: "Add usage limit", exact: true }),
   ).toBeVisible();

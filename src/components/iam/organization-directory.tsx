@@ -1,7 +1,8 @@
 "use client";
-import { GenesysConnectionPanel } from "./genesys-connection-panel";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,25 @@ export type DirectoryOrganization = {
   canManageSettings?: boolean;
   projects: { id: string; name: string }[];
 };
-export function OrganizationDirectory() {
+export function OrganizationDirectory({
+  section = "organizations",
+}: {
+  section?: "organizations" | "projects" | "members";
+}) {
   const t = useTranslations("governance");
   const workspace = useWorkspace();
   const [rows, setRows] = useState<DirectoryOrganization[]>([]);
-  const [organizationId, setOrganizationId] = useState("");
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const organizationId = params.get("organizationId") ?? "";
+  function setOrganizationId(id: string) {
+    const next = new URLSearchParams(params.toString());
+    next.set("organizationId", id);
+    setEmail("");
+    setProjectName("");
+    router.replace(`${pathname}?${next}`, { scroll: false });
+  }
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [projectName, setProjectName] = useState("");
@@ -105,9 +120,7 @@ export function OrganizationDirectory() {
     (project) => project.id === workspace.workspaceId,
   )?.organizationId;
   const selectedOrganizationId =
-    (rows.some((row) => row.id === organizationId)
-      ? organizationId
-      : undefined) ||
+    organizationId ||
     (rows.some((row) => row.id === activeOrganizationId)
       ? activeOrganizationId
       : undefined) ||
@@ -119,11 +132,7 @@ export function OrganizationDirectory() {
       className="rounded-xl border bg-card p-4 sm:p-6"
       aria-label={t("organizations")}
     >
-      <h2 className="text-base font-semibold">{t("organizations")}</h2>
-      <div className="mt-4 flex flex-col gap-4">
-        <p className="text-sm text-muted-foreground">
-          {t("organizationsHint")}
-        </p>
+      <div className="flex flex-col gap-4">
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>
@@ -140,31 +149,33 @@ export function OrganizationDirectory() {
             </AlertDescription>
           </Alert>
         ) : null}
-        <form
-          aria-label={t("createOrganization")}
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save("createOrganization");
-          }}
-        >
-          <Field className="flex-1">
-            <FieldLabel htmlFor="standalone-organization-name">
-              {t("newOrganizationName")}
-            </FieldLabel>
-            <Input
-              id="standalone-organization-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              minLength={2}
-              disabled={pending}
-            />
-          </Field>
-          <Button type="submit" disabled={pending}>
-            {t("createOrganization")}
-          </Button>
-        </form>
+        {section === "organizations" && (
+          <form
+            aria-label={t("createOrganization")}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save("createOrganization");
+            }}
+          >
+            <Field className="flex-1">
+              <FieldLabel htmlFor="standalone-organization-name">
+                {t("newOrganizationName")}
+              </FieldLabel>
+              <Input
+                id="standalone-organization-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+                minLength={2}
+                disabled={pending}
+              />
+            </Field>
+            <Button type="submit" disabled={pending}>
+              {t("createOrganization")}
+            </Button>
+          </form>
+        )}
         {loading ? (
           <p role="status">{t("loading")}</p>
         ) : (
@@ -183,24 +194,27 @@ export function OrganizationDirectory() {
             ) : null}
             {selected ? (
               <>
-                <p className="text-sm text-muted-foreground">
-                  {selected.projects.length
-                    ? t("projectCount", { count: selected.projects.length })
-                    : t("noProjects")}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {selected.projects.map((project) => (
-                    <Button
-                      key={project.id}
-                      variant="outline"
-                      onClick={() => workspace.setWorkspaceId(project.id)}
-                    >
-                      {project.name}
-                    </Button>
-                  ))}
-                </div>
-                {selected.canManageSettings && <GenesysConnectionPanel key={selected.id} organizationId={selected.id} projects={selected.projects} />}
-                {selected.canManageMembers ? (
+                {section === "projects" && (
+                  <p className="text-sm text-muted-foreground">
+                    {selected.projects.length
+                      ? t("projectCount", { count: selected.projects.length })
+                      : t("noProjects")}
+                  </p>
+                )}
+                {section === "projects" && (
+                  <div className="flex flex-wrap gap-2">
+                    {selected.projects.map((project) => (
+                      <Button
+                        key={project.id}
+                        variant="outline"
+                        onClick={() => workspace.setWorkspaceId(project.id)}
+                      >
+                        {project.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                {section === "members" && selected.canManageMembers ? (
                   <form
                     className="flex flex-col gap-2"
                     onSubmit={(event) => {
@@ -226,7 +240,7 @@ export function OrganizationDirectory() {
                     </Button>
                   </form>
                 ) : null}
-                {selected.canCreateProject ? (
+                {section === "projects" && selected.canCreateProject ? (
                   <form
                     className="flex flex-col gap-3 sm:flex-row sm:items-end"
                     onSubmit={(event) => {

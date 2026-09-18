@@ -20,7 +20,7 @@ test.describe("authentication", () => {
 
       // Sign in button
       await expect(
-        page.getByRole("button", { name: /Sign In/i }),
+        page.getByRole("button", { name: /^Sign In$/i }),
       ).toBeVisible();
 
       // Sign up link
@@ -40,7 +40,7 @@ test.describe("authentication", () => {
       await page.goto("/en/auth/signin");
       await page.getByLabel("Email").fill("wrong@example.test");
       await page.getByLabel("Password").fill("WrongPassword!");
-      await page.getByRole("button", { name: /Sign In/i }).click();
+      await page.getByRole("button", { name: /^Sign In$/i }).click();
 
       await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
     });
@@ -49,7 +49,7 @@ test.describe("authentication", () => {
       page,
     }) => {
       await page.goto("/en/auth/signin");
-      await page.getByRole("button", { name: /Sign In/i }).click();
+      await page.getByRole("button", { name: /^Sign In$/i }).click();
 
       // HTML5 required validation should prevent submission
       await expect(page).toHaveURL(/signin/);
@@ -96,7 +96,9 @@ test.describe("authentication", () => {
       ).toBeVisible();
 
       // Sign in link
-      await expect(page.getByRole("link", { name: /Sign In/i })).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /^Sign In$/i }),
+      ).toBeVisible();
     });
 
     test("sign up form requires all fields", async ({ page }) => {

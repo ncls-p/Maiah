@@ -142,6 +142,7 @@ const routeTitleKeys: Record<string, string> = {
   "/members/resources": "accessResources",
   "/settings": "settings",
   "/admin/settings": "adminSettings",
+  "/admin/connections": "connections",
   "/setup": "setup",
 };
 

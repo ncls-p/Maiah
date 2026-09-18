@@ -5,6 +5,7 @@ import {
   SlidersHorizontalIcon,
   UserRoundIcon,
   SettingsIcon,
+  PlugIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect } from "react";
@@ -269,6 +270,12 @@ export function OrbitAccountMenu({ displayName }: { displayName?: string }) {
             <Link href="/settings">
               <UserRoundIcon aria-hidden="true" />
               {tShell("myAccount")}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/admin/connections">
+              <PlugIcon aria-hidden="true" />
+              {tShell("connections")}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

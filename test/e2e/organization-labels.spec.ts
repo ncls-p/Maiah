@@ -28,7 +28,7 @@ test("homonymous organizations are distinguishable in the directory and sharing 
       },
     }),
   );
-  await page.goto("/en/admin/settings");
+  await page.goto("/en/admin/settings/projects");
   await expect(
     page.getByText("Separate organizations share the same name.", {
       exact: false,
@@ -55,7 +55,7 @@ test("homonymous organizations are distinguishable in the directory and sharing 
       .locator("body")
       .evaluate((element) => element.scrollWidth <= window.innerWidth),
   ).toBe(true);
-  await page.goto("/en/admin/settings?tab=platform");
+  await page.goto("/en/admin/settings/sharing");
   await page
     .getByRole("combobox", { name: "Source project", exact: true })
     .click();

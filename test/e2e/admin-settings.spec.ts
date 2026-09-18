@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("admin settings page", () => {
   test("loads admin settings page", async ({ page }) => {
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings/organizations");
     await expect(page).toHaveURL(/\/en\/admin\/settings/);
 
     await expect(
@@ -20,48 +20,51 @@ test.describe("admin settings page", () => {
   });
 
   test("shows registration settings", async ({ page }) => {
-    await page.goto("/en/admin/settings?tab=platform");
-    await page.waitForTimeout(2000);
+    await page.goto("/en/admin/settings/registration");
 
     // Registration section should be visible
-    await expect(page.getByText(/Registration/i).first()).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: /Registration/i }).last(),
+    ).toBeVisible({
       timeout: 10_000,
     });
   });
 
   test("shows system health section", async ({ page }) => {
-    await page.goto("/en/admin/settings?tab=platform");
-    await page.waitForTimeout(2000);
+    await page.goto("/en/admin/settings/health");
 
     // System health section
     await expect(
-      page.getByText(/System status|System health|Health/i).first(),
+      page
+        .getByRole("heading", { name: /System status|System health|Health/i })
+        .last(),
     ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows sidebar navigation settings", async ({ page }) => {
-    await page.goto("/en/admin/settings");
-    await page.waitForTimeout(2000);
+    await page.goto("/en/admin/settings/navigation");
 
     // Sidebar navigation section
     await expect(
-      page.getByText(/Sidebar navigation|Navigation/i).first(),
+      page
+        .getByRole("heading", { name: /Sidebar navigation|Navigation/i })
+        .last(),
     ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows assistant governance settings", async ({ page }) => {
-    await page.goto("/en/admin/settings?tab=platform");
-    await page.waitForTimeout(2000);
+    await page.goto("/en/admin/settings/assistants");
 
     // Assistant governance section
     await expect(
-      page.getByText(/Assistant governance|governance/i).first(),
+      page
+        .getByRole("heading", { name: /Assistant governance|governance/i })
+        .last(),
     ).toBeVisible({ timeout: 15_000 });
   });
 
   test("shows chat automation settings", async ({ page }) => {
-    await page.goto("/en/admin/settings");
-    await page.waitForTimeout(2000);
+    await page.goto("/en/admin/settings/chat");
 
     // Chat automation section
     await expect(
@@ -70,8 +73,7 @@ test.describe("admin settings page", () => {
   });
 
   test("shows workflow builder assistant settings", async ({ page }) => {
-    await page.goto("/en/admin/settings");
-    await page.waitForTimeout(2000);
+    await page.goto("/en/admin/settings/workflows");
 
     await expect(
       page.getByText(/Workflow builder assistant/i).first(),
@@ -82,7 +84,7 @@ test.describe("admin settings page", () => {
   test("configures embedding and reranking defaults explicitly", async ({
     page,
   }) => {
-    await page.goto("/en/admin/settings?tab=platform");
+    await page.goto("/en/admin/settings/rag");
 
     await page.locator("#rag-embedding-model").fill("qwen3-embedding:4b");
     const reranking = page.getByLabel("Improve result ranking");
@@ -96,7 +98,7 @@ test.describe("admin settings page", () => {
   });
 
   test("explains technical RAG settings in context", async ({ page }) => {
-    await page.goto("/en/admin/settings?tab=platform");
+    await page.goto("/en/admin/settings/rag");
 
     const help = page.getByRole("button", {
       name: "Maximum characters per indexed passage. Short passages are more precise; long passages preserve more context.",
@@ -108,9 +110,10 @@ test.describe("admin settings page", () => {
 });
 
 test.describe("registration settings", () => {
-  test("can toggle registration open/closed", async ({ page }) => {
-    await page.goto("/en/admin/settings?tab=platform");
-    await page.waitForTimeout(2000);
+  test("shows registration controls with exactly one available action", async ({
+    page,
+  }) => {
+    await page.goto("/en/admin/settings/registration");
 
     // Registration toggle buttons should exist
     const openBtn = page
@@ -120,10 +123,14 @@ test.describe("registration settings", () => {
       .getByRole("button", { name: /Close registration/i })
       .first();
 
-    const hasOpenBtn = await openBtn.isVisible().catch(() => false);
-    const hasCloseBtn = await closeBtn.isVisible().catch(() => false);
-
-    // At least one toggle should be visible
-    expect(hasOpenBtn || hasCloseBtn).toBe(true);
+    await expect(openBtn).toBeVisible();
+    await expect(closeBtn).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          Number(await openBtn.isEnabled()) +
+          Number(await closeBtn.isEnabled()),
+      )
+      .toBe(1);
   });
 });

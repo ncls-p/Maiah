@@ -16,7 +16,7 @@ export async function loginWithCredentials(
         response.url().endsWith("/api/auth/sign-in/email") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("button", { name: /^Sign in$/i }).click();
     return response;
   });
   await page.waitForURL(/\/en\/(chat|setup)/, { timeout: 15_000 });
@@ -39,7 +39,7 @@ export async function login(page: Page) {
         response.url().endsWith("/api/auth/sign-in/email") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("button", { name: /^Sign in$/i }).click();
     return response;
   });
   await page.waitForURL(/\/en\/(chat|setup)/, { timeout: 15_000 });

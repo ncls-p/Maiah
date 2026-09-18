@@ -268,7 +268,7 @@ test("manages multiple team and project memberships from people and teams", asyn
 test("creates, renames and deletes a project from Access", async ({ page }) => {
   await ensureE2EUser();
   await login(page);
-  await page.goto("/en/admin/settings");
+  await page.goto("/en/admin/settings/projects");
   const name = `Project lifecycle ${Date.now()}`;
   await page
     .getByRole("textbox", { name: "Project name", exact: true })

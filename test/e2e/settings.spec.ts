@@ -71,10 +71,10 @@ test.describe("settings page", () => {
       });
     await resetBranding();
     try {
-      await page.goto("/en/admin/settings");
+      await page.goto("/en/admin/settings/branding");
       const branding = page
         .getByRole("region", {
-          name: "Organization customization",
+          name: "Organization",
           exact: true,
         })
         .locator("section")
@@ -136,10 +136,10 @@ test.describe("settings page", () => {
     if (!workspaceId) throw new Error("E2E workspace is missing");
 
     try {
-      await page.goto("/en/admin/settings");
+      await page.goto("/en/admin/settings/branding");
       const branding = page
         .getByRole("region", {
-          name: "Organization customization",
+          name: "Organization",
           exact: true,
         })
         .locator("section")

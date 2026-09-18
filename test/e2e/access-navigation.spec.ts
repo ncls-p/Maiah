@@ -60,13 +60,16 @@ test("keeps access navigation and direct links usable on desktop and mobile", as
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   const name = page.locator("#standalone-organization-name");
   await name.fill("Draft organization");
-  await page.getByRole("tab", { name: "Platform", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Settings sections" })
+    .getByRole("link", { name: "Usage limits", exact: true })
+    .click();
   await expect(name).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Add usage limit", exact: true }),
   ).toBeVisible();
   await page.goBack();
-  await expect(page).toHaveURL(/\/en\/admin\/settings$/);
+  await expect(page).toHaveURL(/\/en\/admin\/settings\/organizations$/);
   await expect(name).toBeVisible();
   await page.screenshot({
     path: "/tmp/maiah-access-navigation-desktop.png",
@@ -77,7 +80,7 @@ test("keeps access navigation and direct links usable on desktop and mobile", as
   await expect(
     accessNav.getByRole("link", { name: "Resources", exact: true }),
   ).toBeVisible();
-  await page.goto("/en/admin/settings?tab=platform");
+  await page.goto("/en/admin/settings/sharing");
   await expect(
     page.getByRole("combobox", { name: "Source project", exact: true }),
   ).toBeVisible();
@@ -91,7 +94,7 @@ test("keeps access navigation and direct links usable on desktop and mobile", as
   await page.goto("/en/members?tab=teams");
   await expect(page).toHaveURL(/\/en\/members\/teams$/);
   await page.goto("/en/members?section=organizations");
-  await expect(page).toHaveURL(/\/en\/admin\/settings$/);
+  await expect(page).toHaveURL(/\/en\/admin\/settings\/organizations$/);
   await page.screenshot({
     path: "/tmp/maiah-access-navigation-mobile.png",
     fullPage: true,

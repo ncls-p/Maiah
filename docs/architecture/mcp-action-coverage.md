@@ -9,6 +9,8 @@ Multipart uploads accept inline base64 up to 180 KB. Larger files use the existi
 | GET /api/admin/chat-automation | yes | — | none |  |
 | PATCH /api/admin/chat-automation | yes | — | inferred JSON |  |
 | POST /api/admin/chat-automation/test | yes | — | none |  |
+| GET /api/admin/microsoft-sso | yes | — | none |  |
+| PATCH /api/admin/microsoft-sso | yes | — | inferred JSON |  |
 | GET /api/admin/rag | yes | — | none |  |
 | PATCH /api/admin/rag | yes | — | inferred JSON |  |
 | GET /api/admin/resource-organizations | yes | — | none |  |
@@ -36,6 +38,8 @@ Multipart uploads accept inline base64 up to 180 KB. Larger files use the existi
 | GET /api/anthropic/v1/models/{model} | — | — | none | Public or special authentication |
 | GET /api/auth/{all} | — | — | none | Protocol, authentication or infrastructure endpoint |
 | POST /api/auth/{all} | — | — | none | Protocol, authentication or infrastructure endpoint |
+| POST /api/auth/microsoft/providers | — | — | inferred JSON | Protocol, authentication or infrastructure endpoint |
+| GET /api/auth/microsoft/start | — | — | none | Protocol, authentication or infrastructure endpoint |
 | GET /api/companion | — | — | none | Protocol, authentication or infrastructure endpoint |
 | PATCH /api/companion | — | — | inferred JSON | Protocol, authentication or infrastructure endpoint |
 | PATCH /api/companion/context | — | — | inferred JSON | Protocol, authentication or infrastructure endpoint |

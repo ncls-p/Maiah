@@ -119,7 +119,8 @@
     "customTools": "Outils personnalisés",
     "scheduledTasks": "Tâches planifiées",
     "workflows": "Workflows",
-    "workflowEditor": "Éditeur de workflow"
+    "workflowEditor": "Éditeur de workflow",
+    "connections": "Connexions"
   },
   "chat": {
     "title": "Chat",
@@ -2503,7 +2504,7 @@
     "organizationCustomization": {
       "title": "Personnalisation par organisation",
       "description": "Le nom, l’identité visuelle, la navigation et les générations de titres et suggestions s’appliquent uniquement à l’organisation sélectionnée.",
-      "organization": "Organisation à personnaliser",
+      "organization": "Organisation",
       "retry": "Réessayer",
       "loading": "Chargement…",
       "readOnly": "Vous pouvez consulter cette organisation ; sa personnalisation nécessite les droits de gestion."
@@ -2913,6 +2914,32 @@
       "retry": "Réessayer",
       "createFailed": "Impossible de créer la clé API",
       "revokeFailed": "Impossible de révoquer la clé"
+    },
+    "navigation": {
+      "label": "Rubriques des paramètres",
+      "organization": "Organisation",
+      "platform": "Plateforme",
+      "organizations": "Organisations",
+      "directory": "Projets et membres",
+      "branding": "Identité visuelle",
+      "navigation": "Navigation",
+      "chat": "Conversations",
+      "workflows": "Éditeur de workflows",
+      "companion": "Compagnon",
+      "connections": "Connexions",
+      "registration": "Inscriptions",
+      "health": "État des services",
+      "impact": "Impact et coûts",
+      "rag": "Recherche documentaire",
+      "assistants": "Gouvernance des assistants",
+      "sharing": "Partage des ressources",
+      "limits": "Limites d’utilisation",
+      "projects": "Projets",
+      "members": "Membres"
+    },
+    "scope": {
+      "empty": "Aucune organisation accessible. Créez une organisation ou demandez un accès.",
+      "unavailable": "Cette organisation est introuvable ou inaccessible. Choisissez une organisation disponible."
     }
   },
   "customTools": {
@@ -3842,7 +3869,8 @@
       "empty": "Aucun projet accessible ne correspond.",
       "active": "Projet actif",
       "failed": "Le changement de projet a échoué. Réessayez."
-    }
+    },
+    "connections": "Connexions"
   },
   "auth": {
     "eyebrow": "Espace IA d’entreprise",
@@ -4692,5 +4720,43 @@
     "loading": "Chargement…",
     "mcpTitle": "Connecter Maiah via MCP",
     "mcpHelp": "Utilisez Streamable HTTP avec cette URL et Authorization: Bearer <votre token API>. Le projet, les scopes du token et les droits actuels du user s’appliquent."
+  },
+  "microsoftSso": {
+    "title": "Connexion Microsoft Entra ID",
+    "description": "Configurez l’application Microsoft de cette organisation. Le domaine e-mail choisit automatiquement le bon tenant sur la page de connexion commune.",
+    "enabled": "Proposer la connexion Microsoft",
+    "approved": "Association domaine / tenant validée.",
+    "pending": "Une validation par un administrateur de plateforme est nécessaire avant activation.",
+    "clientId": "ID d’application (client)",
+    "tenantId": "ID du tenant (annuaire)",
+    "loginOrigin": "Adresse de connexion (origine HTTPS)",
+    "domains": "Domaines e-mail, séparés par des virgules",
+    "secret": "Valeur du secret client",
+    "secretSaved": "Secret chiffré enregistré. Laissez vide pour le conserver. Saisissez un nouveau secret si vous changez d’application.",
+    "secretHelp": "Utilisez la valeur du secret, pas son identifiant. Elle ne sera jamais affichée après enregistrement.",
+    "callback": "URI de redirection à déclarer dans Entra ID",
+    "accounts": "Les membres actifs conservent leur compte, leurs conversations et leurs droits si leur e-mail correspond. Ajoutez les nouveaux utilisateurs à l’organisation avant leur première connexion. Aucun accès à la messagerie n’est demandé.",
+    "approvalHelp": "En enregistrant, vous validez que ces domaines e-mail et ce tenant appartiennent à cette organisation. Toute modification de cette association par un autre administrateur nécessitera une nouvelle validation.",
+    "saveApprove": "Enregistrer et valider l’association",
+    "save": "Enregistrer",
+    "saved": "Configuration enregistrée.",
+    "failed": "Impossible d’enregistrer la configuration.",
+    "retry": "Réessayer",
+    "loading": "Chargement…",
+    "signIn": "Se connecter avec Microsoft",
+    "emailHint": "Votre e-mail permet de choisir l’application Microsoft de votre organisation.",
+    "emailRequired": "Saisissez votre e-mail professionnel.",
+    "unavailable": "La connexion Microsoft n’est pas disponible pour ce domaine e-mail. Vous pouvez utiliser votre mot de passe.",
+    "signInFailed": "La connexion Microsoft n’a pas abouti. Réessayez avec votre compte professionnel ou contactez l’administrateur de votre organisation.",
+    "emailLabel": "E-mail professionnel",
+    "cancel": "Annuler",
+    "continue": "Continuer"
+  },
+  "connections": {
+    "title": "Connexions",
+    "description": "Configurez Microsoft Entra ID et Genesys Cloud pour chaque organisation.",
+    "organization": "Organisation",
+    "scope": "Les réglages s’appliquent uniquement à l’organisation sélectionnée.",
+    "readOnly": "Seuls les responsables autorisés peuvent gérer les connexions de cette organisation."
   }
 }

@@ -5,9 +5,9 @@ const TAB_PATHS: Record<string, string> = {
 };
 
 const SECTION_REDIRECTS: Record<string, AccessRedirect> = {
-  organizations: { pathname: "/admin/settings" },
-  sharing: { pathname: "/admin/settings", query: { tab: "platform" } },
-  limits: { pathname: "/admin/settings", query: { tab: "platform" } },
+  organizations: { pathname: "/admin/settings/organizations" },
+  sharing: { pathname: "/admin/settings/sharing" },
+  limits: { pathname: "/admin/settings/limits" },
 };
 
 export type AccessRedirect = {
@@ -19,7 +19,8 @@ export function accessLegacyRedirectPath(
   section?: string,
   tab?: string,
 ): AccessRedirect | null {
-  if (section && section !== "access") return SECTION_REDIRECTS[section] ?? null;
+  if (section && section !== "access")
+    return SECTION_REDIRECTS[section] ?? null;
   if (tab && tab !== "access") {
     const pathname = TAB_PATHS[tab];
     return pathname ? { pathname } : null;

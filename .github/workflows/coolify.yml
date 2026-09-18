@@ -26,8 +26,8 @@ env:
   COOLIFY_SERVER_UUID: ${{ vars.COOLIFY_SERVER_UUID || 'o2dnvmz0zrjz0frynoq6bnfj' }}
   COOLIFY_ENVIRONMENT_NAME: ${{ vars.COOLIFY_ENVIRONMENT_NAME || 'production' }}
   COOLIFY_SERVICE_NAME: maiah
-  AI_HUB_PUBLIC_HOST: maiah.shiftify.eco
-  AI_HUB_PUBLIC_URL: https://maiah.shiftify.eco
+  AI_HUB_PUBLIC_HOST: maiah.deodis.com
+  AI_HUB_PUBLIC_URL: https://maiah.deodis.com
 
 jobs:
   prepare:
@@ -95,9 +95,13 @@ jobs:
 
           if [[ -n "${public_host}" ]]; then
             public_url="https://${public_host}"
-            # Coolify uses the URL scheme for the proxy-to-container hop. Keep
-            # that hop on HTTP while exposing the browser-facing origin on HTTPS.
+            # Previews and the legacy Cloudflare hostname use HTTP ingress.
+            # Deodis forwards HTTPS to port 443: it needs a TLS router in Coolify.
+            # The application upstream itself still listens on HTTP port 3000.
             service_url="http://${public_host}:3000"
+            if [[ "${is_preview}" == "false" ]]; then
+              service_url="https://${public_host}:3000,http://maiah.shiftify.eco:3000"
+            fi
           fi
 
           {
@@ -891,6 +895,9 @@ jobs:
           fi
           BETTER_AUTH_URL="${AI_HUB_PUBLIC_URL}"
           BETTER_AUTH_TRUSTED_ORIGINS="${AI_HUB_PUBLIC_URL}"
+          if [[ "${IS_PREVIEW}" != "true" ]]; then
+            BETTER_AUTH_TRUSTED_ORIGINS="${AI_HUB_PUBLIC_URL},https://maiah.shiftify.eco"
+          fi
 
           api() {
             local method="$1"
