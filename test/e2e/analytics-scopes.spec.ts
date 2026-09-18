@@ -222,9 +222,9 @@ test("application analytics, precise filters, merged charts, exports and organiz
         )
       ).status(),
     ).toBe(403);
-    await admin.goto("/en/admin/settings");
+    await admin.goto("/en/admin/settings/branding");
     const section = admin.getByRole("region", {
-      name: "Organization customization",
+      name: "Organization",
       exact: true,
     });
     await expect(
@@ -232,7 +232,7 @@ test("application analytics, precise filters, merged charts, exports and organiz
     ).toBeVisible();
     await expect(
       section.getByRole("combobox", {
-        name: "Organization to customize",
+        name: "Organization",
         exact: true,
       }),
     ).not.toContainText("Analytics foreign");
@@ -244,7 +244,7 @@ test("application analytics, precise filters, merged charts, exports and organiz
       .click();
     await expect(
       section.getByRole("combobox", {
-        name: "Organization to customize",
+        name: "Organization",
         exact: true,
       }),
     ).toContainText("Analytics renamed organization");

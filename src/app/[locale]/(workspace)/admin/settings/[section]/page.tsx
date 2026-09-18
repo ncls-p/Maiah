@@ -33,7 +33,7 @@ export default async function SettingsSectionPage({
     notFound();
   const t = await getTranslations("admin.navigation");
   return (
-    <section className="flex min-w-0 flex-col gap-5" aria-label={t(section)}>
+    <section className="flex min-w-0 flex-col gap-5">
       <h2 className="text-2xl font-semibold tracking-tight">{t(section)}</h2>
       <Suspense>
         {section === "organizations" ? (

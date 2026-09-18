@@ -215,7 +215,7 @@ jobs:
           for attempt in {1..60}; do
             if curl --fail --silent --show-error http://localhost:3000 > /dev/null \
               && curl --fail --silent --show-error http://localhost:3001/health > /dev/null; then
-              if npm run test:e2e -- --max-failures=1; then
+              if npm run test:e2e; then
                 exit 0
               fi
               cat /tmp/next.log

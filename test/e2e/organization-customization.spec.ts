@@ -129,13 +129,13 @@ test("isolates branding, title generation and navigation per organization and sw
       );
       expect(denied.status()).toBe(403);
     }
-    await page.goto("/en/admin/settings");
+    await page.goto("/en/admin/settings/branding");
     const section = page.getByRole("region", {
-      name: "Organization customization",
+      name: "Organization",
       exact: true,
     });
     await section
-      .getByRole("combobox", { name: "Organization to customize", exact: true })
+      .getByRole("combobox", { name: "Organization", exact: true })
       .click();
     const violetName = (
       await sql.query("select name from organizations where id=$1", [violet])
