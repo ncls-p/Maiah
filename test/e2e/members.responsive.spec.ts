@@ -50,7 +50,12 @@ test("keeps people, teams, roles and account creation readable on narrow screens
         fullPage: true,
       });
       await page.getByRole("link", { name: "Personnes", exact: true }).click();
-      await page.locator("tbody tr").first().scrollIntoViewIfNeeded();
+      await expect(page).toHaveURL(/\/fr\/members$/);
+      await expect(async () => {
+        const row = page.locator("tbody tr").first();
+        await expect(row).toBeVisible();
+        await row.scrollIntoViewIfNeeded();
+      }).toPass({ timeout: 5000 });
       await page.screenshot({
         animations: "disabled",
         path: testInfo.outputPath("people-mobile.png"),

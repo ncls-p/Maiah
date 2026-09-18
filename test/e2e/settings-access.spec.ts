@@ -91,6 +91,9 @@ test("an organization administrator can edit organization settings without platf
   expect(forbidden.status()).toBe(403);
   await page.goto("/en/admin/settings/registration");
   await expect(
-    page.getByRole("heading", { name: "404", exact: true }),
+    page.getByRole("heading", { name: "Page not found", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Open registration|Close registration/i }),
+  ).toHaveCount(0);
 });

@@ -110,7 +110,9 @@ test.describe("admin settings page", () => {
 });
 
 test.describe("registration settings", () => {
-  test("can toggle registration open/closed", async ({ page }) => {
+  test("shows registration controls with exactly one available action", async ({
+    page,
+  }) => {
     await page.goto("/en/admin/settings/registration");
 
     // Registration toggle buttons should exist
@@ -121,10 +123,14 @@ test.describe("registration settings", () => {
       .getByRole("button", { name: /Close registration/i })
       .first();
 
-    const hasOpenBtn = await openBtn.isVisible().catch(() => false);
-    const hasCloseBtn = await closeBtn.isVisible().catch(() => false);
-
-    // At least one toggle should be visible
-    expect(hasOpenBtn || hasCloseBtn).toBe(true);
+    await expect(openBtn).toBeVisible();
+    await expect(closeBtn).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          Number(await openBtn.isEnabled()) +
+          Number(await closeBtn.isEnabled()),
+      )
+      .toBe(1);
   });
 });
