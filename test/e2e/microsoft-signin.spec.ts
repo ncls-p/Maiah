@@ -27,7 +27,5 @@ test("Microsoft asks for email only after clicking its button", async ({
   await expect(email).toHaveValue("employee@example.test");
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Sign in$/i })).toBeVisible();
 });
