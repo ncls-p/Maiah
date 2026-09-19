@@ -20,6 +20,7 @@ import {
 import { createResponsesFetch } from "./openai-compatible-adapter.normalize-responses-reasoning-sse-line";
 import { parseModels } from "./openai-compatible-adapter.parse-models";
 import { fetchModelCatalog, validateModelsEndpoint } from "./adapter-health";
+import { withOpenAISchemaCompatibility } from "./openai-schema-compatibility";
 
 export const openaiCompatibleAdapter: ProviderAdapter = {
   kind: "openai-compatible",
@@ -62,7 +63,7 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
         fetch: createResponsesFetch(config),
       });
 
-      return provider.responses(modelId);
+      return withOpenAISchemaCompatibility(provider.responses(modelId));
     }
 
     const provider = createOpenAICompatible({
