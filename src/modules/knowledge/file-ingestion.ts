@@ -1,7 +1,8 @@
 import JSZip from "jszip";
 import path from "node:path";
 
-import { extractUploadedFileText } from "@/modules/chat/attachments";
+import { extractKnowledgeSource } from "./extract-knowledge-source";
+import type { KnowledgeSourceChunk } from "./spreadsheet-chunks";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 
 export type KnowledgeUpload = {
@@ -65,12 +66,13 @@ export async function extractKnowledgeUploads(
     originalBytes: Uint8Array;
     originalMimeType: string | undefined;
     extractionWarning?: string;
+    chunks?: KnowledgeSourceChunk[];
   }> = [];
   const rejected: Array<{ title: string; error: string }> = [];
   for (const upload of expanded) {
     const title = safeUploadName(upload.fileName) || "document";
     try {
-      const extracted = await extractUploadedFileText({
+      const extracted = await extractKnowledgeSource({
         workspaceId: context?.workspaceId,
         fileName: title,
         mimeType: upload.mimeType,
@@ -90,6 +92,7 @@ export async function extractKnowledgeUploads(
         files.push({
           title,
           content: extracted.text,
+          chunks: extracted.chunks,
           mimeType: extracted.mimeType,
           originalBytes: upload.bytes,
           originalMimeType: upload.mimeType,

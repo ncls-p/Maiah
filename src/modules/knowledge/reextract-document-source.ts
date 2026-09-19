@@ -1,5 +1,5 @@
 import { encryptValue } from "@/lib/crypto";
-import { extractUploadedFileText } from "@/modules/chat/attachments";
+import { extractKnowledgeSource } from "./extract-knowledge-source";
 import { db } from "@/server/infrastructure/db";
 import { documents, documentChunks } from "@/server/infrastructure/db/schema";
 import { storage } from "@/server/infrastructure/storage";
@@ -15,7 +15,7 @@ export async function reextractDocumentSource(
   if (!document.objectStorageKey)
     throw new Error("Original document is unavailable");
   const bytes = await storage.download(document.objectStorageKey);
-  const extracted = await extractUploadedFileText({
+  const extracted = await extractKnowledgeSource({
     workspaceId: document.workspaceId,
     fileName: document.title,
     mimeType: document.mimeType ?? undefined,
@@ -29,15 +29,19 @@ export async function reextractDocumentSource(
     );
   }
   const chunks = await Promise.all(
-    chunkText(extracted.text, config.chunking).map(
-      async (chunk, chunkIndex) => ({
-        documentId: document.id,
-        chunkIndex,
-        contentEncrypted: await encryptValue(chunk),
-        tokenCount: Math.ceil(chunk.length / 4),
-        metadataJson: { source: document.sourceType },
-      }),
-    ),
+    (
+      extracted.chunks ??
+      chunkText(extracted.text, config.chunking).map((content) => ({
+        content,
+        metadata: {},
+      }))
+    ).map(async (chunk, chunkIndex) => ({
+      documentId: document.id,
+      chunkIndex,
+      contentEncrypted: await encryptValue(chunk.content),
+      tokenCount: Math.ceil(chunk.content.length / 4),
+      metadataJson: { source: document.sourceType, ...chunk.metadata },
+    })),
   );
   return db.transaction(async (tx) => {
     const [current] = await tx
