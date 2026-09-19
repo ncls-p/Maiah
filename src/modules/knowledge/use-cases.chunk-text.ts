@@ -1,3 +1,4 @@
+import type { KnowledgeSourceChunk } from "./spreadsheet-chunks";
 import { randomUUID } from "node:crypto";
 import { encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
@@ -52,6 +53,7 @@ export async function ingestTextDocument(input: {
   userId: string;
   title: string;
   content: string;
+  chunks?: KnowledgeSourceChunk[];
   sourceType?: "text" | "url" | "upload";
   mimeType?: string;
   originalBytes?: Uint8Array;
@@ -71,7 +73,12 @@ export async function ingestTextDocument(input: {
   );
 
   const config = await effectiveRagConfig(knowledgeBase.ragConfigJson);
-  const chunks = chunkText(input.content, config.chunking);
+  const chunks =
+    input.chunks ??
+    chunkText(input.content, config.chunking).map((content) => ({
+      content,
+      metadata: {},
+    }));
   const documentId = randomUUID();
   const objectStorageKey = input.originalBytes
     ? `knowledge/${input.workspaceId}/${documentId}/source`
@@ -109,9 +116,12 @@ export async function ingestTextDocument(input: {
             chunks.map(async (chunk, index) => ({
               documentId: document.id,
               chunkIndex: index,
-              contentEncrypted: await encryptValue(chunk),
-              tokenCount: Math.ceil(chunk.length / 4),
-              metadataJson: { source: input.sourceType ?? "text" },
+              contentEncrypted: await encryptValue(chunk.content),
+              tokenCount: Math.ceil(chunk.content.length / 4),
+              metadataJson: {
+                source: input.sourceType ?? "text",
+                ...chunk.metadata,
+              },
             })),
           ),
         );
