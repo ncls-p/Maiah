@@ -1,7 +1,6 @@
 import { MessageSquareIcon, SettingsIcon, UsersIcon } from "lucide-react";
 
 import { AgentAccessScopePicker } from "@/components/agent-access-scope-picker";
-import { ModelLogo } from "@/components/providers/model-logo";
 import { ResourceAccessDialog } from "@/components/resource-access-dialog";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { AgentModelSelect } from "./agent-model-select";
 import { ConfigSection } from "./config-section";
 import type { useEssentialTabController } from "./essential-tab";
 import { EssentialTabBranch1 } from "./essential-tab.view.branch-1";
@@ -210,90 +210,15 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                   {tModel("modelLabel")}
                 </FieldLabel>
                 <FieldContent>
-                  <Select
-                    value={form.modelId || "__none__"}
-                    onValueChange={(value) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        modelId: value === "__none__" ? "" : value,
-                      }))
+                  <AgentModelSelect
+                    value={form.modelId}
+                    onValueChange={(modelId) =>
+                      setForm((prev) => ({ ...prev, modelId }))
                     }
+                    filteredModels={filteredModels}
+                    providers={providers}
                     disabled={!form.providerId}
-                  >
-                    <SelectTrigger id="agent-model" className="w-full">
-                      <SelectValue placeholder="—">
-                        {filteredModels.find(
-                          (model) => model.id === form.modelId,
-                        )?.displayName ??
-                          filteredModels.find(
-                            (model) => model.id === form.modelId,
-                          )?.modelId ??
-                          "—"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {filteredModels.map((model) => {
-                        const modelLabel = model.displayName || model.modelId;
-                        return (
-                          <SelectItem
-                            key={model.id}
-                            value={model.id}
-                            textValue={modelLabel}
-                            aria-label={modelLabel}
-                            aria-labelledby={`model-option-name-${model.id}`}
-                            aria-description={[
-                              providers.find(
-                                (provider) => provider.id === model.providerId,
-                              )?.name,
-                              model.description,
-                              model.tags?.join(", "),
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          >
-                            <span className="flex items-center gap-2">
-                              <ModelLogo
-                                logoUrl={model.logoUrl}
-                                label={modelLabel}
-                                size="sm"
-                              />
-                              <span className="grid gap-1 text-left">
-                                <span id={`model-option-name-${model.id}`}>
-                                  {modelLabel}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {
-                                    providers.find(
-                                      (provider) =>
-                                        provider.id === model.providerId,
-                                    )?.name
-                                  }
-                                </span>
-                                {model.description ? (
-                                  <span className="max-w-sm whitespace-normal text-xs text-muted-foreground">
-                                    {model.description}
-                                  </span>
-                                ) : null}
-                                {model.tags?.length ? (
-                                  <span className="flex flex-wrap gap-1">
-                                    {model.tags.map((tag) => (
-                                      <span
-                                        key={tag}
-                                        className="rounded bg-muted px-1.5 text-xs"
-                                      >
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </span>
-                                ) : null}
-                              </span>
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  />
                 </FieldContent>
               </Field>
             </div>

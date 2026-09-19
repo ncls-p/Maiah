@@ -4,6 +4,7 @@ import type {
   AgentAccessScope,
 } from "@/modules/agent/access-scope";
 import type { ReasoningPreset } from "@/modules/agent/reasoning-presets";
+import type { ModelImpactData } from "@/lib/model-impact";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 export type Agent = {
@@ -37,7 +38,7 @@ export type Provider = {
   description?: string | null;
   tags?: string[] | null;
 };
-export type Model = {
+export type Model = ModelImpactData & {
   id: string;
   providerId: string;
   modelId: string;

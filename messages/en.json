@@ -967,7 +967,13 @@
       "providerOptionsHelp": "Provider-specific AI SDK options as JSON grouped by provider. Use only keys supported by that provider and model. Never put secrets here.",
       "providerOptionsHint": "Example namespaces: openai, openaiCompatible, anthropic, bedrock. Keep SDK option names (textVerbosity, parallelToolCalls, thinking…). The reasoning level selected in chat takes precedence. Explicitly rejected sampling parameters are disabled for this assistant version.",
       "providerOptionsInvalid": "Invalid JSON: provide an object containing an object per provider (maximum 16 KB).",
-      "excludedGenerationSettings": "Automatically disabled for this version: {settings}. Save a new version to try them again."
+      "excludedGenerationSettings": "Automatically disabled for this version: {settings}. Save a new version to try them again.",
+      "impact": {
+        "prices": "Input: {input} · Output: {output} / 1M tokens",
+        "unknown": "not provided",
+        "carbon": "Estimated carbon: {value} gCO₂e / 1M tokens",
+        "carbonUnknown": "Carbon: not provided"
+      }
     },
     "selectModel": "Select a model",
     "statusReady": "Ready",
