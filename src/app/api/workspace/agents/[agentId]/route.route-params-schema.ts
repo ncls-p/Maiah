@@ -94,7 +94,7 @@ export const updateAgentSchema = z.object({
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      summaryThresholdTokens: z.number().int().positive().optional(),
+      summaryThresholdTokens: z.number().int().nonnegative().optional(),
       summaryMaxTokens: z.number().int().positive().optional(),
       contextWindowTokens: z
         .union([z.literal(0), z.number().int().positive()])

@@ -1,5 +1,6 @@
 "use client";
-import { AdvancedSection } from "@/components/ui/advanced-section";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { OrchestrationLimits } from "./orchestration-tab.limits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,8 +13,8 @@ import { NetworkIcon, SaveIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { RunHistory } from "./orchestration-tab.run-history";
-import { policyField } from "./orchestration-tab.run-summary";
 import type { Agent, DelegationBinding, DelegationConfig } from "./types";
+import { updateSpecialistVersion } from "./delegation-version";
 export function OrchestrationTab({
   agent,
   availableAgents,
@@ -94,6 +95,10 @@ export function OrchestrationTab({
             {t("selectedCount", { count: config.bindings.length })}
           </Badge>
         </div>
+        <Alert className="mt-4">
+          <AlertTitle>{t("modelContextTitle")}</AlertTitle>
+          <AlertDescription>{t("modelContextDescription")}</AlertDescription>
+        </Alert>
         {candidates.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed p-5 text-center">
             <p className="text-sm font-medium">{t("noSpecialists")}</p>
@@ -105,7 +110,7 @@ export function OrchestrationTab({
             </Button>
           </div>
         ) : (
-          <div className="mt-4 grid gap-2">
+          <div className="mt-4 grid grid-cols-1 gap-2">
             {candidates.map((candidate) => {
               const binding = selectedById.get(candidate.id);
               const selected = Boolean(binding);
@@ -119,7 +124,7 @@ export function OrchestrationTab({
                 <div
                   key={candidate.id}
                   className={cn(
-                    "rounded-xl border p-3 transition-[background-color,border-color] duration-150 ease-out",
+                    "min-w-0 rounded-xl border p-3 transition-[background-color,border-color] duration-150 ease-out",
                     selected && "border-primary/35 bg-primary/5",
                   )}
                 >
@@ -129,6 +134,7 @@ export function OrchestrationTab({
                         name: candidate.name,
                       })}
                       checked={selected}
+                      disabled={saving}
                       onCheckedChange={(checked) =>
                         toggleAgent(candidate, checked === true)
                       }
@@ -158,10 +164,56 @@ export function OrchestrationTab({
                   {binding ? (
                     <div className="mt-3 border-t pt-3">
                       {hasNewerVersion ? (
-                        <p className="mb-3 text-xs text-warning">
-                          {t("pinnedVersionOutdated")}
+                        <div className="mb-3 flex flex-col items-start gap-2">
+                          <p className="text-xs text-warning">
+                            {t("pinnedVersionOutdated")}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={saving}
+                            aria-label={t("updateSpecialistVersionLabel", {
+                              name: candidate.name,
+                            })}
+                            onClick={() => {
+                              setConfig({
+                                ...config,
+                                bindings: updateSpecialistVersion(
+                                  config.bindings,
+                                  candidate.id,
+                                  candidate.activeVersionId!,
+                                ),
+                              });
+                              document
+                                .getElementById(
+                                  `delegation-instructions-${candidate.id}`,
+                                )
+                                ?.focus();
+                            }}
+                          >
+                            {t("updateSpecialistVersion")}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {!binding.childVersion ? (
+                        <p
+                          className="mb-3 text-xs text-muted-foreground"
+                          role="status"
+                        >
+                          {t("versionPendingSave")}
                         </p>
                       ) : null}
+                      <Button
+                        asChild
+                        variant="link"
+                        size="sm"
+                        className="mb-2 h-auto max-w-full whitespace-normal text-left"
+                      >
+                        <Link href={`/agents/${candidate.id}`}>
+                          {t("configureSpecialist", { name: candidate.name })}
+                        </Link>
+                      </Button>
                       <Label
                         htmlFor={`delegation-instructions-${candidate.id}`}
                       >
@@ -178,6 +230,7 @@ export function OrchestrationTab({
                         className="mt-2 min-h-20"
                         placeholder={t("instructionsPlaceholder")}
                         value={binding.instructions ?? ""}
+                        disabled={saving}
                         onChange={(event) =>
                           updateInstructions(candidate.id, event.target.value)
                         }
@@ -189,85 +242,12 @@ export function OrchestrationTab({
             })}
           </div>
         )}
-        <AdvancedSection
-          label={t("limitsTitle")}
-          hint={t("limitsDescription")}
-          storageKey={`advanced:orchestration:${agent.id}`}
-          className="mt-4"
-        >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "maxDepth",
-              t("maxDepth"),
-              0,
-              undefined,
-              1,
-              t("zeroUnlimited"),
-            )}
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "maxDelegations",
-              t("maxDelegations"),
-              0,
-              undefined,
-              1,
-              t("zeroUnlimited"),
-            )}
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "maxParallel",
-              t("maxParallel"),
-              0,
-              undefined,
-              1,
-              t("zeroUnlimited"),
-            )}
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "maxChildSteps",
-              t("maxChildSteps"),
-              0,
-              undefined,
-              1,
-              `${t("zeroUnlimited")} ${t("maxChildStepsDescription")}`,
-            )}
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "maxTotalTokens",
-              t("maxTotalTokens"),
-              0,
-              undefined,
-              1000,
-              t("zeroUnlimitedWithQuota"),
-            )}
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "timeoutMs",
-              t("timeoutMs"),
-              0,
-              undefined,
-              1000,
-              `${t("zeroUnlimited")} ${t("timeoutMsDescription")}`,
-            )}
-            {policyField(
-              config.policy,
-              (policy) => setConfig({ ...config, policy }),
-              "resultMaxChars",
-              t("resultMaxChars"),
-              0,
-              undefined,
-              1000,
-              t("zeroUnlimited"),
-            )}
-          </div>
-        </AdvancedSection>
+        <OrchestrationLimits
+          agentId={agent.id}
+          policy={config.policy}
+          setPolicyAction={(policy) => setConfig({ ...config, policy })}
+          disabled={saving}
+        />
         <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
           <Button type="button" disabled={saving} onClick={onSave}>
             {saving ? (

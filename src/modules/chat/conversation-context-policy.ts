@@ -43,6 +43,9 @@ function contentCharacters(content: ModelMessage["content"]): number {
     if ("text" in part && typeof part.text === "string") {
       return total + part.text.length;
     }
+    if (part.type === "tool-call" || part.type === "tool-result") {
+      return total + JSON.stringify(part).length;
+    }
     // Images and other binary parts still consume provider context even when
     // their byte representation is not useful for a text token estimate.
     return total + 4_000;

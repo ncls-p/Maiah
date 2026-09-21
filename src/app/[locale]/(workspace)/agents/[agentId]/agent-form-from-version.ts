@@ -76,7 +76,7 @@ function buildPolicySettings(activeVersion: AgentVersionPayload | null) {
     memoryPolicy: {
       enabled: activeVersion?.memoryPolicyJson?.enabled ?? false,
       summaryThresholdTokens: String(
-        activeVersion?.memoryPolicyJson?.summaryThresholdTokens ?? 24_000,
+        activeVersion?.memoryPolicyJson?.summaryThresholdTokens ?? 0,
       ),
       summaryMaxTokens: String(
         activeVersion?.memoryPolicyJson?.summaryMaxTokens ?? 1_200,

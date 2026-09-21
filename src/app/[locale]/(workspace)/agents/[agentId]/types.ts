@@ -256,7 +256,7 @@ export function createEmptyForm(): AgentForm {
     responseFormat: "text",
     memoryPolicy: {
       enabled: false,
-      summaryThresholdTokens: "24000",
+      summaryThresholdTokens: "0",
       summaryMaxTokens: "1200",
       contextWindowTokens: "",
       maxMessages: "",

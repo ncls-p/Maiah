@@ -48,6 +48,7 @@ export function policyField(
         min={min}
         max={max}
         step={step}
+        aria-describedby={description ? `orchestration-${key}-help` : undefined}
         value={policy[key]}
         onChange={(event) =>
           setPolicy({
@@ -62,7 +63,12 @@ export function policyField(
         }
       />
       {description ? (
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p
+          id={`orchestration-${key}-help`}
+          className="text-xs text-muted-foreground"
+        >
+          {description}
+        </p>
       ) : null}
     </div>
   );

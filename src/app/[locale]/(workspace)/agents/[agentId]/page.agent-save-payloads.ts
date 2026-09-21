@@ -66,7 +66,7 @@ export function buildEssentialPayload(
     memoryPolicy: {
       enabled: form.memoryPolicy.enabled,
       summaryThresholdTokens:
-        Number(form.memoryPolicy.summaryThresholdTokens) || 24_000,
+        Number(form.memoryPolicy.summaryThresholdTokens) || 0,
       summaryMaxTokens: Number(form.memoryPolicy.summaryMaxTokens) || 1_200,
       contextWindowTokens:
         form.memoryPolicy.contextWindowTokens === ""

@@ -12,14 +12,27 @@ export type ConversationSummaryPolicy = ConversationContextPolicy;
 export function shouldSummarizeConversation(
   policy: ConversationSummaryPolicy | null,
   inputTokens: number | undefined,
+  contextWindowTokens?: number,
 ) {
   if (!policy?.enabled || !Number.isFinite(inputTokens)) return false;
-  const threshold = Math.max(
-    1,
-    Math.floor(
-      policy.summaryThresholdTokens ?? DEFAULT_SUMMARY_THRESHOLD_TOKENS,
-    ),
-  );
+  const window =
+    Number.isFinite(contextWindowTokens) && contextWindowTokens! > 0
+      ? Math.floor(contextWindowTokens!)
+      : undefined;
+  // Keep the full model window available; summarize near capacity rather than
+  // at a fixed 24k threshold on every model. Explicit user thresholds still win.
+  const reserve = window
+    ? Math.min(
+        Math.max(16_384, Math.ceil(window * 0.15)),
+        Math.ceil(window * 0.5),
+      )
+    : 0;
+  const threshold =
+    (policy.summaryThresholdTokens ?? 0) > 0
+      ? Math.floor(policy.summaryThresholdTokens!)
+      : window
+        ? Math.max(1, window - reserve)
+        : DEFAULT_SUMMARY_THRESHOLD_TOKENS;
   return (inputTokens ?? 0) >= threshold;
 }
 

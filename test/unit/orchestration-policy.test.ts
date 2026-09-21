@@ -7,6 +7,17 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("orchestration policy", () => {
+  it("lets model windows and workspace quotas bound tokens by default without removing loop limits", () => {
+    expect(normalizeOrchestrationPolicy(null)).toMatchObject({
+      maxTotalTokens: 0,
+      maxDepth: 2,
+      maxParallel: 2,
+      maxChildSteps: 8,
+    });
+    expect(
+      normalizeOrchestrationPolicy({ maxTotalTokens: 50_000 }).maxTotalTokens,
+    ).toBe(50_000);
+  });
   it("uses conservative defaults", () => {
     expect(normalizeOrchestrationPolicy(null)).toEqual(
       orchestrationPolicyDefaults,

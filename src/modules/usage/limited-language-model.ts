@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import { aiModels } from "@/server/infrastructure/db/schema";
 import { wrapLanguageModel } from "ai";
+import { fitProviderOutputBudget } from "@/modules/agent/model-context-budget";
 import type {
   LanguageModelV4,
   LanguageModelV4CallOptions,
@@ -65,11 +66,8 @@ export function withUsageLimits(
     model,
     middleware: {
       specificationVersion: "v4",
-      transformParams: async ({ params }) => ({
-        ...params,
-        maxOutputTokens:
-          params.maxOutputTokens ?? pricing.maxOutputTokens ?? 4096,
-      }),
+      transformParams: async ({ params }) =>
+        fitProviderOutputBudget(params, pricing),
       wrapGenerate: async ({ doGenerate, params }) => {
         const id = await reserve(params);
         try {

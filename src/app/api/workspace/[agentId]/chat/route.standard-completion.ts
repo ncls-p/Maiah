@@ -13,6 +13,7 @@ import {
   type ChatGenerationTimings,
 } from "@/modules/chat/message-metrics";
 import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
+import { resolveContextWindowTokens } from "@/modules/chat/conversation-context-policy";
 import {
   calculateTokenUsageImpact,
   parseSustainabilityConfig,
@@ -106,7 +107,14 @@ export async function completeStandardChat(input: {
   let conversationSummary: string | null = null;
   if (
     assistantText &&
-    shouldSummarizeConversation(memoryPolicy, totalUsage.inputTokens)
+    shouldSummarizeConversation(
+      memoryPolicy,
+      totalUsage.inputTokens,
+      resolveContextWindowTokens(
+        memoryPolicy?.contextWindowTokens,
+        providerConfig.contextWindow,
+      ),
+    )
   ) {
     try {
       conversationSummary = await generateConversationSummary({

@@ -14,7 +14,7 @@ export const orchestrationPolicyDefaults = {
   maxDelegations: 4,
   maxParallel: 2,
   maxChildSteps: 8,
-  maxTotalTokens: 50_000,
+  maxTotalTokens: 0,
   timeoutMs: 0,
   resultMaxChars: 8_000,
 } as const;

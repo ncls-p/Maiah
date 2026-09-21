@@ -4,6 +4,14 @@ An agent's runtime configuration is immutable once active. Every save creates a
 new `agent_versions` row and activates it only after all of its bindings are
 valid and persisted.
 
+The orchestration editor offers **Use latest version** for an outdated
+specialist. It changes only the draft's pinned version, preserving the mission,
+binding order and other specialists. **Save orchestration** activates the
+choice through the existing version conflict and authorization checks. Editing
+a specialist never silently changes an orchestrator or a running execution.
+The editor links to each specialist's model settings and distinguishes the
+model context window from cumulative tree token budgets and returned-text caps.
+
 ## Atomic save contract
 
 Every update command carries `baseVersionId`, the active version observed by

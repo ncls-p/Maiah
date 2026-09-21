@@ -5,6 +5,7 @@ import {
   type SharedV4Warning,
 } from "@ai-sdk/provider";
 import { wrapLanguageModel } from "ai";
+import { reducedOutputAfterContextRejection } from "./context-overflow-recovery";
 
 const aliases = {
   temperature: "temperature",
@@ -85,6 +86,7 @@ export function withGenerationCompatibility(
     call: (params: LanguageModelV4CallOptions) => PromiseLike<T>,
   ): Promise<T> {
     const adjusted = { ...params };
+    let recoveredContext = false;
     for (const setting of excluded) delete adjusted[setting];
     // There are only seven eligible sampling settings; each is removed at most once.
     for (let retry = 0; ; retry++) {
@@ -94,6 +96,14 @@ export function withGenerationCompatibility(
 
         return result;
       } catch (error) {
+        const reducedOutput = !recoveredContext
+          ? reducedOutputAfterContextRejection(error, adjusted.maxOutputTokens)
+          : undefined;
+        if (reducedOutput !== undefined) {
+          recoveredContext = true;
+          adjusted.maxOutputTokens = reducedOutput;
+          continue;
+        }
         const setting = rejectedSetting(error);
         if (
           !setting ||

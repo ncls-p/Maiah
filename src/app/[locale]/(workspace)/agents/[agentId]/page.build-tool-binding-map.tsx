@@ -1,6 +1,7 @@
 "use client";
 
 import type { DelegationConfig, ToolBinding, ToolBindingState } from "./types";
+import { orchestrationPolicyDefaults } from "@/modules/agent/orchestration-policy";
 
 export function buildToolBindingMap<T extends { id: string }>(
   tools: T[],
@@ -41,14 +42,6 @@ export async function agentSaveError(
 
 export const defaultDelegationConfig: DelegationConfig = {
   version: null,
-  policy: {
-    maxDepth: 2,
-    maxDelegations: 4,
-    maxParallel: 2,
-    maxChildSteps: 8,
-    maxTotalTokens: 50_000,
-    timeoutMs: 60_000,
-    resultMaxChars: 8_000,
-  },
+  policy: { ...orchestrationPolicyDefaults },
   bindings: [],
 };

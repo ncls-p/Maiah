@@ -301,3 +301,18 @@ Avant merge :
 - **Unitaires** : découpage de texte et assemblage de liste dans un graphe compilé, validation du chemin de sortie, catalogue FR/EN.
 - L’arrêt demande une interruption au moteur ; il n’annule pas les effets externes déjà produits. Une exécution annulée ne peut pas être réécrite comme réussie par le worker.
 - Limites de recette : l’exécution JavaScript/Python dépend du service sandbox ; les appels à un véritable fournisseur LLM restent couverts par la recette dédiée existante.
+
+# Model context and specialist updates (September 2026)
+
+- Automatic generation keeps advertised model output capacity, with input and
+  tool headroom; missing output metadata uses a 16,384 fallback, not the context
+  window. Explicit limits remain authoritative.
+- Memory threshold `0` follows the model window; positive thresholds survive
+  load/save unchanged. Disabled memory remains disabled.
+- An outdated specialist exposes a keyboard-accessible version update action.
+  Selection stays a draft until save, preserves the custom mission and other
+  bindings, and disables edits during save. Existing 409 handling applies.
+- Model settings are reachable from each specialist. Tree token budgets are
+  labeled cumulative; returned-text caps are documented in characters.
+- Regression tests cover the one-token overflow, large schemas, growing tool
+  results, output fallback, stream opening recovery and non-retryable failures.

@@ -7,7 +7,22 @@ when the owner wants the runtime to use those external bounds directly.
 ## Interactive chat
 
 - `0` output tokens means the model's advertised maximum; a positive value is
-  an agent-specific ceiling. The context window can still reduce it.
+  an agent-specific ceiling. The context window can still reduce it. If the
+  provider has no positive output limit, the fallback is 16,384 tokens, never
+  the entire context window. This fallback does not cap the input context.
+- Before quota admission, the final SDK request is fitted again using its
+  system/messages, resolved tool schemas and response format. UTF-8 estimates
+  and a proportional safety margin reduce the output reservation without
+  deleting the user's history. Binary transport size is not used as an image
+  token count; multimodal accounting remains an estimate.
+- One explicit HTTP 400 context rejection with usable provider input/output
+  counts may reduce the output reservation and retry the model call once.
+  Already-open streams, ambiguous errors, and inputs that already fill the
+  window are never replayed. Completed tools are not re-executed.
+- With conversation memory enabled, a missing or `0` summary threshold is
+  model-relative: reserve the greater of 16,384 tokens and 15% of the window,
+  capped at half the window for small models. Positive saved thresholds remain
+  unchanged. Unknown windows retain the 24,000-token fallback threshold.
 - The loop stops after one step without tools, or after at most
   `maxToolCalls + 2` steps with tools. The extra steps allow tool results to be
   synthesized into a final answer.
@@ -27,6 +42,9 @@ when the owner wants the runtime to use those external bounds directly.
 
 ## Orchestrated runs
 
+- New orchestrators default to `maxTotalTokens: 0`: no arbitrary 50,000-token
+  tree cap. Provider limits and workspace quota still apply. Existing explicit
+  tree budgets are preserved; depth, parallelism and step defaults stay bounded.
 - A specialist has at least two model steps whenever tools or nested
   delegation are available: one action step and one final synthesis step.
 - The active agent version's `toolChoice` (`auto`, `required`, or `none`) is
@@ -70,3 +88,16 @@ when the owner wants the runtime to use those external bounds directly.
 The shared policy lives in `src/modules/agent/runtime-policy.ts`. API validation
 and the agent editor share the same `0` semantics so saved configurations and
 runtime behavior stay aligned.
+
+## Reference implementations
+
+The design was compared with [OMP compaction](https://github.com/can1357/oh-my-pi/blob/97f945c130d9dc1cb026932adb415359217a2fad/docs/compaction.md),
+[OMP reserves](https://github.com/can1357/oh-my-pi/blob/97f945c130d9dc1cb026932adb415359217a2fad/docs/settings.md),
+and [Pi's subagent example](https://github.com/badlogic/pi-mono/blob/7f06f9cf1626504cde95683f1c81a72a7bc7a0cb/packages/coding-agent/examples/extensions/subagent/README.md).
+Maiah independently implements the applicable patterns: isolated specialist
+context, model-relative headroom, bounded overflow recovery, final-result-only
+handoff, and propagated cancellation. OMP's process/hub lifecycle is not copied;
+Maiah retains durable runs, permissions, pinned versions and quota settlement.
+This change does not introduce autonomous child-session compaction or implicit
+parent-history inheritance. Specialists still receive the explicit mission and
+authorized attachment context; their runtime fits each subsequent model call.

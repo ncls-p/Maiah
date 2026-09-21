@@ -38,7 +38,9 @@ export function resolveAgentRuntimeLimits(input: {
       : Math.max(
           1,
           boundedInteger(
-            input.providerMaxOutputTokens ?? input.providerContextWindow,
+            (input.providerMaxOutputTokens ?? 0) > 0
+              ? input.providerMaxOutputTokens
+              : undefined,
             agentRuntimePolicy.defaultMaxOutputTokens,
           ),
         );
