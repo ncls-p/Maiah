@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { Client } from "pg";
 import { verifyPassword } from "better-auth/crypto";
+import { retryRateLimitedAuth } from "./fixtures.auth-rate-limit";
 import {
   databaseUrl,
   e2eMember,
@@ -126,14 +127,19 @@ test("only admins can set a user's password from the people list", async ({
     expect(
       await verifyPassword({ hash: account.password, password: newPassword }),
     ).toBe(true);
-    const oldLogin = await anonymous.request.post("/api/auth/sign-in/email", {
-      data: { email: e2eMember.email, password: e2eMember.password },
-    });
+    // Browser and API logins share the production limiter's client IP.
+    const oldLogin = await retryRateLimitedAuth(() =>
+      anonymous.request.post("/api/auth/sign-in/email", {
+        data: { email: e2eMember.email, password: e2eMember.password },
+      }),
+    );
     expect(oldLogin.status()).toBe(401);
-    const newLogin = await anonymous.request.post("/api/auth/sign-in/email", {
-      data: { email: e2eMember.email, password: newPassword },
-    });
-    expect(newLogin.ok()).toBe(true);
+    const newLogin = await retryRateLimitedAuth(() =>
+      anonymous.request.post("/api/auth/sign-in/email", {
+        data: { email: e2eMember.email, password: newPassword },
+      }),
+    );
+    expect(newLogin.status()).toBe(200);
   } finally {
     await ensureE2EMember();
     await memberContext.close();
