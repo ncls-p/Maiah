@@ -1,3 +1,4 @@
+import { SetUserPasswordDialog } from "./set-user-password-dialog";
 import { ImpersonatePerson } from "./impersonate-person";
 import {
   ArrowRightLeftIcon,
@@ -31,6 +32,7 @@ export function AccessPeopleRowMenu({
   person: Person;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const {
     busyPlatformUserId,
     canManageMembers,
@@ -139,6 +141,10 @@ export function AccessPeopleRowMenu({
           {platformUsers ? (
             <>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setPasswordOpen(true)}>
+                <LockKeyholeIcon aria-hidden="true" />
+                {t("passwordReset.title")}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={isCurrentUser}
                 onSelect={() =>
@@ -192,6 +198,14 @@ export function AccessPeopleRowMenu({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+      {platformUsers && passwordOpen ? (
+        <SetUserPasswordDialog
+          userId={person.userId}
+          name={person.name}
+          email={person.email}
+          onClose={() => setPasswordOpen(false)}
+        />
+      ) : null}
       <AccessPeopleAccessDetails
         model={model}
         person={person}

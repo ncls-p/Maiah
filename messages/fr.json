@@ -3127,6 +3127,18 @@
     "suspendAccount": "Suspendre le compte",
     "restoreAccount": "Réactiver le compte",
     "accountUpdated": "Compte mis à jour",
+    "passwordReset": {
+      "title": "Définir un mot de passe",
+      "description": "Définissez un nouveau mot de passe pour {name} ({email}). L’ancien mot de passe sera remplacé. Transmettez le nouveau par un canal sécurisé.",
+      "newPassword": "Nouveau mot de passe",
+      "confirmation": "Confirmer le mot de passe",
+      "hint": "Entre 8 et 128 caractères. Aucun e-mail ne sera envoyé.",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "cancel": "Annuler",
+      "save": "Enregistrer le mot de passe",
+      "success": "Mot de passe mis à jour",
+      "error": "Impossible de modifier le mot de passe. Vérifiez vos droits et réessayez."
+    },
     "showMore": "Afficher {count} de plus",
     "noSearchResults": "Aucun résultat correspondant",
     "noSearchResultsDescription": "Essayez un autre nom, e-mail, rôle, droit ou équipe.",

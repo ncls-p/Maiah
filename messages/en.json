@@ -3127,6 +3127,18 @@
     "suspendAccount": "Suspend account",
     "restoreAccount": "Restore account",
     "accountUpdated": "Account updated",
+    "passwordReset": {
+      "title": "Set password",
+      "description": "Set a new password for {name} ({email}). This replaces the old password. Share the new one through a secure channel.",
+      "newPassword": "New password",
+      "confirmation": "Confirm password",
+      "hint": "Between 8 and 128 characters. No email will be sent.",
+      "mismatch": "The passwords do not match.",
+      "cancel": "Cancel",
+      "save": "Save password",
+      "success": "Password updated",
+      "error": "Unable to update the password. Check your permissions and try again."
+    },
     "showMore": "Show {count} more",
     "noSearchResults": "No matching results",
     "noSearchResultsDescription": "Try another name, email, role, permission, or team.",
