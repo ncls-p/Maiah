@@ -46,7 +46,6 @@ export function codeSandboxInputFromUnknown(
   return {
     language: normalizeCodeSandboxLanguage(record.language),
     code: record.code,
-    showToUser: record.showToUser === true,
     files,
     attachments,
   };
@@ -57,22 +56,6 @@ export function isCodeSandboxToolName(toolName: string | undefined) {
     toolName === "run_code_sandbox" ||
     Boolean(toolName?.endsWith("_run_code_sandbox"))
   );
-}
-
-export function shouldShowCodeSandboxToUser(
-  input: unknown,
-  inputText?: string,
-) {
-  const parsedInput = codeSandboxInputFromUnknown(input);
-  if (parsedInput) return parsedInput.showToUser;
-  if (!inputText) return false;
-  try {
-    return (
-      codeSandboxInputFromUnknown(JSON.parse(inputText))?.showToUser === true
-    );
-  } catch {
-    return /"showToUser"\s*:\s*true(?:\s*[,}])?/.test(inputText);
-  }
 }
 
 export function htmlArtifactFromToolInput(
@@ -145,7 +128,6 @@ export function codeSandboxInputFromInputText(inputText: string | undefined) {
         extractJsonStringField(inputText, "language"),
       ),
       code,
-      showToUser: /"showToUser"\s*:\s*true(?:\s*[,}])?/.test(inputText),
       files: [],
       attachments: [],
     };

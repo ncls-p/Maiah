@@ -641,6 +641,7 @@
       "sourceCode": "Source code",
       "done": "Done",
       "failed": "Failed",
+      "sandboxExecutionFailed": "Execution failed",
       "executedCode": "Executed {language} code",
       "inputFiles": "{count, plural, one {# input file} other {# input files}}",
       "attachments": "{count, plural, one {# attachment} other {# attachments}}",

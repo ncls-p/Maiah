@@ -29,10 +29,12 @@ export function CodeSandboxResultCard({
   result,
   input,
   embedded = false,
+  filesHidden = false,
 }: {
   result: CodeSandboxOutput;
   input?: CodeSandboxInputPreview | null;
   embedded?: boolean;
+  filesHidden?: boolean;
 }) {
   const t = useTranslations("chat.artifacts");
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -145,7 +147,7 @@ export function CodeSandboxResultCard({
             </pre>
           </div>
         ) : null}
-        {outputFiles.length > 0 ? (
+        {outputFiles.length > 0 && !filesHidden ? (
           <div className="flex flex-col gap-2">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {t("generatedFiles", { count: outputFiles.length })}

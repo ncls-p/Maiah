@@ -8,12 +8,12 @@ export {
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
   isCodeSandboxToolName,
-  shouldShowCodeSandboxToUser,
 } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
 export {
   chatFileAttachmentFromPartContent,
   chatImageAttachmentFromPartContent,
   codeSandboxOutputFromUnknown,
+  codeSandboxOutputHasDeliverableFiles,
   codeSandboxToolVisualState,
   codeWorkspaceArtifactFromPartContent,
   latestChatTodoListFromMessages,

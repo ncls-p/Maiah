@@ -641,6 +641,7 @@
       "sourceCode": "Code source",
       "done": "Terminé",
       "failed": "Échec",
+      "sandboxExecutionFailed": "L’exécution a échoué",
       "executedCode": "Code {language} exécuté",
       "inputFiles": "{count, plural, one {# fichier d’entrée} other {# fichiers d’entrée}}",
       "attachments": "{count, plural, one {# pièce jointe} other {# pièces jointes}}",

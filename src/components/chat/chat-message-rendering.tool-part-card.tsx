@@ -7,6 +7,7 @@ import {
   CodeSandboxResultCard,
   HtmlArtifactCard,
   LiveToolInputCard,
+  SandboxDeliverablesCard,
 } from "@/components/chat/chat-artifact-renderers";
 import {
   chatFileAttachmentFromPartContent,
@@ -14,6 +15,7 @@ import {
   codeSandboxInputFromInputText,
   codeSandboxInputFromUnknown,
   codeSandboxOutputFromUnknown,
+  codeSandboxOutputHasDeliverableFiles,
   codeSandboxToolVisualState,
   codeWorkspaceArtifactFromPartContent,
   delegationFailureDetails,
@@ -26,7 +28,6 @@ import {
   isHtmlArtifactOutput,
   knowledgeContextChunkCount,
   knowledgeSearchResultsFromUnknown,
-  shouldShowCodeSandboxToUser,
   summarizeToolBody,
 } from "@/components/chat/chat-message-rendering-utils";
 import {
@@ -169,9 +170,9 @@ export const ToolPartCard = memo(function ToolPartCard({
         : null,
     [parsed.inputText, parsed.toolName],
   );
-  const showSandboxToUser = useMemo(
-    () => shouldShowCodeSandboxToUser(parsed.input, parsed.inputText),
-    [parsed.input, parsed.inputText],
+  const sandboxHasDeliverableFiles = useMemo(
+    () => codeSandboxOutputHasDeliverableFiles(parsed.output),
+    [parsed.output],
   );
   const summaryText = useMemo(() => {
     if (isDelegation && status === "completed") {
@@ -285,14 +286,8 @@ export const ToolPartCard = memo(function ToolPartCard({
     );
   } else if (fileAttachment) {
     specializedContent = <ChatFileAttachmentCard attachment={fileAttachment} />;
-  } else if (sandboxOutput && showSandboxToUser) {
-    specializedContent = (
-      <CodeSandboxResultCard
-        result={sandboxOutput}
-        input={sandboxInput}
-        embedded
-      />
-    );
+  } else if (sandboxOutput && sandboxHasDeliverableFiles) {
+    specializedContent = <SandboxDeliverablesCard result={sandboxOutput} />;
   } else if (isQuestionForm(parsed.output)) {
     specializedContent = <QuestionFormCard value={parsed.output} />;
   } else if (isHtmlArtifactOutput(parsed.output)) {
@@ -353,6 +348,9 @@ export const ToolPartCard = memo(function ToolPartCard({
   }
 
   if (specializedContent) {
+    const isSandboxDeliverables = Boolean(
+      sandboxOutput && sandboxHasDeliverableFiles,
+    );
     return (
       <section
         className={cn(
@@ -388,15 +386,29 @@ export const ToolPartCard = memo(function ToolPartCard({
           <summary className="cursor-pointer text-muted-foreground">
             {t("showActionDetails")}
           </summary>
-          {displayInput !== undefined ? (
-            <ToolPayloadViewer label={t("actionInput")} value={displayInput} />
-          ) : null}
-          {parsed.output !== undefined ? (
-            <ToolPayloadViewer
-              label={t("actionOutput")}
-              value={parsed.output}
+          {isSandboxDeliverables && sandboxOutput ? (
+            <CodeSandboxResultCard
+              result={sandboxOutput}
+              input={sandboxInput}
+              embedded
+              filesHidden
             />
-          ) : null}
+          ) : (
+            <>
+              {displayInput !== undefined ? (
+                <ToolPayloadViewer
+                  label={t("actionInput")}
+                  value={displayInput}
+                />
+              ) : null}
+              {parsed.output !== undefined ? (
+                <ToolPayloadViewer
+                  label={t("actionOutput")}
+                  value={parsed.output}
+                />
+              ) : null}
+            </>
+          )}
         </details>
       </section>
     );

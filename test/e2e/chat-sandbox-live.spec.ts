@@ -26,7 +26,7 @@ async function emit(page: Page, chunks: unknown[], close = false) {
   );
 }
 
-test("shows sandbox code incrementally before showToUser arrives and reopens executed source", async ({
+test("shows sandbox code incrementally and surfaces generated files outside the trace", async ({
   page,
 }) => {
   const { agentId, workspaceId } = await ensureE2EAssistant();
@@ -106,7 +106,7 @@ test("shows sandbox code incrementally before showToUser arrives and reopens exe
       {
         type: "tool-input-delta",
         toolCallId,
-        inputTextDelta: '","showToUser":true}',
+        inputTextDelta: '"}',
       },
       {
         type: "tool-input-available",
@@ -115,7 +115,6 @@ test("shows sandbox code incrementally before showToUser arrives and reopens exe
         input: {
           language: "python",
           code: "print(41)\nprint(42)",
-          showToUser: true,
         },
       },
       {
@@ -130,14 +129,33 @@ test("shows sandbox code incrementally before showToUser arrives and reopens exe
           durationMs: 12,
           stdout: "41\n42",
           stderr: "",
-          files: [],
+          files: [
+            {
+              path: "report.txt",
+              size: 6,
+              mimeType: "text/plain",
+              textPreview: "41\n42",
+              downloadUrl: "/attachments/report.txt",
+            },
+          ],
         },
       },
       { type: "finish" },
     ],
     true,
   );
+  // Generated files are shown outside the collapsed trace, without any
+  // visibility flag from the model.
+  await expect(page.getByText("report.txt", { exact: true })).toBeVisible();
+  const download = page.getByRole("link", { name: "Download", exact: true });
+  await expect(download).toBeVisible();
+  await expect(download).toHaveAttribute("href", "/attachments/report.txt");
+  // Code, stdout, and stderr stay in the collapsed action details.
+  const details = page.getByText("Show action details", { exact: true });
+  await expect(details).toBeVisible();
+  await details.click();
   const source = page.getByRole("button", { name: "Source code", exact: true });
+  await expect(source).toBeVisible();
   await expect(source).toHaveAttribute("aria-expanded", "false");
   await source.focus();
   await page.keyboard.press("Enter");

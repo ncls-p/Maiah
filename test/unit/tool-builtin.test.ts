@@ -66,30 +66,37 @@ describe("built-in tool registry", () => {
     expect(webSearch!.riskLevel).toBe("medium");
   });
 
-  it("supports model-controlled sandbox visibility", () => {
+  it("exposes no visibility parameter and ignores legacy showToUser", () => {
     const sandbox = getBuiltInToolByName("run_code_sandbox");
     expect(sandbox).not.toBeNull();
 
-    const hidden = sandbox!.inputSchema.safeParse({
+    const parsed = sandbox!.inputSchema.safeParse({
       language: "bash",
       code: "echo ok",
     });
-    expect(hidden.success).toBe(true);
-    if (hidden.success) expect(hidden.data).toMatchObject({ showToUser: false });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).not.toHaveProperty("showToUser");
+    }
 
-    expect(
-      sandbox!.inputSchema.safeParse({
+    for (const showToUser of [true, false]) {
+      const legacy = sandbox!.inputSchema.safeParse({
         language: "bash",
         code: "echo ok",
-        showToUser: true,
+        showToUser,
         attachments: [
           {
             id: "00000000-0000-4000-8000-000000000001",
             path: "attachments/input.txt",
           },
         ],
-      }).success,
-    ).toBe(true);
+      });
+      expect(legacy.success).toBe(true);
+      if (legacy.success) {
+        expect(legacy.data).not.toHaveProperty("showToUser");
+      }
+    }
+
     expect(
       sandbox!.inputSchema.safeParse({
         language: "python",

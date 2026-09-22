@@ -14,10 +14,9 @@ import {
   isCodeSandboxToolName,
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
-  shouldShowCodeSandboxToUser,
 } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
 import {
-  codeSandboxOutputFromUnknown,
+  codeSandboxOutputHasDeliverableFiles,
   isChatImageAttachmentOutput,
 } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 
@@ -204,18 +203,14 @@ export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   const agentContext = parseAgentToolDisplayContext(parsed.agentContext);
   if (agentContext && agentContext.depth > 0) return false;
   const visualToolName = parsed.toolName ?? "";
-  const showSandboxToUser = shouldShowCodeSandboxToUser(
-    parsed.input,
-    parsed.inputText,
-  );
   return Boolean(
     visualToolName === "render_html_artifact" ||
     visualToolName === "generate_image" ||
     (isCodeSandboxToolName(visualToolName) &&
-      (showSandboxToUser || parsed.streamingInput)) ||
+      (parsed.streamingInput === true ||
+        codeSandboxOutputHasDeliverableFiles(parsed.output))) ||
     visualToolName === "github_publish_code_workspace" ||
     visualToolName.startsWith("code_workspace_") ||
-    (codeSandboxOutputFromUnknown(parsed.output) && showSandboxToUser) ||
     isHtmlArtifactOutput(parsed.output) ||
     isGeneratedImageOutput(parsed.output) ||
     isCodeWorkspaceArtifactOutput(parsed.output) ||

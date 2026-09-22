@@ -7,6 +7,36 @@ import {
   summarizeToolBody,
   toolPartHasStandaloneRendering,
 } from "@/components/chat/chat-message-rendering-utils";
+import {
+  parseToolPart,
+  renderablePartsFromMessage,
+  type ChatMessage,
+} from "@/components/chat/chat-types";
+
+function sandboxPart(content: Record<string, unknown>) {
+  return {
+    type: "tool-result",
+    content: JSON.stringify({
+      toolCallId: "sandbox-call",
+      toolName: "run_code_sandbox",
+      ...content,
+    }),
+  };
+}
+
+function sandboxOutput(files: unknown[], ok = true) {
+  return {
+    kind: "code_sandbox_result",
+    ok,
+    language: "python",
+    exitCode: ok ? 0 : 1,
+    timedOut: false,
+    durationMs: 10,
+    stdout: "",
+    stderr: ok ? "" : "Traceback (most recent call last):",
+    files,
+  };
+}
 
 describe("code sandbox result rendering", () => {
   it("previews a structured result instead of its object key", () => {
@@ -115,30 +145,197 @@ describe("code sandbox result rendering", () => {
     ).toBe(false);
   });
 
-  it("shows a sandbox standalone only when the model explicitly requests it", () => {
+  it("shows generated files standalone without any visibility flag", () => {
     expect(
-      toolPartHasStandaloneRendering({
-        type: "tool-call",
-        content: JSON.stringify({
-          toolName: "run_code_sandbox",
-          input: { language: "python", code: "print(1)" },
-        }),
-      }),
+      toolPartHasStandaloneRendering(
+        sandboxPart({ input: { language: "python", code: "print(1)" } }),
+      ),
     ).toBe(false);
 
     expect(
-      toolPartHasStandaloneRendering({
-        type: "tool-call",
-        content: JSON.stringify({
-          toolName: "run_code_sandbox",
+      toolPartHasStandaloneRendering(
+        sandboxPart({ input: { language: "python", code: "print(1)" }, output: sandboxOutput([]) }),
+      ),
+    ).toBe(false);
+
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
+          input: { language: "python", code: "print(1)" },
+          output: sandboxOutput([
+            {
+              path: "report.txt",
+              size: 8,
+              mimeType: "text/plain",
+              downloadUrl: "/attachments/report.txt",
+            },
+          ]),
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps legacy showToUser calls readable without blocking files", () => {
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
+          input: {
+            language: "python",
+            code: "print(1)",
+            showToUser: false,
+          },
+          output: sandboxOutput([
+            { path: "report.txt", size: 8, mimeType: "text/plain" },
+          ]),
+        }),
+      ),
+    ).toBe(true);
+
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
           input: {
             language: "python",
             code: "print(1)",
             showToUser: true,
           },
+          output: sandboxOutput([]),
         }),
-      }),
+      ),
+    ).toBe(false);
+  });
+
+  it("separates unchanged inputs from deliverables for visibility", () => {
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
+          output: sandboxOutput([
+            {
+              path: "data.bin",
+              size: 3,
+              mimeType: "application/octet-stream",
+              fromInput: true,
+              modified: false,
+            },
+          ]),
+        }),
+      ),
+    ).toBe(false);
+
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
+          output: sandboxOutput([
+            {
+              path: "data.bin",
+              size: 3,
+              mimeType: "application/octet-stream",
+              fromInput: true,
+              modified: true,
+            },
+          ]),
+        }),
+      ),
     ).toBe(true);
+
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
+          output: sandboxOutput([
+            { path: "a.txt", size: 1, mimeType: "text/plain" },
+            { path: "b.txt", size: 1, mimeType: "text/plain" },
+          ]),
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("shows generated-but-unavailable files with an explicit state", () => {
+    for (const file of [
+      {
+        path: "broken.txt",
+        size: 8,
+        mimeType: "text/plain",
+        downloadError: "object storage unavailable",
+      },
+      { path: "big.txt", size: 9_000_000, mimeType: "text/plain", skipped: "too_large" },
+      {
+        path: "omitted.txt",
+        size: 40,
+        mimeType: "text/plain",
+        contentOmitted: "total_limit",
+      },
+    ]) {
+      expect(
+        toolPartHasStandaloneRendering(
+          sandboxPart({ output: sandboxOutput([file]) }),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("keeps failed runs with persisted files visible without hiding the failure", () => {
+    const part = sandboxPart({
+      output: sandboxOutput(
+        [
+          {
+            path: "report.txt",
+            size: 8,
+            mimeType: "text/plain",
+            downloadUrl: "/attachments/report.txt",
+          },
+        ],
+        false,
+      ),
+    });
+
+    expect(toolPartHasStandaloneRendering(part)).toBe(true);
+    const parsed = parseToolPart(part.content);
+    expect(codeSandboxOutputFromUnknown(parsed.output)?.ok).toBe(false);
+    expect(codeSandboxToolVisualState(parsed.output, "error")).toBe(
+      "completed",
+    );
+  });
+
+  it("merges persisted tool-call and tool-result parts into one renderable part", () => {
+    const message: ChatMessage = {
+      id: "message-1",
+      role: "assistant",
+      status: "completed",
+      parts: [
+        {
+          type: "tool-call",
+          content: JSON.stringify({
+            toolCallId: "sandbox-call",
+            toolName: "run_code_sandbox",
+            input: { language: "python", code: "print(1)" },
+          }),
+        },
+        {
+          type: "tool-result",
+          content: JSON.stringify({
+            toolCallId: "sandbox-call",
+            toolName: "run_code_sandbox",
+            output: sandboxOutput([
+              {
+                path: "report.txt",
+                size: 8,
+                mimeType: "text/plain",
+                downloadUrl: "/attachments/report.txt",
+              },
+            ]),
+          }),
+        },
+      ],
+    };
+
+    const parts = renderablePartsFromMessage(message);
+    const toolParts = parts.filter(
+      (part) => part.type === "tool-call" || part.type === "tool-result",
+    );
+
+    expect(toolParts).toHaveLength(1);
+    expect(toolPartHasStandaloneRendering(toolParts[0])).toBe(true);
   });
 
   it("shows sandbox code while streaming before the final visibility flag", () => {

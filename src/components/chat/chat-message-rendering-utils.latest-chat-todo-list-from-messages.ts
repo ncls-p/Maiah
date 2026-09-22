@@ -110,7 +110,6 @@ export type CodeSandboxOutput = {
 export type CodeSandboxInputPreview = {
   language: CodeSandboxLanguage | null;
   code: string;
-  showToUser: boolean;
   files: Array<{ path: string }>;
   attachments: Array<{ id: string; path?: string }>;
 };
@@ -183,6 +182,19 @@ export function partitionCodeSandboxFiles(files: CodeSandboxFileOutput[]) {
   }
 
   return { inputFiles, outputFiles };
+}
+
+/**
+ * Single source of truth for sandbox visibility: a completed sandbox run is
+ * rendered outside the collapsed trace only when it produced at least one
+ * deliverable file (created, or an input file that was modified). Runs without
+ * generated files stay in the collapsed tool trace. Legacy `showToUser` input
+ * is intentionally ignored.
+ */
+export function codeSandboxOutputHasDeliverableFiles(output: unknown) {
+  const result = codeSandboxOutputFromUnknown(output);
+  if (!result) return false;
+  return partitionCodeSandboxFiles(result.files).outputFiles.length > 0;
 }
 
 function isCodeSandboxOutput(value: unknown): value is CodeSandboxOutput {
