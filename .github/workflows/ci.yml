@@ -141,27 +141,6 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Run unit tests with coverage
-        run: npm run test:coverage
-        env:
-          NODE_ENV: "test"
-          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_hub_test"
-          DATABASE_SSL_REJECT_UNAUTHORIZED: "disable"
-          BETTER_AUTH_SECRET: "test-secret-for-ci-pipeline-only"
-          BETTER_AUTH_URL: "http://localhost:3000"
-          BETTER_AUTH_TRUSTED_ORIGINS: "http://localhost:3000"
-          APP_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-          OBJECT_STORAGE_BUCKET: "test-bucket"
-          OBJECT_STORAGE_ACCESS_KEY_ID: "test"
-          OBJECT_STORAGE_SECRET_ACCESS_KEY: "testtesttesttest"
-          DRAGONFLY_URL: "redis://localhost:6379"
-          DRAGONFLY_PASSWORD: "ci-runtime-cache-secret-2026"
-          DRAGONFLY_INTEGRATION_URL: "redis://:ci-runtime-cache-secret-2026@localhost:6379"
-          IAM_INTEGRATION_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_hub_test"
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
       - name: Start object storage
         run: |
           docker run --detach --name ci-rustfs \
@@ -189,6 +168,34 @@ jobs:
             amazon/aws-cli:2.32.3 \
             --endpoint-url http://localhost:3900 \
             s3api create-bucket --bucket test-bucket
+
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+        env:
+          NODE_ENV: "test"
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_hub_test"
+          DATABASE_SSL_REJECT_UNAUTHORIZED: "disable"
+          BETTER_AUTH_SECRET: "test-secret-for-ci-pipeline-only"
+          BETTER_AUTH_URL: "http://localhost:3000"
+          BETTER_AUTH_TRUSTED_ORIGINS: "http://localhost:3000"
+          APP_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          OBJECT_STORAGE_BUCKET: "test-bucket"
+          OBJECT_STORAGE_ACCESS_KEY_ID: "test"
+          OBJECT_STORAGE_SECRET_ACCESS_KEY: "testtesttesttest"
+          DRAGONFLY_URL: "redis://localhost:6379"
+          DRAGONFLY_PASSWORD: "ci-runtime-cache-secret-2026"
+          DRAGONFLY_INTEGRATION_URL: "redis://:ci-runtime-cache-secret-2026@localhost:6379"
+          IAM_INTEGRATION_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_hub_test"
+          RUN_DATA_PORTABILITY_E2E: "1"
+          PORTABILITY_TEST_DATABASE_URL: >-
+            postgresql://postgres:postgres@localhost:5432/postgres
+          PORTABILITY_TEST_STORAGE_ENDPOINT: "http://localhost:3900"
+          PORTABILITY_TEST_STORAGE_ACCESS_KEY_ID: "ci-runtime-access"
+          PORTABILITY_TEST_STORAGE_SECRET_ACCESS_KEY: >-
+            ci-runtime-object-secret-2026
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Build
         run: npm run build

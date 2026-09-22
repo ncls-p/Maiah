@@ -30,10 +30,13 @@ import { transformSecrets } from "@/modules/data-portability/secrets";
 import { pauseRestoredData } from "@/modules/data-portability/restore-policy";
 import { seedPortability } from "./data-portability.fixture";
 import { transformAccountTokens } from "@/modules/data-portability/oauth-tokens";
+import {
+  portabilityTestDatabaseUrl,
+  portabilityTestStorage,
+} from "./data-portability-environment";
 
 const enabled = process.env.RUN_DATA_PORTABILITY_E2E === "1";
-const localUrl =
-  "postgres://postgres:deo62-local-only@127.0.0.1:15462/postgres";
+const localUrl = portabilityTestDatabaseUrl;
 const password = "local-portability-test-passphrase";
 const clients: ReturnType<typeof connectPortability>[] = [];
 const configs: ConnectionConfig[] = [];
@@ -63,12 +66,12 @@ describe.skipIf(!enabled)(
     beforeAll(async () => {
       admin = new Pool({ connectionString: localUrl });
       storage = new S3Client({
-        endpoint: "http://127.0.0.1:19462",
-        region: "us-east-1",
-        forcePathStyle: true,
+        endpoint: portabilityTestStorage.endpoint,
+        region: portabilityTestStorage.region,
+        forcePathStyle: portabilityTestStorage.forcePathStyle,
         credentials: {
-          accessKeyId: "deo62local",
-          secretAccessKey: "deo62-local-storage-only",
+          accessKeyId: portabilityTestStorage.accessKeyId,
+          secretAccessKey: portabilityTestStorage.secretAccessKey,
         },
       });
       for (const [index, name] of names.entries()) {
@@ -80,18 +83,14 @@ describe.skipIf(!enabled)(
           new CreateBucketCommand({ Bucket: name.replaceAll("_", "-") }),
         );
         const config: ConnectionConfig = {
-          databaseUrl: localUrl.replace(/\/postgres$/, `/${name}`),
+          databaseUrl: new URL(`/${name}`, localUrl).toString(),
           databaseSsl: false,
           encryptionKey: String(index + 1).repeat(64),
           encryptionKeyId: `key-${index}`,
           authSecret: `independent-auth-secret-for-instance-${index}`,
           storage: {
-            endpoint: "http://127.0.0.1:19462",
-            region: "us-east-1",
+            ...portabilityTestStorage,
             bucket: name.replaceAll("_", "-"),
-            accessKeyId: "deo62local",
-            secretAccessKey: "deo62-local-storage-only",
-            forcePathStyle: true,
           },
           prefixes: {
             attachments: "chat-attachments",
