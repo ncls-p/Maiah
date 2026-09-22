@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { DataPortabilityPanel } from "./data-portability-panel";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getSession } from "@/modules/auth/session";
 import { getRegistrationSetting } from "@/modules/admin/use-cases";
@@ -15,6 +16,8 @@ import { UsageLimitsPanel } from "@/components/iam/usage-limits-panel";
 export async function PlatformSettingsPage({ section }: { section: string }) {
   if (!(await isPlatformAdminSession(await getSession()))) notFound();
   switch (section) {
+    case "data":
+      return <DataPortabilityPanel />;
     case "registration":
       return (
         <RegistrationSettings initialState={await getRegistrationSetting()} />

@@ -22,7 +22,7 @@ export function SettingsSidebar({
   const groups = [
     {
       label: "organization",
-      sections: [...organizationSettingsSections, "connections"],
+      sections: [...organizationSettingsSections.filter((section) => isPlatformAdmin || section !== "organization-data"), "connections"],
     },
     ...(isPlatformAdmin
       ? [{ label: "platform", sections: [...platformSettingsSections] }]

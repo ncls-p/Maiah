@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { DataPortabilityPanel } from "./data-portability-panel";
 import { OrganizationBrandingCard } from "@/app/[locale]/(workspace)/admin/settings/organization-branding-card";
 import { OrganizationSettingsScope } from "./organization-settings-scope";
 import { CompanionSettings } from "./companion-settings";
@@ -31,7 +32,9 @@ export function OrganizationSettingsPage({
       description={t("scope")}
     >
       {(organization, refresh) =>
-        section === "branding" ? (
+        section === "organization-data" ? (
+          <DataPortabilityPanel key={organization.id} organizationId={organization.id} />
+        ) : section === "branding" ? (
           <OrganizationBrandingCard onSaved={refresh} />
         ) : organization.canManageSettings && Component ? (
           <Component />

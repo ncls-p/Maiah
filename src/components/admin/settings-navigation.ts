@@ -1,5 +1,6 @@
 export const organizationSettingsSections = [
   "organizations",
+  "organization-data",
   "projects",
   "members",
   "branding",
@@ -10,6 +11,7 @@ export const organizationSettingsSections = [
 ] as const;
 export const platformSettingsSections = [
   "registration",
+  "data",
   "health",
   "impact",
   "rag",

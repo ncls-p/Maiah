@@ -27,7 +27,7 @@ export default async function SettingsSectionPage({
   )
     notFound();
   if (
-    isPlatformSettingsSection(section) &&
+    (isPlatformSettingsSection(section) || section === "organization-data") &&
     !(await isPlatformAdminSession(await getSession()))
   )
     notFound();
