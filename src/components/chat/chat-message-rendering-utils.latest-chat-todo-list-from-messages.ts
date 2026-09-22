@@ -140,6 +140,8 @@ function normalizeSandboxFileOutput(
 ): CodeSandboxFileOutput | null {
   if (!isCodeSandboxFileOutput(value)) return null;
   const record = value as Record<string, unknown>;
+  const contentOmitted =
+    record.skipped === "too_large" ? "too_large" : record.contentOmitted;
   return {
     path: value.path,
     size: value.size,
@@ -150,9 +152,8 @@ function normalizeSandboxFileOutput(
     ...(typeof record.truncated === "boolean"
       ? { truncated: record.truncated }
       : {}),
-    ...(record.contentOmitted === "too_large" ||
-    record.contentOmitted === "total_limit"
-      ? { contentOmitted: record.contentOmitted }
+    ...(contentOmitted === "too_large" || contentOmitted === "total_limit"
+      ? { contentOmitted }
       : {}),
     ...(typeof record.downloadUrl === "string"
       ? { downloadUrl: record.downloadUrl }

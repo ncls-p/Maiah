@@ -274,6 +274,21 @@ describe("code sandbox result rendering", () => {
     }
   });
 
+  it.each([
+    [{ skipped: "too_large" }, "too_large"],
+    [{ contentOmitted: "too_large" }, "too_large"],
+    [{ contentOmitted: "total_limit" }, "total_limit"],
+  ])("preserves an unavailable file reason for the file card: %j", (reason, expected) => {
+    const result = codeSandboxOutputFromUnknown(sandboxOutput([
+      { path: "report.txt", size: 9_000_000, mimeType: "text/plain", ...reason },
+    ]));
+
+    expect(result?.files[0]).toMatchObject({ contentOmitted: expected });
+    expect(result?.files[0]).not.toHaveProperty("downloadUrl");
+    // Persisted conversations go through the same normalization on reload.
+    expect(codeSandboxOutputFromUnknown(result)?.files).toEqual(result?.files);
+  });
+
   it("keeps failed runs with persisted files visible without hiding the failure", () => {
     const part = sandboxPart({
       output: sandboxOutput(
