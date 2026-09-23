@@ -8,10 +8,13 @@ export {
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
   isCodeSandboxToolName,
+  pendingCodeSandboxInput,
 } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
 export {
   chatFileAttachmentFromPartContent,
   chatImageAttachmentFromPartContent,
+  codeSandboxFailureSummary,
+  codeSandboxFileAvailability,
   codeSandboxOutputFromUnknown,
   codeSandboxOutputHasDeliverableFiles,
   codeSandboxToolVisualState,
@@ -20,6 +23,7 @@ export {
   partitionCodeSandboxFiles,
 } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 export type {
+  CodeSandboxFileAvailability,
   CodeSandboxFileOutput,
   CodeSandboxInputPreview,
   CodeSandboxLanguage,

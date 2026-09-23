@@ -4,9 +4,13 @@ import { DownloadIcon, Maximize2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { type CodeSandboxFileOutput } from "@/components/chat/chat-message-rendering-utils";
+import {
+  codeSandboxFileAvailability,
+  type CodeSandboxFileOutput,
+} from "@/components/chat/chat-message-rendering-utils";
 import { formatBytes } from "@/components/chat/code-workspace-artifact-card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { FilePreviewDialog } from "@/components/chat/file-preview";
 import { OUTLINE_VARIANT } from "./chat-artifact-renderers.max-live-tool-input-chars";
 
@@ -16,12 +20,17 @@ export function SandboxOutputFileCard({
   file: CodeSandboxFileOutput;
 }) {
   const t = useTranslations("chat.artifacts");
-  const omittedLabel =
-    file.contentOmitted === "too_large"
-      ? t("fileTooLarge")
-      : file.contentOmitted === "total_limit"
-        ? t("attachmentLimitReached")
-        : null;
+  const availability = codeSandboxFileAvailability(file);
+  const unavailableReason =
+    availability.kind === "omitted"
+      ? availability.reason === "too_large"
+        ? t("fileTooLarge")
+        : t("attachmentLimitReached")
+      : availability.kind === "download_failed"
+        ? t("sandboxFileDownloadFailed")
+        : availability.kind === "unavailable"
+          ? t("sandboxFileUnavailable")
+          : null;
   const [previewOpen, setPreviewOpen] = useState(false);
   const isPdf =
     file.mimeType === "application/pdf" ||
@@ -50,6 +59,7 @@ export function SandboxOutputFileCard({
                   size="sm"
                   className="h-10 shrink-0 rounded-xl px-3 text-[11px]"
                   onClick={() => setPreviewOpen(true)}
+                  aria-label={t("viewFile", { path: file.path })}
                 >
                   <Maximize2Icon data-icon="inline-start" aria-hidden="true" />
                   {t("view")}
@@ -61,7 +71,12 @@ export function SandboxOutputFileCard({
                 size="sm"
                 className="h-10 shrink-0 rounded-xl px-3 text-[11px]"
               >
-                <a href={file.downloadUrl} target="_blank" rel="noreferrer">
+                <a
+                  href={file.downloadUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={t("downloadFile", { path: file.path })}
+                >
                   <DownloadIcon data-icon="inline-start" aria-hidden="true" />
                   {t("download")}
                 </a>
@@ -69,14 +84,21 @@ export function SandboxOutputFileCard({
             </div>
           ) : null}
         </div>
-        {file.downloadError ? (
-          <p className="mt-2 text-[11px] text-destructive">
-            {file.downloadError}
-          </p>
-        ) : null}
-        {omittedLabel ? (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {omittedLabel}
+        {unavailableReason ? (
+          <p
+            className={cn(
+              "mt-2 text-[11px]",
+              availability.kind === "download_failed"
+                ? "text-destructive"
+                : "text-muted-foreground",
+            )}
+            title={
+              availability.kind === "download_failed"
+                ? availability.detail
+                : undefined
+            }
+          >
+            {unavailableReason}
           </p>
         ) : null}
         {file.downloadUrl && isImage ? (
@@ -84,7 +106,7 @@ export function SandboxOutputFileCard({
             type="button"
             className="mt-2 block w-full overflow-hidden rounded-lg bg-muted/30 text-left"
             onClick={() => setPreviewOpen(true)}
-            aria-label={t("view")}
+            aria-label={t("viewFile", { path: file.path })}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

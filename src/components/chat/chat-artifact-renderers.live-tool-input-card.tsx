@@ -13,13 +13,24 @@ export function LiveToolInputCard({
   inputText,
   sandboxInput,
   embedded = false,
+  phase = "writing",
 }: {
   toolName: string;
   inputText: string;
   sandboxInput?: CodeSandboxInputPreview | null;
   embedded?: boolean;
+  /** writing: input streaming; running: executing; approval: awaiting approval. */
+  phase?: "writing" | "running" | "approval";
 }) {
   const t = useTranslations("chat.artifacts");
+  const language = sandboxInput?.language ?? "sandbox";
+  const statusText = !sandboxInput
+    ? t("writingInput")
+    : phase === "running"
+      ? t("runningCode", { language })
+      : phase === "approval"
+        ? t("codeAwaitingApproval", { language })
+        : t("writingCode", { language });
   const codeRef = useRef<HTMLPreElement>(null);
   const followCode = useRef(true);
   const visibleInputText = useMemo(() => {
@@ -52,30 +63,25 @@ export function LiveToolInputCard({
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-foreground">{toolName}</p>
           <p
-            className="t-shimmer truncate text-[11px] text-muted-foreground"
-            data-text={
-              sandboxInput
-                ? t("writingCode", {
-                    language: sandboxInput.language ?? "sandbox",
-                  })
-                : t("writingInput")
-            }
+            className={cn(
+              "truncate text-[11px] text-muted-foreground",
+              phase !== "approval" && "t-shimmer",
+            )}
+            data-text={statusText}
           >
-            {sandboxInput
-              ? t("writingCode", {
-                  language: sandboxInput.language ?? "sandbox",
-                })
-              : t("writingInput")}
+            {statusText}
           </p>
         </div>
-        <span
-          className="streaming-thinking__dots mr-2 text-primary"
-          aria-hidden="true"
-        >
-          <span />
-          <span />
-          <span />
-        </span>
+        {phase !== "approval" ? (
+          <span
+            className="streaming-thinking__dots mr-2 text-primary"
+            aria-hidden="true"
+          >
+            <span />
+            <span />
+            <span />
+          </span>
+        ) : null}
       </div>
       {sandboxInput ? (
         <div className="flex flex-wrap gap-2 border-b border-border/40 px-3 py-2 text-[10px] text-muted-foreground">

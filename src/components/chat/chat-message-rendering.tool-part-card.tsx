@@ -28,6 +28,7 @@ import {
   isHtmlArtifactOutput,
   knowledgeContextChunkCount,
   knowledgeSearchResultsFromUnknown,
+  pendingCodeSandboxInput,
   summarizeToolBody,
 } from "@/components/chat/chat-message-rendering-utils";
 import {
@@ -170,9 +171,22 @@ export const ToolPartCard = memo(function ToolPartCard({
         : null,
     [parsed.inputText, parsed.toolName],
   );
-  const sandboxHasDeliverableFiles = useMemo(
-    () => codeSandboxOutputHasDeliverableFiles(parsed.output),
-    [parsed.output],
+  const pendingSandboxInput = useMemo(
+    () =>
+      visualState === "pending" || visualState === "approval"
+        ? pendingCodeSandboxInput({
+            ...parsed,
+            input: displayInput ?? parsed.input,
+          })
+        : null,
+    [displayInput, parsed, visualState],
+  );
+  const sandboxDeliverables = useMemo(
+    () =>
+      sandboxOutput && codeSandboxOutputHasDeliverableFiles(sandboxOutput)
+        ? sandboxOutput
+        : null,
+    [sandboxOutput],
   );
   const summaryText = useMemo(() => {
     if (isDelegation && status === "completed") {
@@ -269,6 +283,37 @@ export const ToolPartCard = memo(function ToolPartCard({
     t,
   ]);
 
+  const approvalControls = approval ? (
+    <div className="bg-warning/[0.035] px-2.5 py-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] text-muted-foreground">
+          {t("approvalWaiting")}
+        </p>
+        <div className="flex shrink-0 justify-end gap-1.5">
+          <Button
+            type={BUTTON_TYPE}
+            size="sm"
+            variant={OUTLINE_VARIANT}
+            className="h-8 rounded-lg px-2.5 text-[11px]"
+            onClick={() => onReject?.(approval)}
+          >
+            <XIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+            {t("reject")}
+          </Button>
+          <Button
+            type={BUTTON_TYPE}
+            size="sm"
+            className="h-8 rounded-lg px-2.5 text-[11px]"
+            onClick={() => onApprove?.(approval)}
+          >
+            <CheckIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+            {t("approve")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   let specializedContent: React.ReactNode = null;
   if (fileArtifact) {
     specializedContent =
@@ -286,8 +331,10 @@ export const ToolPartCard = memo(function ToolPartCard({
     );
   } else if (fileAttachment) {
     specializedContent = <ChatFileAttachmentCard attachment={fileAttachment} />;
-  } else if (sandboxOutput && sandboxHasDeliverableFiles) {
-    specializedContent = <SandboxDeliverablesCard result={sandboxOutput} />;
+  } else if (sandboxDeliverables) {
+    specializedContent = (
+      <SandboxDeliverablesCard result={sandboxDeliverables} />
+    );
   } else if (isQuestionForm(parsed.output)) {
     specializedContent = <QuestionFormCard value={parsed.output} />;
   } else if (isHtmlArtifactOutput(parsed.output)) {
@@ -341,6 +388,18 @@ export const ToolPartCard = memo(function ToolPartCard({
         embedded
       />
     );
+  } else if (pendingSandboxInput) {
+    // Same card as while the code streams, so it stays put while the call
+    // executes or awaits approval instead of switching to the raw payload.
+    specializedContent = (
+      <LiveToolInputCard
+        toolName={friendlyName}
+        inputText=""
+        sandboxInput={pendingSandboxInput}
+        phase={visualState === "approval" ? "approval" : "running"}
+        embedded
+      />
+    );
   } else if (streamingInputArtifact) {
     specializedContent = (
       <HtmlArtifactCard artifact={streamingInputArtifact} isLive embedded />
@@ -348,9 +407,6 @@ export const ToolPartCard = memo(function ToolPartCard({
   }
 
   if (specializedContent) {
-    const isSandboxDeliverables = Boolean(
-      sandboxOutput && sandboxHasDeliverableFiles,
-    );
     return (
       <section
         className={cn(
@@ -382,17 +438,26 @@ export const ToolPartCard = memo(function ToolPartCard({
           compact
         />
         <div className="bg-background/15 p-2">{specializedContent}</div>
+        {approvalControls}
         <details className="border-t p-2.5">
           <summary className="cursor-pointer text-muted-foreground">
             {t("showActionDetails")}
           </summary>
-          {isSandboxDeliverables && sandboxOutput ? (
-            <CodeSandboxResultCard
-              result={sandboxOutput}
-              input={sandboxInput}
-              embedded
-              filesHidden
-            />
+          {sandboxDeliverables ? (
+            <div className="mt-2 flex flex-col gap-2">
+              <CodeSandboxResultCard
+                result={sandboxDeliverables}
+                input={sandboxInput}
+                embedded
+                filesHidden
+              />
+              {displayInput !== undefined ? (
+                <ToolPayloadViewer
+                  label={t("actionInput")}
+                  value={displayInput}
+                />
+              ) : null}
+            </div>
           ) : (
             <>
               {displayInput !== undefined ? (
@@ -481,36 +546,7 @@ export const ToolPartCard = memo(function ToolPartCard({
               : t("agentActionCompleted", { name: agentContext.agentName })}
         </span>
       ) : null}
-      {approval ? (
-        <div className="bg-warning/[0.035] px-2.5 py-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px] text-muted-foreground">
-              {t("approvalWaiting")}
-            </p>
-            <div className="flex shrink-0 justify-end gap-1.5">
-              <Button
-                type={BUTTON_TYPE}
-                size="sm"
-                variant={OUTLINE_VARIANT}
-                className="h-8 rounded-lg px-2.5 text-[11px]"
-                onClick={() => onReject?.(approval)}
-              >
-                <XIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-                {t("reject")}
-              </Button>
-              <Button
-                type={BUTTON_TYPE}
-                size="sm"
-                className="h-8 rounded-lg px-2.5 text-[11px]"
-                onClick={() => onApprove?.(approval)}
-              >
-                <CheckIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-                {t("approve")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {approvalControls}
       <CollapsibleContent
         forceMount
         className="t-acc-panel"

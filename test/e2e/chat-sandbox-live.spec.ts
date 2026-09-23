@@ -147,7 +147,10 @@ test("shows sandbox code incrementally and surfaces generated files outside the 
   // Generated files are shown outside the collapsed trace, without any
   // visibility flag from the model.
   await expect(page.getByText("report.txt", { exact: true })).toBeVisible();
-  const download = page.getByRole("link", { name: "Download", exact: true });
+  const download = page.getByRole("link", {
+    name: "Download report.txt",
+    exact: true,
+  });
   await expect(download).toBeVisible();
   await expect(download).toHaveAttribute("href", "/attachments/report.txt");
   // Code, stdout, and stderr stay in the collapsed action details.

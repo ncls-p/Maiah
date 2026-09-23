@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  codeSandboxFailureSummary,
+  codeSandboxFileAvailability,
   codeSandboxOutputFromUnknown,
   codeSandboxToolVisualState,
   partitionCodeSandboxFiles,
+  pendingCodeSandboxInput,
   summarizeToolBody,
   toolPartHasStandaloneRendering,
 } from "@/components/chat/chat-message-rendering-utils";
@@ -154,7 +157,10 @@ describe("code sandbox result rendering", () => {
 
     expect(
       toolPartHasStandaloneRendering(
-        sandboxPart({ input: { language: "python", code: "print(1)" }, output: sandboxOutput([]) }),
+        sandboxPart({
+          input: { language: "python", code: "print(1)" },
+          output: sandboxOutput([]),
+        }),
       ),
     ).toBe(false);
 
@@ -250,7 +256,7 @@ describe("code sandbox result rendering", () => {
     ).toBe(true);
   });
 
-  it("shows generated-but-unavailable files with an explicit state", () => {
+  it("keeps generated-but-unavailable files standalone (reasons are covered by the card tests)", () => {
     for (const file of [
       {
         path: "broken.txt",
@@ -258,7 +264,12 @@ describe("code sandbox result rendering", () => {
         mimeType: "text/plain",
         downloadError: "object storage unavailable",
       },
-      { path: "big.txt", size: 9_000_000, mimeType: "text/plain", skipped: "too_large" },
+      {
+        path: "big.txt",
+        size: 9_000_000,
+        mimeType: "text/plain",
+        skipped: "too_large",
+      },
       {
         path: "omitted.txt",
         size: 40,
@@ -278,16 +289,28 @@ describe("code sandbox result rendering", () => {
     [{ skipped: "too_large" }, "too_large"],
     [{ contentOmitted: "too_large" }, "too_large"],
     [{ contentOmitted: "total_limit" }, "total_limit"],
-  ])("preserves an unavailable file reason for the file card: %j", (reason, expected) => {
-    const result = codeSandboxOutputFromUnknown(sandboxOutput([
-      { path: "report.txt", size: 9_000_000, mimeType: "text/plain", ...reason },
-    ]));
+  ])(
+    "preserves an unavailable file reason for the file card: %j",
+    (reason, expected) => {
+      const result = codeSandboxOutputFromUnknown(
+        sandboxOutput([
+          {
+            path: "report.txt",
+            size: 9_000_000,
+            mimeType: "text/plain",
+            ...reason,
+          },
+        ]),
+      );
 
-    expect(result?.files[0]).toMatchObject({ contentOmitted: expected });
-    expect(result?.files[0]).not.toHaveProperty("downloadUrl");
-    // Persisted conversations go through the same normalization on reload.
-    expect(codeSandboxOutputFromUnknown(result)?.files).toEqual(result?.files);
-  });
+      expect(result?.files[0]).toMatchObject({ contentOmitted: expected });
+      expect(result?.files[0]).not.toHaveProperty("downloadUrl");
+      // Persisted conversations go through the same normalization on reload.
+      expect(codeSandboxOutputFromUnknown(result)?.files).toEqual(
+        result?.files,
+      );
+    },
+  );
 
   it("keeps failed runs with persisted files visible without hiding the failure", () => {
     const part = sandboxPart({
@@ -307,9 +330,57 @@ describe("code sandbox result rendering", () => {
     expect(toolPartHasStandaloneRendering(part)).toBe(true);
     const parsed = parseToolPart(part.content);
     expect(codeSandboxOutputFromUnknown(parsed.output)?.ok).toBe(false);
-    expect(codeSandboxToolVisualState(parsed.output, "error")).toBe(
-      "completed",
-    );
+    // The standalone header must agree with the failure banner.
+    expect(codeSandboxToolVisualState(parsed.output, "error")).toBe("error");
+  });
+
+  it("summarizes a failure with the last stderr line or the timeout", () => {
+    const traceback = codeSandboxOutputFromUnknown({
+      ...sandboxOutput([], false),
+      stderr:
+        'Traceback (most recent call last):\n  File "main.py", line 1\nValueError: boom\n\n',
+    });
+    expect(traceback && codeSandboxFailureSummary(traceback)).toEqual({
+      timedOut: false,
+      line: "ValueError: boom",
+    });
+
+    const timeout = codeSandboxOutputFromUnknown({
+      ...sandboxOutput([], false),
+      stderr: "",
+      timedOut: true,
+    });
+    expect(timeout && codeSandboxFailureSummary(timeout)).toEqual({
+      timedOut: true,
+      line: null,
+    });
+  });
+
+  it("gives every file without a download link an explicit availability", () => {
+    const base = { path: "f.txt", size: 1, mimeType: "text/plain" };
+    expect(
+      codeSandboxFileAvailability({ ...base, downloadUrl: "/attachments/f" }),
+    ).toEqual({ kind: "download", url: "/attachments/f" });
+    expect(
+      codeSandboxFileAvailability({ ...base, contentOmitted: "too_large" }),
+    ).toEqual({ kind: "omitted", reason: "too_large" });
+    expect(
+      codeSandboxFileAvailability({ ...base, downloadError: "storage down" }),
+    ).toEqual({ kind: "download_failed", detail: "storage down" });
+    expect(codeSandboxFileAvailability(base)).toEqual({ kind: "unavailable" });
+  });
+
+  it("treats an input file with unknown modification state as a deliverable", () => {
+    // Same rule as server-side persistence: a persisted file is never hidden.
+    const files = [
+      { path: "in.txt", size: 1, mimeType: "text/plain", fromInput: true },
+    ];
+    expect(partitionCodeSandboxFiles(files).outputFiles).toHaveLength(1);
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({ output: sandboxOutput(files) }),
+      ),
+    ).toBe(true);
   });
 
   it("merges persisted tool-call and tool-result parts into one renderable part", () => {
@@ -353,7 +424,7 @@ describe("code sandbox result rendering", () => {
     expect(toolPartHasStandaloneRendering(toolParts[0])).toBe(true);
   });
 
-  it("shows sandbox code while streaming before the final visibility flag", () => {
+  it("shows sandbox code standalone while its input is streaming", () => {
     for (const toolName of [
       "run_code_sandbox",
       "specialist_run_code_sandbox",
@@ -369,6 +440,144 @@ describe("code sandbox result rendering", () => {
         }),
       ).toBe(true);
     }
+  });
+
+  it("keeps the formatted code preview for a sandbox call awaiting its result", () => {
+    const input = { language: "python", code: "print(42)" };
+    // After tool_call: the parsed input is available.
+    expect(
+      pendingCodeSandboxInput({ toolName: "run_code_sandbox", input }),
+    ).toMatchObject({ language: "python", code: "print(42)" });
+    // Between tool_input_end and tool_call: only the complete input text.
+    expect(
+      pendingCodeSandboxInput({
+        toolName: "specialist_run_code_sandbox",
+        inputText: JSON.stringify(input),
+        streamingInput: false,
+      }),
+    ).toMatchObject({ language: "python", code: "print(42)" });
+    // While streaming, the live input card already handles the preview.
+    expect(
+      pendingCodeSandboxInput({
+        toolName: "run_code_sandbox",
+        inputText: JSON.stringify(input),
+        streamingInput: true,
+      }),
+    ).toBeNull();
+    // With a result, or for another tool, there is nothing pending.
+    expect(
+      pendingCodeSandboxInput({
+        toolName: "run_code_sandbox",
+        input,
+        output: sandboxOutput([]),
+      }),
+    ).toBeNull();
+    expect(
+      pendingCodeSandboxInput({ toolName: "web_search", input }),
+    ).toBeNull();
+    expect(
+      pendingCodeSandboxInput({ toolName: "run_code_sandbox", input: {} }),
+    ).toBeNull();
+  });
+
+  it("keeps a running top-level sandbox call standalone until its result arrives", () => {
+    const running = {
+      type: "tool-call",
+      content: JSON.stringify({
+        toolCallId: "sandbox-call",
+        toolName: "run_code_sandbox",
+        input: { language: "python", code: "print(1)" },
+      }),
+    };
+    // While the message streams, the card stays put instead of jumping into
+    // the trace between the end of the input and the result.
+    expect(
+      toolPartHasStandaloneRendering(running, { messageStreaming: true }),
+    ).toBe(true);
+    // A call that never produced a result on a finished message is trace-only.
+    expect(toolPartHasStandaloneRendering(running)).toBe(false);
+    expect(
+      toolPartHasStandaloneRendering(
+        {
+          type: "tool-call",
+          content: JSON.stringify({
+            toolName: "run_code_sandbox",
+            input: { language: "python", code: "print(1)" },
+            denied: true,
+          }),
+        },
+        { messageStreaming: true },
+      ),
+    ).toBe(false);
+    // Non-sandbox tools are unaffected.
+    expect(
+      toolPartHasStandaloneRendering(
+        {
+          type: "tool-call",
+          content: JSON.stringify({ toolName: "web_search", input: {} }),
+        },
+        { messageStreaming: true },
+      ),
+    ).toBe(false);
+    // Once the result is in, the file rule decides.
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({ output: sandboxOutput([]) }),
+        { messageStreaming: true },
+      ),
+    ).toBe(false);
+  });
+
+  it("surfaces a published specialist sandbox deliverable through the same rule", () => {
+    const published = (files: unknown[]) => ({
+      type: "tool-result",
+      content: JSON.stringify({
+        toolCallId: "publish-call",
+        toolName: "publish_specialist_output",
+        input: { visualOutputId: "00000000-0000-4000-8000-000000000001" },
+        output: sandboxOutput(files),
+      }),
+    });
+
+    expect(
+      toolPartHasStandaloneRendering(
+        published([
+          {
+            path: "chart.png",
+            size: 120,
+            mimeType: "image/png",
+            downloadUrl: "/attachments/chart.png",
+          },
+        ]),
+      ),
+    ).toBe(true);
+    expect(toolPartHasStandaloneRendering(published([]))).toBe(false);
+  });
+
+  it("keeps a child-agent sandbox result with files inside the specialist trace", () => {
+    expect(
+      toolPartHasStandaloneRendering(
+        sandboxPart({
+          output: sandboxOutput([
+            {
+              path: "chart.png",
+              size: 120,
+              mimeType: "image/png",
+              downloadUrl: "/attachments/chart.png",
+            },
+          ]),
+          agentContext: {
+            agentId: "child-agent",
+            agentName: "Data specialist",
+            runId: "child-run",
+            parentRunId: "root-run",
+            depth: 1,
+            status: "success",
+          },
+        }),
+        { messageStreaming: true },
+      ),
+    ).toBe(false);
   });
 
   it("keeps every child-agent visual tool inside the specialist trace", () => {

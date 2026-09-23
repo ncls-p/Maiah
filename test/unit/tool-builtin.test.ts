@@ -105,6 +105,33 @@ describe("built-in tool registry", () => {
     ).toBe(false);
   });
 
+  it("keeps showToUser out of every published sandbox schema", async () => {
+    const catalogEntry = listBuiltInTools().find(
+      (tool) => (tool as { name?: string }).name === "run_code_sandbox",
+    ) as { inputSchemaJson?: { properties?: Record<string, unknown> } };
+    expect(catalogEntry.inputSchemaJson?.properties).toBeDefined();
+    expect(catalogEntry.inputSchemaJson?.properties).not.toHaveProperty(
+      "showToUser",
+    );
+
+    // What the chat model actually receives is derived from the zod schema.
+    const { zodSchema } = await import("ai");
+    const sandbox = getBuiltInToolByName("run_code_sandbox")!;
+    const modelSchema = (await zodSchema(
+      sandbox.inputSchema as Parameters<typeof zodSchema>[0],
+    ).jsonSchema) as { properties?: Record<string, unknown> };
+    expect(modelSchema.properties).toHaveProperty("code");
+    expect(modelSchema.properties).not.toHaveProperty("showToUser");
+  });
+
+  it("tells the model how sandbox files reach the user", () => {
+    const description = getBuiltInToolByName("run_code_sandbox")!.description;
+    expect(description).toMatch(/paths relative to the current directory/);
+    expect(description).toMatch(/automatically collected/);
+    expect(description).toMatch(/wiped after completion/);
+    expect(description).toMatch(/Do not invent local or sandbox:\/ links/);
+  });
+
   it("returns null for unknown tool name", () => {
     expect(getBuiltInToolByName("nonexistent-tool")).toBeNull();
   });

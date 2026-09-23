@@ -5,6 +5,7 @@ import {
 } from "@/components/chat/chat-types";
 import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { type ChatTodoList } from "@/modules/chat/todo-list";
+import { isSandboxDeliverableFile } from "@/modules/tool/code-sandbox.is-deliverable-file";
 import { chatTodoListFromToolPart } from "./chat-message-rendering-utils.stringify-for-match";
 
 export function latestChatTodoListFromMessages(
@@ -178,8 +179,8 @@ export function partitionCodeSandboxFiles(files: CodeSandboxFileOutput[]) {
   const outputFiles: CodeSandboxFileOutput[] = [];
 
   for (const file of files) {
-    if (file.fromInput && !file.modified) inputFiles.push(file);
-    else outputFiles.push(file);
+    if (isSandboxDeliverableFile(file)) outputFiles.push(file);
+    else inputFiles.push(file);
   }
 
   return { inputFiles, outputFiles };
@@ -193,9 +194,49 @@ export function partitionCodeSandboxFiles(files: CodeSandboxFileOutput[]) {
  * is intentionally ignored.
  */
 export function codeSandboxOutputHasDeliverableFiles(output: unknown) {
-  const result = codeSandboxOutputFromUnknown(output);
-  if (!result) return false;
-  return partitionCodeSandboxFiles(result.files).outputFiles.length > 0;
+  if (!isCodeSandboxOutput(output)) return false;
+  return output.files.some(
+    (file) => isCodeSandboxFileOutput(file) && isSandboxDeliverableFile(file),
+  );
+}
+
+export type CodeSandboxFileAvailability =
+  | { kind: "download"; url: string }
+  | { kind: "omitted"; reason: "too_large" | "total_limit" }
+  | { kind: "download_failed"; detail: string }
+  | { kind: "unavailable" };
+
+/**
+ * Why a generated file can or cannot be downloaded. Every file without a
+ * download URL gets an explicit reason so the card never looks like a link
+ * that silently does nothing.
+ */
+export function codeSandboxFileAvailability(
+  file: CodeSandboxFileOutput,
+): CodeSandboxFileAvailability {
+  if (file.downloadUrl) return { kind: "download", url: file.downloadUrl };
+  if (file.contentOmitted) {
+    return { kind: "omitted", reason: file.contentOmitted };
+  }
+  if (file.downloadError) {
+    return { kind: "download_failed", detail: file.downloadError };
+  }
+  return { kind: "unavailable" };
+}
+
+/**
+ * Short, user-facing summary of a failed sandbox run: a timeout, or the last
+ * non-empty stderr line (the actual exception for a Python traceback).
+ */
+export function codeSandboxFailureSummary(result: CodeSandboxOutput): {
+  timedOut: boolean;
+  line: string | null;
+} {
+  const lines = result.stderr
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  return { timedOut: result.timedOut, line: lines.at(-1) ?? null };
 }
 
 function isCodeSandboxOutput(value: unknown): value is CodeSandboxOutput {
@@ -232,11 +273,19 @@ export function codeSandboxOutputFromUnknown(
   };
 }
 
+/**
+ * A failed sandbox execution stays visually neutral in the trace (the model
+ * usually retries), except when the run surfaces deliverable files outside the
+ * trace: the header must then agree with the failure banner.
+ */
 export function codeSandboxToolVisualState(
   output: unknown,
   status: "pending" | "completed" | "error",
 ) {
-  return status === "error" && codeSandboxOutputFromUnknown(output)
-    ? "completed"
-    : status;
+  if (status !== "error") return status;
+  const result = codeSandboxOutputFromUnknown(output);
+  if (!result) return status;
+  return !result.ok && codeSandboxOutputHasDeliverableFiles(result)
+    ? "error"
+    : "completed";
 }

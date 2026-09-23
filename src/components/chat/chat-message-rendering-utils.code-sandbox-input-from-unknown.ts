@@ -58,6 +58,32 @@ export function isCodeSandboxToolName(toolName: string | undefined) {
   );
 }
 
+/**
+ * Code preview for a sandbox call whose input is complete but that has no
+ * result yet (executing, or awaiting approval). Keeps the formatted code on
+ * screen instead of falling back to the raw JSON payload. The caller decides
+ * whether the call is still live (message streaming).
+ */
+export function pendingCodeSandboxInput(parsed: {
+  toolName?: string;
+  input?: unknown;
+  inputText?: string;
+  output?: unknown;
+  streamingInput?: boolean;
+}): CodeSandboxInputPreview | null {
+  if (
+    !isCodeSandboxToolName(parsed.toolName) ||
+    parsed.output !== undefined ||
+    parsed.streamingInput === true
+  ) {
+    return null;
+  }
+  return (
+    codeSandboxInputFromUnknown(parsed.input) ??
+    codeSandboxInputFromInputText(parsed.inputText)
+  );
+}
+
 export function htmlArtifactFromToolInput(
   value: unknown,
 ): HtmlArtifactOutput | null {
