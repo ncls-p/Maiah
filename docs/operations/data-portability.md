@@ -5,7 +5,9 @@
 - Paramètres plateforme → **Export / import de l’instance**.
 - Paramètres organisation → **Export / import de l’organisation**.
 - Archive `.maiah` chiffrée et authentifiée : AES-256-GCM, sel/IV aléatoires, scrypt (N=32768, r=8, p=1), phrase secrète de 16 caractères minimum.
-- Prévisualisation qui exécute réellement les contraintes SQL puis annule la transaction ; confirmation liée à l’archive exacte, à l’administrateur et à une expiration de dix minutes.
+- Prévisualisation qui exécute réellement les contraintes SQL puis annule la transaction ; confirmation liée à l’archive exacte, à l’administrateur, à sa session, au panneau (instance ou organisation) et à une expiration de dix minutes. Le jeton est signé par une clé dérivée (HKDF) de `APP_ENCRYPTION_KEY`, jamais par la clé elle-même, et la saisie `IMPORT` est vérifiée par le serveur.
+- Chaque tentative d’un administrateur (réussie, refusée ou en échec) est auditée avec la portée (`instance` ou `organization`), sans contenu d’archive ni phrase secrète.
+- L’API reçoit un corps binaire `application/vnd.maiah.portability` (longueur sur 4 octets, champs JSON, archive brute), lu une seule fois dans un tampon unique : l’archive n’est pas recopiée par un analyseur multipart.
 - Commande opérateur pour exporter, inspecter, importer et transférer directement entre les infrastructures de deux instances.
 
 Les deux écrans sont réservés aux **administrateurs de plateforme**. Un propriétaire d’organisation n’obtient pas l’accès aux mots de passe/tokens des identités globales. Les droits et la session sont revérifiés sous verrou dans la transaction, après réception de l’archive. Une session impersonnée n’est pas autorisée.
@@ -31,11 +33,11 @@ L’instance comprend notamment :
 
 Les colonnes PostgreSQL `bigint`/`numeric` sont transportées sous forme de chaînes pour conserver notamment les grands quotas et les décimales de facturation.
 
-Une organisation contient ses lignes et dépendances, ses paramètres nommés, les identités/comptes nécessaires et ses objets. Elle ne suit pas un utilisateur partagé vers ses autres projets. Une dépendance métier appartenant à une autre organisation **bloque l’export** : choisir l’export d’instance pour préserver ce graphe. Les ressources globales hébergées dans un autre projet peuvent également imposer cet export complet. Les paramètres globaux et challenges non rattachables ne sont inclus que dans l’export d’instance.
+Une organisation contient ses lignes et dépendances, ses paramètres nommés, les identités nécessaires et ses objets. Elle ne suit pas un utilisateur partagé vers ses autres projets. Seuls les **membres** (organisation ou projet) sont exportés avec leurs comptes, sessions et connexions GitHub ; une identité simplement référencée (auteur d’un avis marketplace, destinataire d’un partage, acteur de l’historique) est transportée sans mot de passe, token ni session. Une dépendance métier appartenant à une autre organisation **bloque l’export** : choisir l’export d’instance pour préserver ce graphe. Les ressources globales hébergées dans un autre projet peuvent également imposer cet export complet. Un fichier de pièce jointe ou de projet de code dont le dossier ne contient pas de `metadata.json` propriétaire (`<préfixe>/<id>/metadata.json`) bloque aussi l’export d’organisation plutôt que d’être omis silencieusement ; l’export d’instance l’inclut. Un fichier utilisateur nommé `metadata.json` à l’intérieur d’un projet reste un contenu ordinaire. Les paramètres globaux et challenges non rattachables ne sont inclus que dans l’export d’instance.
 
 ## Secrets et états restaurés
 
-Les secrets `APP_ENCRYPTION_KEY` sont déchiffrés dans la mémoire source, protégés par l’archive, puis rechiffrés avec la clé cible. Les tokens Microsoft chiffrés par **Better Auth** sont traités séparément avec `BETTER_AUTH_SECRET` et, le cas échéant, les versions de `BETTER_AUTH_SECRETS`. Les clés maîtresses elles-mêmes ne figurent pas dans l’archive.
+Les secrets `APP_ENCRYPTION_KEY` sont déchiffrés dans la mémoire source, protégés par l’archive, puis rechiffrés avec la clé cible. Les colonnes chiffrées par le serveur (`encrypted_*`, `*_encrypted`, secret SSO Microsoft) doivent se déchiffrer, sinon l’export échoue. Ailleurs, seule une valeur qui se déchiffre réellement avec la clé source est rechiffrée : un texte utilisateur qui ressemble à un chiffré, ou un JSON contenant la clé réservée de l’archive, est conservé tel quel et ne peut pas bloquer un export. Les tokens Microsoft chiffrés par **Better Auth** sont traités séparément avec `BETTER_AUTH_SECRET` et, le cas échéant, les versions de `BETTER_AUTH_SECRETS`. Les clés maîtresses elles-mêmes ne figurent pas dans l’archive.
 
 Les mots de passe restent des hashes ; les clés API restent leurs hashes existants. Il n’est pas possible de retrouver leur valeur brute si Maiah ne la conserve pas. Les tokens conservés restent sensibles et peuvent encore être valides sur la source.
 
@@ -45,6 +47,8 @@ L’archive conserve les valeurs originales. À la restauration :
 - fournisseurs, MCP, connecteurs, connexions, SSO Microsoft et tâches sont désactivés ;
 - les workflows actifs repassent en brouillon ; les runs non terminés sont annulés ;
 - les réservations actives expirent et les leases ne sont pas reprises ;
+- les transferts Genesys en cours sont clôturés (`resumed`), les appels d’outils en attente d’approbation sont rejetés et ceux en cours marqués en échec ;
+- les liens publics de conversation sont retirés ;
 - les historiques terminés, consommations et credentials restent conservés ;
 - un import d’organisation ne restaure pas le rôle administrateur de plateforme des utilisateurs.
 
@@ -68,13 +72,16 @@ Aucun utilisateur, ressource ou objet existant n’est écrasé. Les identifiant
 
 Deux exceptions contrôlées : les rôles système équivalents sont remappés par nom/portée **uniquement si leur définition est identique** ; sur une base d’instance ne contenant que les defaults de migration, ces defaults sont remplacés par ceux de l’archive. Les différences de permissions bloquent l’import sur une cible déjà utilisée.
 
+Un utilisateur de l’archive dont l’e-mail existe déjà sur la cible (sans distinction de casse) bloque l’import avec un message explicite : retirer ce compte de la cible ou utiliser une cible propre. Une archive qui désigne, sans la contenir, une donnée existante de la cible (partage vers une ressource, attribution de rôle à un utilisateur existant, identifiant dans une configuration) est refusée ; les références orphelines de l’historique source restent admises.
+
 Un import répété produit un conflit, pas des doublons. La prévisualisation ne réserve pas la cible : les validations sont répétées au moment de la confirmation.
 
 Cette version est une opération de maintenance **synchrone et bornée**, pas un système de sauvegarde illimité :
 
 - archive ≤ 128 Mio ; ≤ 100 000 lignes et ≤ 20 000 objets ;
 - garde-fous intermédiaires de 64 Mio pour les données SQL et le total des objets ;
-- l’export organisationnel inventorie également la source avant sélection : ces bornes s’appliquent à cet inventaire ;
+- l’export d’organisation lit sa portée par requêtes ciblées (par organisation, projets puis identifiants collectés jusqu’à clôture) et ne liste que `knowledge/<projet>/`, `document-uploads/<projet>/` et les dossiers de pièces jointes/projets de code qui lui appartiennent : ces bornes s’appliquent à l’organisation exportée, pas à la taille de l’instance. Le chemin des objets ne contenant pas le projet, la liste des dossiers de pièces jointes/code (≤ 200 000) et leur `metadata.json` propriétaire sont toutefois lus pour toute l’instance afin de prouver l’isolation ; l’ensemble de travail de la traversée est borné à 200 000 lignes ;
+- à l’import, la cible n’est pas chargée en mémoire : des requêtes ciblées vérifient administrateur, vacuité, rôles système, e-mails et références. La taille de la cible ne limite donc pas l’import ;
 - empreinte de schéma compatible requise ; absence de transformation automatique entre versions ;
 - rejet intégral si une borne est dépassée, jamais de troncature ;
 - pas de réplication continue, de fusion bidirectionnelle ou de résolution automatique des suppressions.
@@ -109,7 +116,7 @@ Créer deux fichiers de connexion privés, hors dépôt (`chmod 600`). Exemple �
 }
 ```
 
-Si la rotation Better Auth est activée, ajouter `authSecrets: [{"version": 2, "value": "..."}, {"version": 1, "value": "..."}]`, version courante en premier. Utiliser `databaseSsl: false` uniquement pour une liaison locale/protégée ; sinon la vérification TLS est stricte.
+Si la rotation Better Auth est activée, ajouter `authSecrets: [{"version": 2, "value": "..."}, {"version": 1, "value": "..."}]`, version courante en premier. Utiliser `databaseSsl: false` uniquement pour une liaison locale/protégée ; sinon la vérification TLS est stricte. `databaseSslRejectUnauthorized: false` reproduit `DATABASE_SSL_REJECT_UNAUTHORIZED=false` (certificat non vérifié) ; l’interface web applique la même configuration que le pool applicatif.
 
 ```bash
 # Éviter de placer la phrase secrète dans l’historique ou les arguments du processus.
@@ -146,7 +153,7 @@ unset MAIAH_ARCHIVE_PASSPHRASE
 
 Le moteur garde les contraintes SQL actives, gère les cycles avec une seconde passe sur les FK nullables, et vérifie aussi les FK composites/différées du catalogue PostgreSQL. Les écritures relationnelles sont atomiques. Les objets sont créés conditionnellement (`If-None-Match: *`) ; les compensations suppriment seulement les objets créés par l’opération avec leur ETag.
 
-Une panne ordinaire annule SQL et nettoie les objets nouvellement créés. Un arrêt brutal du processus peut laisser des objets orphelins. Une perte de connexion pendant COMMIT est **ambiguë** : le moteur ne supprime pas les objets potentiellement référencés par une transaction validée.
+Une panne ordinaire annule SQL et nettoie les objets nouvellement créés, y compris lorsque PostgreSQL refuse explicitement le COMMIT (code SQLSTATE reçu). Un arrêt brutal du processus peut laisser des objets orphelins. Une perte de connexion ou un arrêt du serveur pendant COMMIT (SQLSTATE `08…`/`57…` ou absence de réponse) est **ambiguë** : le moteur ne supprime pas les objets potentiellement référencés par une transaction validée.
 
 Dans ces cas, ne pas relancer aveuglément : inspecter la présence des identifiants de l’archive en base et l’inventaire des objets. Sur une cible de migration dédiée, on peut reprovisionner intégralement cette cible jetable et recommencer. Sur une cible avec des données existantes, ne supprimer que les objets dont l’absence de références est établie. Ne jamais vider un bucket partagé pour débloquer un import.
 
@@ -157,7 +164,7 @@ Après succès : reconnecter les utilisateurs, vérifier les fichiers, permissio
 Tests sans infrastructure :
 
 ```bash
-npx vitest run test/unit/data-portability.test.ts test/unit/data-portability-route.test.ts
+npx vitest run test/unit/data-portability*.test.ts
 ```
 
 Tests réels, exclusivement avec ces conteneurs jetables locaux :
@@ -171,7 +178,7 @@ docker run -d --name deo62-storage -e RUSTFS_ACCESS_KEY=deo62local \
 RUN_DATA_PORTABILITY_E2E=1 npx vitest run test/integration/data-portability-db.test.ts
 ```
 
-Les tests créent puis détruisent quatre bases/buckets uniques, avec des clés applicatives et Better Auth différentes. Ils vérifient chaque table du registre, les octets des fichiers, les secrets, la précision des quotas, l’isolation organisationnelle, les conflits et une panne de stockage injectée.
+Les tests créent puis détruisent quatre bases/buckets uniques, avec des clés applicatives et Better Auth différentes. Ils vérifient chaque table du registre, les octets des fichiers, les secrets, la précision des quotas, l’isolation organisationnelle, les conflits, une panne de stockage injectée, le refus d’une archive forgée qui désigne un utilisateur existant de la cible et l’égalité entre l’export d’organisation ciblé et l’ancien chemin (lecture complète puis filtrage).
 
 Le scénario Playwright `test/e2e/data-portability.spec.ts` est opt-in (`PORTABILITY_UI_E2E=1`). Il utilise deux applications de test sur 31462/31463, bases `deo62_ui_source`/`deo62_ui_target`, buckets distincts, source initialisée via `seedPortability`, compte source `migration@example.test` et administrateur cible `target-admin@example.test` (mot de passe de test `Password123!`). Leurs comptes credentials doivent contenir le hash Better Auth réel et leur onboarding être terminé. `/tmp/deo62-target.json` contient la connexion privée du seul environnement jetable pour les assertions. Ne pas pointer ce scénario sur une instance personnelle ou de production.
 

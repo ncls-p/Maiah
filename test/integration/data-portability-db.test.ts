@@ -26,7 +26,12 @@ import {
 } from "@/modules/data-portability/archive";
 import { readDataset } from "@/modules/data-portability/postgres";
 import { tableNames } from "@/modules/data-portability/registry";
-import { transformSecrets } from "@/modules/data-portability/secrets";
+import {
+  transformDatasetSecrets,
+  transformSecrets,
+} from "@/modules/data-portability/secrets";
+import { selectOrganization } from "@/modules/data-portability/scope";
+import { exportObjects } from "@/modules/data-portability/objects";
 import { pauseRestoredData } from "@/modules/data-portability/restore-policy";
 import { seedPortability } from "./data-portability.fixture";
 import { transformAccountTokens } from "@/modules/data-portability/oauth-tokens";
@@ -244,6 +249,31 @@ describe.skipIf(!enabled)(
       expect(restored.role_bindings).toHaveLength(1);
       expect(await clients[2].context.objects.list()).toHaveLength(5);
     }, 120_000);
+    it("reads an organization with scoped queries and yields the same archive content as the full scan", async () => {
+      const source = clients[0].context;
+      const scoped = await createSnapshot(source, {
+        type: "organization",
+        organizationId: ids.org,
+      });
+      // Reference: the previous implementation, full read then in-memory selection.
+      const full = selectOrganization(await read(0), ids.org);
+      const objects = await exportObjects(
+        source.objects,
+        full,
+        { type: "organization", organizationId: ids.org },
+        source.prefixes,
+      );
+      await transformAccountTokens(full, "export", source.authTokens);
+      await transformDatasetSecrets(full, "export", source.secrets);
+      for (const name of tableNames)
+        expect(sortedRows(scoped.data[name]), name).toEqual(
+          sortedRows(full[name]),
+        );
+      expect(scoped.objects).toEqual(objects);
+      expect(scoped.data.workspaces.map((row) => row.id)).toEqual([
+        ids.workspace,
+      ]);
+    }, 120_000);
     it("rolls back SQL and compensates uploaded objects on storage failure", async () => {
       const target = clients[3].context;
       const before = await read(3);
@@ -293,6 +323,37 @@ describe.skipIf(!enabled)(
       await expect(
         createSnapshot(missing, { type: "instance" }),
       ).rejects.toThrow(/missing/);
+    }, 120_000);
+    it("refuses a crafted organization archive that grants access to existing destination identities", async () => {
+      const target = clients[3].context;
+      const admin = await target.pool.query<{ id: string }>(
+        "insert into public.\"user\" (name, email, role) values ('Crafted target administrator', 'crafted-target@example.test', 'admin') returning id",
+      );
+      const scoped = await createSnapshot(clients[0].context, {
+        type: "organization",
+        organizationId: ids.org,
+      });
+      const [binding] = scoped.data.role_bindings;
+      const crafted = {
+        ...scoped,
+        data: {
+          ...scoped.data,
+          role_bindings: [
+            ...scoped.data.role_bindings,
+            {
+              ...binding,
+              id: randomUUID(),
+              principal_type: "user",
+              principal_id: admin.rows[0].id,
+            },
+          ],
+        },
+      };
+      await expect(restoreSnapshot(target, crafted, true)).rejects.toThrow(
+        /existing destination data/,
+      );
+      // The untouched archive is only a conflict-free import candidate.
+      await restoreSnapshot(target, scoped, true);
     }, 120_000);
   },
 );

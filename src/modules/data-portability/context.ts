@@ -10,6 +10,8 @@ export const connectionSchema = z
   .object({
     databaseUrl: z.string().min(1),
     databaseSsl: z.boolean().default(false),
+    // Same semantics as DATABASE_SSL_REJECT_UNAUTHORIZED=false for the application pool.
+    databaseSslRejectUnauthorized: z.boolean().default(true),
     encryptionKey: z.string().regex(/^[a-fA-F0-9]{64}$/),
     encryptionKeyId: z.string().min(1),
     authSecret: z.string().min(1),
@@ -39,7 +41,7 @@ export const connectionSchema = z
       .default({ attachments: "chat-attachments", code: "code-workspaces" }),
   })
   .strict();
-export type ConnectionConfig = z.infer<typeof connectionSchema>;
+export type ConnectionConfig = z.input<typeof connectionSchema>;
 
 export function keyedSecretCodec(hex: string, keyId: string): SecretCodec {
   const key = crypto.subtle.importKey(
@@ -86,7 +88,9 @@ export function connectPortability(input: ConnectionConfig) {
   const pool = new Pool({
     connectionString: config.databaseUrl,
     max: 2,
-    ssl: config.databaseSsl ? { rejectUnauthorized: true } : undefined,
+    ssl: config.databaseSsl
+      ? { rejectUnauthorized: config.databaseSslRejectUnauthorized }
+      : undefined,
   });
   const s3 = new S3Client({
     endpoint: config.storage.endpoint,

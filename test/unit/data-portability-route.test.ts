@@ -40,20 +40,27 @@ function request(
   options: {
     origin?: string;
     confirmation?: string;
+    acknowledgement?: string;
     organizationId?: string;
   } = {},
 ) {
-  const form = new FormData();
-  form.set("action", action);
-  form.set("passphrase", "long-enough-test-password");
-  form.set("archive", new File(["encrypted-test"], "test.maiah"));
-  if (options.confirmation) form.set("confirmation", options.confirmation);
-  if (options.organizationId)
-    form.set("organizationId", options.organizationId);
+  const fields = JSON.stringify({
+    action,
+    passphrase: "long-enough-test-password",
+    ...(options.confirmation && { confirmation: options.confirmation }),
+    acknowledgement:
+      options.acknowledgement ?? (action === "import" ? "IMPORT" : undefined),
+    ...(options.organizationId && { organizationId: options.organizationId }),
+  });
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(Buffer.byteLength(fields));
   return new Request("https://maiah.test/api/admin/data-portability", {
     method: "POST",
-    headers: { origin: options.origin ?? "https://maiah.test" },
-    body: form,
+    headers: {
+      origin: options.origin ?? "https://maiah.test",
+      "content-type": "application/vnd.maiah.portability",
+    },
+    body: Buffer.concat([length, Buffer.from(fields), Buffer.from("archive")]),
   });
 }
 beforeEach(() => {
@@ -102,6 +109,106 @@ describe("data portability administrative boundary", () => {
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("content-disposition")).toContain("attachment");
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "data.exported",
+        resourceType: "organization",
+        resourceId: organizationId,
+        outcome: "success",
+      }),
+    );
+  });
+  it("audits an instance export as an instance resource", async () => {
+    expect((await POST(request("export"))).status).toBe(200);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceType: "instance", outcome: "success" }),
+    );
+  });
+  it("enforces the typed IMPORT acknowledgement on the server", async () => {
+    const preview = await (await POST(request("preview"))).json();
+    mocks.restore.mockClear();
+    const response = await POST(
+      request("import", {
+        confirmation: preview.confirmation,
+        acknowledgement: "import",
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(mocks.restore).not.toHaveBeenCalled();
+    expect(mocks.audit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: "data.imported", outcome: "failed" }),
+    );
+  });
+  it("binds the preview to the session and the settings panel", async () => {
+    const organizationId = "10000000-0000-4000-8000-000000000001";
+    mocks.open.mockResolvedValue({
+      scope: { type: "organization", organizationId },
+    });
+    const preview = await (
+      await POST(request("preview", { organizationId }))
+    ).json();
+    expect(
+      (await POST(request("import", { confirmation: preview.confirmation })))
+        .status,
+    ).toBe(409);
+    mocks.auth.mockResolvedValue({
+      ok: true,
+      session: { user: { id: "admin" }, session: { id: "stolen-elsewhere" } },
+    });
+    expect(
+      (
+        await POST(
+          request("import", {
+            confirmation: preview.confirmation,
+            organizationId,
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(mocks.restore).toHaveBeenCalledTimes(1);
+  });
+  it("audits denied origins and failed operations without archive details", async () => {
+    await POST(request("export", { origin: "https://attacker.test" }));
+    expect(mocks.audit).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        outcome: "denied",
+        action: "data.portability_rejected",
+      }),
+    );
+    mocks.restore.mockRejectedValue(new Error("secret-row-value"));
+    await POST(request("preview"));
+    const event = mocks.audit.mock.calls.at(-1)![0];
+    expect(event).toMatchObject({
+      action: "data.import_previewed",
+      outcome: "failed",
+    });
+    expect(JSON.stringify(event)).not.toContain("secret-row-value");
+    expect(event.metadata.archiveDigest).toBe("archive-digest");
+  });
+  it("rejects multipart or oversized uploads before reading them", async () => {
+    const form = new FormData();
+    form.set("action", "export");
+    const multipart = await POST(
+      new Request("https://maiah.test/api/admin/data-portability", {
+        method: "POST",
+        headers: { origin: "https://maiah.test" },
+        body: form,
+      }),
+    );
+    expect(multipart.status).toBe(400);
+    const oversized = await POST(
+      new Request("https://maiah.test/api/admin/data-portability", {
+        method: "POST",
+        headers: {
+          origin: "https://maiah.test",
+          "content-type": "application/vnd.maiah.portability",
+          "content-length": String(200 * 1024 * 1024),
+        },
+        body: "x",
+      }),
+    );
+    expect(await oversized.json()).toEqual({ error: "Upload limit exceeded" });
+    expect(mocks.create).not.toHaveBeenCalled();
   });
   it("requires a successful preview tied to this administrator before writing", async () => {
     expect((await POST(request("import"))).status).toBe(409);

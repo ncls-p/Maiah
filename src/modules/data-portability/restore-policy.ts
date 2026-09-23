@@ -59,6 +59,21 @@ export function pauseRestoredData(data: Dataset, scope: Snapshot["scope"]) {
   }
   for (const row of data.genesys_deliveries)
     if (["queued", "sending"].includes(String(row.state))) row.state = "failed";
+  // Handoffs are bound to the source integration: release them so the assistant can answer.
+  for (const row of data.genesys_sessions)
+    if (row.state !== "resumed") row.state = "resumed";
+  // A pending approval must never execute a tool on the destination.
+  for (const row of data.tool_invocations) {
+    if (["awaiting_approval", "pending_approval"].includes(String(row.status)))
+      row.status = "rejected";
+    else if (row.status === "running") row.status = "failed";
+  }
+  // Public links are withdrawn; owners can share again after review.
+  for (const row of data.conversations) {
+    row.public_share_id = null;
+    row.public_shared_at = null;
+    row.public_share_includes_files = false;
+  }
   for (const row of data.app_settings) {
     if (
       String(row.key).startsWith("microsoft-sso:") &&

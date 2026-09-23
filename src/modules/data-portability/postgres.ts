@@ -52,21 +52,25 @@ export async function lockDatabase(client: PoolClient) {
     `lock table ${tables.map((table) => `public.${quote(table.name)}`).join(", ")} in share row exclusive mode`,
   );
 }
+/** `select … as row from public.<table> t`: identifiers come from the registry only. */
+export function rowProjection(table: (typeof tables)[number]) {
+  // JSON numbers cannot faithfully represent bigint/numeric accounting values.
+  const precise = table.columns.filter((column) =>
+    /^(bigint|numeric)/.test(column.type),
+  );
+  const overrides = precise.length
+    ? ` || jsonb_build_object(${precise.map((column) => `'${column.name}', t.${quote(column.name)}::text`).join(", ")})`
+    : "";
+  return `select to_jsonb(t)${overrides} as row from public.${quote(table.name)} t`;
+}
 export async function readDataset(client: PoolClient): Promise<Dataset> {
   await assertDatabaseSchema(client);
   const data = emptyDataset();
   let count = 0,
     size = 0;
   for (const table of tables) {
-    // JSON numbers cannot faithfully represent bigint/numeric accounting values.
-    const precise = table.columns.filter((column) =>
-      /^(bigint|numeric)/.test(column.type),
-    );
-    const overrides = precise.length
-      ? ` || jsonb_build_object(${precise.map((column) => `'${column.name}', t.${quote(column.name)}::text`).join(", ")})`
-      : "";
     const result = await client.query<{ row: Row }>(
-      `select to_jsonb(t)${overrides} as row from public.${quote(table.name)} t limit $1`,
+      `${rowProjection(table)} limit $1`,
       [MAX_ROWS - count + 1],
     );
     count += result.rows.length;

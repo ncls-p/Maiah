@@ -56,7 +56,15 @@ export type Snapshot = Omit<z.infer<typeof snapshotSchema>, "data"> & {
 };
 export type Scope = Snapshot["scope"];
 
+// Snapshots produced by this module are validated once; re-validation would decode
+// every object again.
+const validated = new WeakSet<object>();
+const base64 =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
 export function validateSnapshot(value: unknown): Snapshot {
+  if (value && typeof value === "object" && validated.has(value))
+    return value as Snapshot;
   const parsed = snapshotSchema.parse(value);
   if (
     JSON.stringify(Object.keys(parsed.data).sort()) !==
@@ -83,13 +91,13 @@ export function validateSnapshot(value: unknown): Snapshot {
     )
       throw new Error("Unsafe or duplicate object key");
     keys.add(object.key);
-    const bytes = Buffer.from(object.bytes, "base64");
     if (
-      bytes.toString("base64") !== object.bytes ||
-      digest(bytes) !== object.sha256
+      !base64.test(object.bytes) ||
+      digest(Buffer.from(object.bytes, "base64")) !== object.sha256
     )
       throw new Error("Object integrity check failed");
   }
+  validated.add(parsed);
   return parsed as Snapshot;
 }
 
@@ -112,10 +120,18 @@ export async function sealSnapshot(
   const key = await derive(password, salt);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   cipher.setAAD(magic);
-  const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
+  const ciphertext = cipher.update(payload);
+  const final = cipher.final();
   key.fill(0);
   payload.fill(0);
-  return Buffer.concat([magic, salt, iv, cipher.getAuthTag(), ciphertext]);
+  return Buffer.concat([
+    magic,
+    salt,
+    iv,
+    cipher.getAuthTag(),
+    ciphertext,
+    final,
+  ]);
 }
 export async function openSnapshot(
   bytes: Buffer,
@@ -129,7 +145,7 @@ export async function openSnapshot(
   )
     throw new Error("Invalid archive or archive size limit exceeded");
   const key = await derive(password, bytes.subarray(8, 24));
-  let payload: Buffer;
+  let payload: Buffer | undefined;
   try {
     const decipher = createDecipheriv(
       "aes-256-gcm",
@@ -138,19 +154,20 @@ export async function openSnapshot(
     );
     decipher.setAAD(magic);
     decipher.setAuthTag(bytes.subarray(36, 52));
-    payload = Buffer.concat([
-      decipher.update(bytes.subarray(52)),
-      decipher.final(),
-    ]);
+    payload = decipher.update(bytes.subarray(52));
+    // GCM emits no trailing block: final() only authenticates the tag.
+    decipher.final();
   } catch {
+    payload?.fill(0);
     throw new Error("Incorrect passphrase or damaged archive");
   } finally {
     key.fill(0);
   }
+  const plaintext = payload as Buffer;
   try {
-    return validateSnapshot(JSON.parse(payload.toString("utf8")));
+    return validateSnapshot(JSON.parse(plaintext.toString("utf8")));
   } finally {
-    payload.fill(0);
+    plaintext.fill(0);
   }
 }
 

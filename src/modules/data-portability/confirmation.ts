@@ -1,18 +1,42 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
 
+export const IMPORT_ACKNOWLEDGEMENT = "IMPORT";
+export interface ConfirmationBinding {
+  userId: string;
+  sessionId: string;
+  /** Settings panel the preview was made from; absent for the platform panel. */
+  organizationId?: string;
+  archiveDigest: string;
+}
+// Never use the application encryption key directly as an HMAC key.
+function confirmationKey(secret: string) {
+  return Buffer.from(
+    hkdfSync(
+      "sha256",
+      Buffer.from(secret, "utf8"),
+      Buffer.alloc(0),
+      "maiah-data-portability-import-confirmation-v2",
+      32,
+    ),
+  );
+}
 export function signConfirmation(
   secret: string,
-  userId: string,
-  archiveDigest: string,
+  binding: ConfirmationBinding,
   expires = Date.now() + 10 * 60_000,
 ) {
-  const payload = `${expires}.${archiveDigest}.${userId}`;
-  return `${expires}.${createHmac("sha256", secret).update(`maiah-import-v1:${payload}`).digest("hex")}`;
+  const payload = JSON.stringify([
+    expires,
+    binding.userId,
+    binding.sessionId,
+    binding.organizationId ?? "instance",
+    binding.archiveDigest,
+  ]);
+  return `${expires}.${createHmac("sha256", confirmationKey(secret)).update(payload).digest("hex")}`;
 }
 export function verifyConfirmation(
   secret: string,
-  userId: string,
-  archiveDigest: string,
+  binding: ConfirmationBinding,
   token: string,
 ) {
   const [expiry, signature] = token.split(".");
@@ -24,7 +48,7 @@ export function verifyConfirmation(
     !/^[a-f0-9]{64}$/.test(signature ?? "")
   )
     return false;
-  const expected = signConfirmation(secret, userId, archiveDigest, expires);
+  const expected = signConfirmation(secret, binding, expires);
   return (
     token.length === expected.length &&
     timingSafeEqual(Buffer.from(token), Buffer.from(expected))

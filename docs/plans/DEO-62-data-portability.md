@@ -65,7 +65,8 @@ Résultats observés sur cette livraison :
 
 | Vérification | Résultat |
 | --- | --- |
-| Tests portabilité + régressions admin, paramètres et OpenAPI | **76 tests passés**, 9 fichiers |
+| Tests unitaires portabilité (`test/unit/data-portability*`) | **53 tests passés**, 5 fichiers (après la revue ci-dessous ; le chiffre initial « 76 tests, 9 fichiers » incluait des régressions admin/paramètres/OpenAPI non identifiées et n’a pas pu être reproduit) |
+| Intégration réelle (`RUN_DATA_PORTABILITY_E2E=1`) | **6 tests passés** sur PostgreSQL pgvector / RustFS jetables |
 | Aller-retour réel PostgreSQL pgvector / RustFS | Instance et organisation validées sur bases/buckets jetables |
 | Rechiffrement avec clés différentes | Secrets applicatifs et OAuth Microsoft validés |
 | Intégrité | Comparaison de chaque table du registre et des octets des objets |
@@ -80,6 +81,22 @@ Résultats observés sur cette livraison :
 | Limite globale de longueur des fichiers | Échecs préexistants hors périmètre ; aucun nouveau fichier de cette livraison ne dépasse 300 lignes |
 
 Les tests ne contactent aucun service IA/MCP externe et n’exécutent pas d’intégration réactivée. Le transport d’un token ne prouve pas que son fournisseur acceptera un nouveau domaine/callback : cette vérification reste nécessaire au déploiement.
+
+## Revue de sécurité et corrections
+
+Une revue après livraison a corrigé :
+
+- **Métadonnées d’objets** : seul `<préfixe>/<id>/metadata.json` désigne un propriétaire. Un fichier utilisateur `metadata.json` dans un projet ne bloque plus les exports et ne peut plus rattacher un dossier étranger. Les fichiers sans métadonnée propriétaire bloquent l’export d’organisation au lieu d’être omis.
+- **Cible volumineuse** : l’import ne charge plus la cible ; requêtes ciblées (administrateur, vacuité, rôles système, e-mails, références). L’export d’organisation lit désormais sa seule portée : mêmes règles de sélection (`selectOrganization` appliqué à un sur-ensemble chargé par requêtes ciblées jusqu’à clôture), mêmes refus inter-organisations, identités non membres sans identifiants, et listes d’objets limitées aux préfixes du projet et aux dossiers possédés. Les limites portent sur la portée exportée. Un test d’intégration compare l’archive produite à l’ancien chemin (lecture complète puis filtrage) ; des tests unitaires font de même sur un jeu multi-organisations et sur les refus de stockage.
+- **Secrets** : déchiffrement strict limité aux colonnes chiffrées par le serveur ; ailleurs, seul un vrai chiffré est rechiffré. La clé réservée présente dans un JSON utilisateur est échappée, pas refusée.
+- **Références forgées** : toute référence (FK, souple, configuration, polymorphe) absente de l’archive ne doit désigner aucune donnée existante de la cible.
+- **Identités non membres** : exportées sans comptes, sessions ni connexions GitHub ; un e-mail déjà présent sur la cible produit un refus explicite.
+- **Mémoire** : corps binaire lu une fois, sans multipart ; validation des objets sans réencodage base64 ni double validation ; secrets réécrits en place à l’export.
+- **TLS** : `DATABASE_SSL_REJECT_UNAUTHORIZED=false` respecté comme par le pool applicatif.
+- **Restauration** : transferts Genesys clôturés, approbations d’outils rejetées, liens publics retirés ; un COMMIT explicitement refusé par PostgreSQL n’est plus traité comme ambigu.
+- **Confirmation et audit** : saisie `IMPORT` vérifiée côté serveur ; jeton lié à l’utilisateur, à la session, au panneau et à l’archive, signé par une clé dérivée HKDF ; audit des refus et échecs ; type de ressource `instance` pour l’instance.
+
+Limite volontairement conservée : depuis le panneau d’une organisation, l’archive importée est une **autre** organisation ajoutée sous son propre identifiant (la même organisation existerait déjà et serait en conflit). Le panneau n’accepte que des archives d’organisation et le jeton de confirmation reste lié à ce panneau.
 
 ## Fichiers et exploitation
 

@@ -122,28 +122,30 @@ describe("encrypted data portability", () => {
     expect(await b.decrypt(imported.nested[0])).toBe("provider-token");
     await expect(a.decrypt(imported.nested[0])).rejects.toThrow();
   });
-  it("binds preview confirmation to the admin, digest and expiry", () => {
-    const token = signConfirmation("signing-secret", "admin-a", "digest-a");
-    expect(
-      verifyConfirmation("signing-secret", "admin-a", "digest-a", token),
-    ).toBe(true);
-    expect(
-      verifyConfirmation("signing-secret", "admin-b", "digest-a", token),
-    ).toBe(false);
-    expect(
-      verifyConfirmation("signing-secret", "admin-a", "digest-b", token),
-    ).toBe(false);
+  it("binds preview confirmation to the admin, session, panel, digest and expiry", () => {
+    const binding = {
+      userId: "admin-a",
+      sessionId: "session-a",
+      organizationId: org,
+      archiveDigest: "digest-a",
+    };
+    const token = signConfirmation("signing-secret", binding);
+    expect(verifyConfirmation("signing-secret", binding, token)).toBe(true);
+    for (const change of [
+      { userId: "admin-b" },
+      { sessionId: "session-b" },
+      { organizationId: undefined },
+      { archiveDigest: "digest-b" },
+    ])
+      expect(
+        verifyConfirmation("signing-secret", { ...binding, ...change }, token),
+      ).toBe(false);
+    expect(verifyConfirmation("other-secret", binding, token)).toBe(false);
     expect(
       verifyConfirmation(
         "signing-secret",
-        "admin-a",
-        "digest-a",
-        signConfirmation(
-          "signing-secret",
-          "admin-a",
-          "digest-a",
-          Date.now() - 1,
-        ),
+        binding,
+        signConfirmation("signing-secret", binding, Date.now() - 1),
       ),
     ).toBe(false);
   });

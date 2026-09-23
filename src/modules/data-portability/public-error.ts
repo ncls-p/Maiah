@@ -26,6 +26,19 @@ const safeMessages = new Set([
   "Commit outcome is uncertain; inspect the destination before retrying or cleaning objects",
   "Import failed; staging objects require operator cleanup",
   "Administrator session was revoked, expired or impersonated",
+  "Unsupported request format",
+  "Invalid request body",
+  "Invalid object metadata; export aborted without omissions",
+  "Object metadata has no workspace owner",
+  "Object metadata references a file outside its owner directory",
+  "Stored files without owner metadata; organization export cannot prove isolation. Use an instance export",
+  "Archive contains rows outside its organization scope",
+  "Archive contains objects outside its organization scope",
+]);
+// Destination state, not archive validity: the operator must clean the target.
+const conflictMessages = new Set([
+  "Archive references existing destination data it does not contain; import refused",
+  "An archived user already exists on the destination with the same email; identities are never merged",
 ]);
 export function publicPortabilityError(error: unknown) {
   const code = (error as { code?: string } | null)?.code;
@@ -35,6 +48,8 @@ export function publicPortabilityError(error: unknown) {
       message:
         "Destination conflict: existing identities or resources must not be overwritten. Use a clean target.",
     };
+  if (error instanceof Error && conflictMessages.has(error.message))
+    return { status: 409, message: error.message };
   if (error instanceof z.ZodError)
     return {
       status: 400,

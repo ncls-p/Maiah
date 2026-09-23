@@ -20,6 +20,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+// Mirrors readPortabilityRequest: length-prefixed JSON fields, then the raw archive.
+function portabilityBody(fields: Record<string, string>, archive?: File) {
+  const json = new TextEncoder().encode(JSON.stringify(fields));
+  const length = new Uint8Array(4);
+  new DataView(length.buffer).setUint32(0, json.length);
+  return new Blob(archive ? [length, json, archive] : [length, json]);
+}
 type Preview = {
   confirmation: string;
   rows: number;
@@ -47,16 +54,19 @@ export function DataPortabilityPanel({
     setError("");
     setStatus("");
     try {
-      const body = new FormData();
-      body.set("action", action);
-      body.set("passphrase", passphrase);
-      if (organizationId) body.set("organizationId", organizationId);
-      if (file && action !== "export") body.set("archive", file);
-      if (action === "import" && preview)
-        body.set("confirmation", preview.confirmation);
+      const fields: Record<string, string> = { action, passphrase };
+      if (organizationId) fields.organizationId = organizationId;
+      if (action === "import" && preview) {
+        fields.confirmation = preview.confirmation;
+        fields.acknowledgement = confirmation;
+      }
       const response = await fetch("/api/admin/data-portability", {
         method: "POST",
-        body,
+        headers: { "Content-Type": "application/vnd.maiah.portability" },
+        body: portabilityBody(
+          fields,
+          file && action !== "export" ? file : undefined,
+        ),
       });
       if (!response.ok) {
         const result = await response.json();

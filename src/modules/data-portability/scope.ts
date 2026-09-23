@@ -7,41 +7,42 @@ import {
 } from "./registry";
 import { configurationReferences } from "./config-references";
 
-const ownedBy: Partial<Record<TableName, [string, TableName, string?]>> = {
-  account: ["user_id", "user"],
-  session: ["user_id", "user"],
-  agent_versions: ["agent_id", "agents"],
-  agent_delegation_bindings: ["agent_version_id", "agent_versions"],
-  agent_knowledge_bindings: ["agent_version_id", "agent_versions"],
-  agent_skill_bindings: ["agent_version_id", "agent_versions"],
-  agent_tool_bindings: ["agent_version_id", "agent_versions"],
-  agent_run_steps: ["run_id", "agent_runs"],
-  ai_models: ["provider_id", "ai_providers"],
-  conversation_read_states: ["conversation_id", "conversations"],
-  conversation_shares: ["conversation_id", "conversations"],
-  messages: ["conversation_id", "conversations"],
-  message_parts: ["message_id", "messages"],
-  document_chunks: ["document_id", "documents"],
-  document_embeddings: ["chunk_id", "document_chunks"],
-  genesys_deliveries: ["session_id", "genesys_sessions"],
-  marketplace_item_versions: ["item_id", "marketplace_items"],
-  marketplace_item_shares: ["item_id", "marketplace_items"],
-  marketplace_ratings: ["item_id", "marketplace_items"],
-  marketplace_reports: ["item_id", "marketplace_items"],
-  marketplace_reviews: ["item_id", "marketplace_items"],
-  mcp_oauth_configs: ["server_id", "mcp_servers"],
-  mcp_oauth_credentials: ["server_id", "mcp_servers"],
-  mcp_oauth_attempts: ["server_id", "mcp_servers"],
-  mcp_sync_state: ["server_id", "mcp_servers"],
-  mcp_tools: ["mcp_server_id", "mcp_servers"],
-  team_members: ["team_id", "teams"],
-  usage_limit_charges: ["limit_id", "usage_limits"],
-  user_github_connections: ["user_id", "user"],
-  user_github_repositories: ["connection_id", "user_github_connections"],
-  user_workspace_preferences: ["active_workspace_id", "workspaces"],
-  workflow_versions: ["workflow_id", "workflows"],
-  workflow_run_steps: ["run_id", "workflow_runs"],
-};
+export const ownedBy: Partial<Record<TableName, [string, TableName, string?]>> =
+  {
+    account: ["user_id", "user"],
+    session: ["user_id", "user"],
+    agent_versions: ["agent_id", "agents"],
+    agent_delegation_bindings: ["agent_version_id", "agent_versions"],
+    agent_knowledge_bindings: ["agent_version_id", "agent_versions"],
+    agent_skill_bindings: ["agent_version_id", "agent_versions"],
+    agent_tool_bindings: ["agent_version_id", "agent_versions"],
+    agent_run_steps: ["run_id", "agent_runs"],
+    ai_models: ["provider_id", "ai_providers"],
+    conversation_read_states: ["conversation_id", "conversations"],
+    conversation_shares: ["conversation_id", "conversations"],
+    messages: ["conversation_id", "conversations"],
+    message_parts: ["message_id", "messages"],
+    document_chunks: ["document_id", "documents"],
+    document_embeddings: ["chunk_id", "document_chunks"],
+    genesys_deliveries: ["session_id", "genesys_sessions"],
+    marketplace_item_versions: ["item_id", "marketplace_items"],
+    marketplace_item_shares: ["item_id", "marketplace_items"],
+    marketplace_ratings: ["item_id", "marketplace_items"],
+    marketplace_reports: ["item_id", "marketplace_items"],
+    marketplace_reviews: ["item_id", "marketplace_items"],
+    mcp_oauth_configs: ["server_id", "mcp_servers"],
+    mcp_oauth_credentials: ["server_id", "mcp_servers"],
+    mcp_oauth_attempts: ["server_id", "mcp_servers"],
+    mcp_sync_state: ["server_id", "mcp_servers"],
+    mcp_tools: ["mcp_server_id", "mcp_servers"],
+    team_members: ["team_id", "teams"],
+    usage_limit_charges: ["limit_id", "usage_limits"],
+    user_github_connections: ["user_id", "user"],
+    user_github_repositories: ["connection_id", "user_github_connections"],
+    user_workspace_preferences: ["active_workspace_id", "workspaces"],
+    workflow_versions: ["workflow_id", "workflows"],
+    workflow_run_steps: ["run_id", "workflow_runs"],
+  };
 const softReferences: Record<string, TableName> = {
   agent_id: "agents",
   agent_version_id: "agent_versions",
@@ -62,7 +63,7 @@ const softReferences: Record<string, TableName> = {
   child_run_id: "agent_runs",
   root_run_id: "agent_runs",
 };
-const resourceTables: Record<string, TableName> = {
+export const resourceTables: Record<string, TableName> = {
   organization: "organizations",
   workspace: "workspaces",
   agent: "agents",
@@ -80,6 +81,95 @@ const resourceTables: Record<string, TableName> = {
   user: "user",
 };
 
+// Credentials follow members only. Users referenced by history, shares or ratings are
+// carried as identities without passwords, OAuth tokens, sessions or GitHub links.
+const credentialTables = new Set<TableName>([
+  "account",
+  "session",
+  "user_github_connections",
+]);
+type Visit = (table: TableName, id: unknown) => void;
+
+/** Outgoing references followed by the organization traversal. */
+export function visitReferences(name: TableName, row: Row, visit: Visit) {
+  for (const [column, parent] of Object.entries(softReferences))
+    if (row[column] != null) visit(parent, row[column]);
+  configurationReferences(row, (table, id) => {
+    visit(table, id);
+    return false;
+  });
+  if (name === "resource_organization_shares")
+    for (const prefix of ["", "root_"]) {
+      const parent = resourceTables[String(row[`${prefix}resource_type`])];
+      if (!parent) throw new Error("Unknown shared resource type");
+      visit(parent, row[`${prefix}resource_id`]);
+    }
+  if (
+    name === "marketplace_items" &&
+    resourceTables[String(row.source_resource_type)]
+  )
+    visit(
+      resourceTables[String(row.source_resource_type)],
+      row.source_resource_id,
+    );
+  const toolTable =
+    row.tool_source === "mcp"
+      ? "mcp_tools"
+      : row.tool_source === "custom"
+        ? "custom_tools"
+        : null;
+  if (toolTable) visit(toolTable, row.tool_id);
+}
+/** Polymorphic grants/ownership: included from their resource, but still references. */
+function visitPolymorphic(name: TableName, row: Row, visit: Visit) {
+  const pairs: [unknown, unknown][] =
+    name === "role_bindings"
+      ? [[row.resource_type, row.resource_id]]
+      : name === "usage_limits"
+        ? [[row.subject_type, row.subject_id]]
+        : name === "roles"
+          ? [[row.owner_resource_type, row.owner_resource_id]]
+          : name === "marketplace_installs"
+            ? [[row.installed_resource_type, row.installed_resource_id]]
+            : [];
+  for (const [type, id] of pairs) {
+    const table = resourceTables[String(type)];
+    if (table && id != null) visit(table, id);
+  }
+}
+/**
+ * Every identifier an archive points to without carrying the row. They may be dangling
+ * history on the source, but must never designate existing destination data.
+ */
+export function unresolvedReferences(data: Dataset) {
+  const ids = new Map(
+    tables.map((table) => [
+      table.name,
+      new Set(data[table.name].map((row) => String(row.id))),
+    ]),
+  );
+  const missing = new Map<TableName, Set<string>>();
+  const visit: Visit = (table, id) => {
+    if (id == null || typeof id === "object") return;
+    const value = String(id);
+    if (ids.get(table)?.has(value)) return;
+    if (!missing.has(table)) missing.set(table, new Set());
+    missing.get(table)!.add(value);
+  };
+  for (const table of tables)
+    for (const row of data[table.name]) {
+      visitReferences(table.name, row, visit);
+      visitPolymorphic(table.name, row, visit);
+      for (const reference of table.references)
+        if (
+          reference.columns.length === 1 &&
+          reference.foreignColumns[0] === "id"
+        )
+          visit(reference.table, row[reference.columns[0]]);
+    }
+  return missing;
+}
+
 /** Explicit ownership traversal; users never pull in their other memberships/workspaces. */
 export function selectOrganization(
   source: Dataset,
@@ -92,6 +182,14 @@ export function selectOrganization(
       .filter((row) => row.organization_id === organizationId)
       .map((row) => row.id),
   );
+  const members = new Set([
+    ...source.organization_members
+      .filter((row) => row.organization_id === organizationId)
+      .map((row) => row.user_id),
+    ...source.workspace_members
+      .filter((row) => workspaceIds.has(row.workspace_id))
+      .map((row) => row.user_id),
+  ]);
   function add(name: TableName, row: Row) {
     if (selected.get(name)!.has(row)) return false;
     if (
@@ -138,7 +236,11 @@ export function selectOrganization(
     for (const table of tables) {
       const owner = ownedBy[table.name];
       for (const row of source[table.name]) {
-        if (owner && hasId(owner[1], row[owner[0]]))
+        if (
+          owner &&
+          hasId(owner[1], row[owner[0]]) &&
+          (!credentialTables.has(table.name) || members.has(row.user_id))
+        )
           changed = add(table.name, row) || changed;
         if (
           table.name === "app_settings" &&
@@ -183,33 +285,9 @@ export function selectOrganization(
             );
           changed = add(reference.table, parent) || changed;
         }
-        for (const [column, parent] of Object.entries(softReferences))
-          if (row[column] != null)
-            changed = addId(parent, row[column]) || changed;
-        changed = configurationReferences(row, addId) || changed;
-        if (table.name === "resource_organization_shares")
-          for (const prefix of ["", "root_"]) {
-            const parent =
-              resourceTables[String(row[`${prefix}resource_type`])];
-            if (!parent) throw new Error("Unknown shared resource type");
-            changed = addId(parent, row[`${prefix}resource_id`]) || changed;
-          }
-        if (
-          table.name === "marketplace_items" &&
-          resourceTables[String(row.source_resource_type)]
-        )
-          changed =
-            addId(
-              resourceTables[String(row.source_resource_type)],
-              row.source_resource_id,
-            ) || changed;
-        const toolTable =
-          row.tool_source === "mcp"
-            ? "mcp_tools"
-            : row.tool_source === "custom"
-              ? "custom_tools"
-              : null;
-        if (toolTable) changed = addId(toolTable, row.tool_id) || changed;
+        visitReferences(table.name, row, (parent, id) => {
+          changed = addId(parent, id) || changed;
+        });
       }
     }
   }

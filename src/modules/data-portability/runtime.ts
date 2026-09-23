@@ -10,6 +10,8 @@ export function runtimeConnection(): ConnectionConfig {
     databaseSsl:
       env.NODE_ENV === "production" &&
       env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "disable",
+    databaseSslRejectUnauthorized:
+      env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
     encryptionKey: env.APP_ENCRYPTION_KEY,
     encryptionKeyId: env.APP_ENCRYPTION_KEY_ID,
     authSecret: env.BETTER_AUTH_SECRET,
