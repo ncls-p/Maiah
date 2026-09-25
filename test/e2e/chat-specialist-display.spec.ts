@@ -196,8 +196,19 @@ test("keeps every specialist tool collapsed while showing explicitly published v
     await activate(
       page.getByRole("button", { name: "Show all specialist details" }),
     );
+    // The child's generated file is shown as a card inside the specialist
+    // trace; the trace itself stays collapsed at the top level.
     await expect(page.getByText("chart.png", { exact: true })).toBeVisible();
-    const source = page.getByRole("button", {
+    const sandboxSection = page
+      .locator("section")
+      .filter({ has: page.getByText("chart.png", { exact: true }) })
+      .filter({
+        hasNot: page.getByText("Published specialist chart", { exact: true }),
+      });
+    await sandboxSection
+      .getByText("Show action details", { exact: true })
+      .click();
+    const source = sandboxSection.getByRole("button", {
       name: "Source code",
       exact: true,
     });

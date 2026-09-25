@@ -76,13 +76,7 @@ export const commonSchemasPart1 = {
       code: {
         type: "string",
         description:
-          "Python, Node.js, or Bash code to run. Print values you want in stdout.",
-      },
-      showToUser: {
-        type: "boolean",
-        default: false,
-        description:
-          "Set true only when showing the sandbox result, logs, or generated files directly in chat helps the user. Leave false for internal checks and intermediate work so the completed execution stays in the collapsed tool trace. Code is shown live while being written.",
+          "Python, Node.js, or Bash code to run. Print values you want in stdout. Write files to provide using paths relative to the current directory; files you create or modify are automatically collected and shown to the user as downloadable cards. Do not invent local or sandbox:/ links.",
       },
       stdin: {
         type: "string",

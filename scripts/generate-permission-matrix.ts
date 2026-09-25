@@ -121,11 +121,15 @@ const routeRows = sources
       ),
     ];
     return [
-      file.replace(/^src\/app/, "").replace(/\/route\.ts$/, ""),
+      file
+        .replace(/^src\/app/, "")
+        .replace(/\/route\.ts$/, "")
+        .replaceAll("[[", "\\[\\[")
+        .replaceAll("]]", "\\]\\]"),
       permissions.join(", ") ||
         "Contrôle délégué / session / propriété / accès public selon le gestionnaire",
       guards.join(", ") || "Voir gestionnaire et modules",
-      `[Source](../${file})<br>${imports.join("<br>")}`,
+      `[Source](../${file.replaceAll("[[", "%5B%5B").replaceAll("]]", "%5D%5D")})<br>${imports.join("<br>")}`,
     ];
   });
 const routes = [

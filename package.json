@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
+    "data:portability": "tsx scripts/data-portability.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:setup": "drizzle-kit generate && tsx scripts/migrate.ts",

@@ -14,10 +14,9 @@ import {
   isCodeSandboxToolName,
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
-  shouldShowCodeSandboxToUser,
 } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
 import {
-  codeSandboxOutputFromUnknown,
+  codeSandboxOutputHasDeliverableFiles,
   isChatImageAttachmentOutput,
 } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 
@@ -198,24 +197,38 @@ export function isGitHubPublishOutput(
   );
 }
 
-export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
+/**
+ * Whether a tool part renders outside the collapsed work trace.
+ *
+ * Sandbox visibility has a single rule: any top-level result carrying
+ * deliverable files is standalone, whatever tool returned it (a sandbox run or
+ * a published specialist output). A top-level sandbox call also stays
+ * standalone while it is still running in a streaming message, so its card
+ * does not jump into the trace and back out when the files arrive.
+ */
+export function toolPartHasStandaloneRendering(
+  part: ChatMessagePart,
+  options: { messageStreaming?: boolean } = {},
+) {
   if (part.type !== "tool-call" && part.type !== "tool-result") return false;
   const parsed = parseToolPart(part.content);
   const agentContext = parseAgentToolDisplayContext(parsed.agentContext);
   if (agentContext && agentContext.depth > 0) return false;
   const visualToolName = parsed.toolName ?? "";
-  const showSandboxToUser = shouldShowCodeSandboxToUser(
-    parsed.input,
-    parsed.inputText,
-  );
+  const sandboxRunning =
+    isCodeSandboxToolName(visualToolName) &&
+    parsed.output === undefined &&
+    !parsed.denied &&
+    !parsed.invalid &&
+    parsed.error == null &&
+    (parsed.streamingInput === true || options.messageStreaming === true);
   return Boolean(
     visualToolName === "render_html_artifact" ||
     visualToolName === "generate_image" ||
-    (isCodeSandboxToolName(visualToolName) &&
-      (showSandboxToUser || parsed.streamingInput)) ||
+    sandboxRunning ||
+    codeSandboxOutputHasDeliverableFiles(parsed.output) ||
     visualToolName === "github_publish_code_workspace" ||
     visualToolName.startsWith("code_workspace_") ||
-    (codeSandboxOutputFromUnknown(parsed.output) && showSandboxToUser) ||
     isHtmlArtifactOutput(parsed.output) ||
     isGeneratedImageOutput(parsed.output) ||
     isCodeWorkspaceArtifactOutput(parsed.output) ||

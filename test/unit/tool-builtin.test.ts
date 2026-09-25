@@ -66,36 +66,70 @@ describe("built-in tool registry", () => {
     expect(webSearch!.riskLevel).toBe("medium");
   });
 
-  it("supports model-controlled sandbox visibility", () => {
+  it("exposes no visibility parameter and ignores legacy showToUser", () => {
     const sandbox = getBuiltInToolByName("run_code_sandbox");
     expect(sandbox).not.toBeNull();
 
-    const hidden = sandbox!.inputSchema.safeParse({
+    const parsed = sandbox!.inputSchema.safeParse({
       language: "bash",
       code: "echo ok",
     });
-    expect(hidden.success).toBe(true);
-    if (hidden.success) expect(hidden.data).toMatchObject({ showToUser: false });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).not.toHaveProperty("showToUser");
+    }
 
-    expect(
-      sandbox!.inputSchema.safeParse({
+    for (const showToUser of [true, false]) {
+      const legacy = sandbox!.inputSchema.safeParse({
         language: "bash",
         code: "echo ok",
-        showToUser: true,
+        showToUser,
         attachments: [
           {
             id: "00000000-0000-4000-8000-000000000001",
             path: "attachments/input.txt",
           },
         ],
-      }).success,
-    ).toBe(true);
+      });
+      expect(legacy.success).toBe(true);
+      if (legacy.success) {
+        expect(legacy.data).not.toHaveProperty("showToUser");
+      }
+    }
+
     expect(
       sandbox!.inputSchema.safeParse({
         language: "python",
         code: "x".repeat(100_001),
       }).success,
     ).toBe(false);
+  });
+
+  it("keeps showToUser out of every published sandbox schema", async () => {
+    const catalogEntry = listBuiltInTools().find(
+      (tool) => (tool as { name?: string }).name === "run_code_sandbox",
+    ) as { inputSchemaJson?: { properties?: Record<string, unknown> } };
+    expect(catalogEntry.inputSchemaJson?.properties).toBeDefined();
+    expect(catalogEntry.inputSchemaJson?.properties).not.toHaveProperty(
+      "showToUser",
+    );
+
+    // What the chat model actually receives is derived from the zod schema.
+    const { zodSchema } = await import("ai");
+    const sandbox = getBuiltInToolByName("run_code_sandbox")!;
+    const modelSchema = (await zodSchema(
+      sandbox.inputSchema as Parameters<typeof zodSchema>[0],
+    ).jsonSchema) as { properties?: Record<string, unknown> };
+    expect(modelSchema.properties).toHaveProperty("code");
+    expect(modelSchema.properties).not.toHaveProperty("showToUser");
+  });
+
+  it("tells the model how sandbox files reach the user", () => {
+    const description = getBuiltInToolByName("run_code_sandbox")!.description;
+    expect(description).toMatch(/paths relative to the current directory/);
+    expect(description).toMatch(/automatically collected/);
+    expect(description).toMatch(/wiped after completion/);
+    expect(description).toMatch(/Do not invent local or sandbox:\/ links/);
   });
 
   it("returns null for unknown tool name", () => {

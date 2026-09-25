@@ -46,7 +46,6 @@ export function codeSandboxInputFromUnknown(
   return {
     language: normalizeCodeSandboxLanguage(record.language),
     code: record.code,
-    showToUser: record.showToUser === true,
     files,
     attachments,
   };
@@ -59,20 +58,30 @@ export function isCodeSandboxToolName(toolName: string | undefined) {
   );
 }
 
-export function shouldShowCodeSandboxToUser(
-  input: unknown,
-  inputText?: string,
-) {
-  const parsedInput = codeSandboxInputFromUnknown(input);
-  if (parsedInput) return parsedInput.showToUser;
-  if (!inputText) return false;
-  try {
-    return (
-      codeSandboxInputFromUnknown(JSON.parse(inputText))?.showToUser === true
-    );
-  } catch {
-    return /"showToUser"\s*:\s*true(?:\s*[,}])?/.test(inputText);
+/**
+ * Code preview for a sandbox call whose input is complete but that has no
+ * result yet (executing, or awaiting approval). Keeps the formatted code on
+ * screen instead of falling back to the raw JSON payload. The caller decides
+ * whether the call is still live (message streaming).
+ */
+export function pendingCodeSandboxInput(parsed: {
+  toolName?: string;
+  input?: unknown;
+  inputText?: string;
+  output?: unknown;
+  streamingInput?: boolean;
+}): CodeSandboxInputPreview | null {
+  if (
+    !isCodeSandboxToolName(parsed.toolName) ||
+    parsed.output !== undefined ||
+    parsed.streamingInput === true
+  ) {
+    return null;
   }
+  return (
+    codeSandboxInputFromUnknown(parsed.input) ??
+    codeSandboxInputFromInputText(parsed.inputText)
+  );
 }
 
 export function htmlArtifactFromToolInput(
@@ -145,7 +154,6 @@ export function codeSandboxInputFromInputText(inputText: string | undefined) {
         extractJsonStringField(inputText, "language"),
       ),
       code,
-      showToUser: /"showToUser"\s*:\s*true(?:\s*[,}])?/.test(inputText),
       files: [],
       attachments: [],
     };

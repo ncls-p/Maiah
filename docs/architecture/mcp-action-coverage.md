@@ -9,6 +9,7 @@ Multipart uploads accept inline base64 up to 180 KB. Larger files use the existi
 | GET /api/admin/chat-automation | yes | — | none |  |
 | PATCH /api/admin/chat-automation | yes | — | inferred JSON |  |
 | POST /api/admin/chat-automation/test | yes | — | none |  |
+| POST /api/admin/data-portability | yes | — | none |  |
 | GET /api/admin/microsoft-sso | yes | — | none |  |
 | PATCH /api/admin/microsoft-sso | yes | — | inferred JSON |  |
 | GET /api/admin/rag | yes | — | none |  |

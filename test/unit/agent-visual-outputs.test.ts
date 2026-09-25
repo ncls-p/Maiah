@@ -56,5 +56,32 @@ describe("agent visual output promotion", () => {
         },
       ]),
     ).toHaveLength(1);
+    // Unchanged inputs are not deliverables; unknown modification state is,
+    // matching the persistence and chat visibility rule.
+    for (const [modified, expected] of [
+      [false, 0],
+      [true, 1],
+      [undefined, 1],
+    ] as const) {
+      expect(
+        collectAgentVisualOutputs([
+          {
+            toolName: "run_code_sandbox",
+            output: {
+              ...base,
+              files: [
+                {
+                  path: "input.csv",
+                  size: 12,
+                  mimeType: "text/csv",
+                  fromInput: true,
+                  ...(modified === undefined ? {} : { modified }),
+                },
+              ],
+            },
+          },
+        ]),
+      ).toHaveLength(expected);
+    }
   });
 });

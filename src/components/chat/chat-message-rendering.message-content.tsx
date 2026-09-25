@@ -69,12 +69,14 @@ export const MessageContent = memo(function MessageContent({
       ),
     [message],
   );
+  const messageStreaming = message.status === "streaming";
   const partGroups = useMemo(
     () =>
       groupWorkPhaseParts(renderableParts, {
-        isStandalonePart: toolPartHasStandaloneRendering,
+        isStandalonePart: (part) =>
+          toolPartHasStandaloneRendering(part, { messageStreaming }),
       }),
-    [renderableParts],
+    [messageStreaming, renderableParts],
   );
   const stepSequenceByPartIndex = useMemo(() => {
     const sequenceByIndex = new Map<number, number>();

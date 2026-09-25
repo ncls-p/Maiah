@@ -9,6 +9,7 @@ import {
   buildDocumentExplorerFiles,
   uniqueSandboxPath,
 } from "./code-sandbox.build-document-explorer-files";
+import { isSandboxDeliverableFile } from "./code-sandbox.is-deliverable-file";
 import {
   clampTimeoutMs,
   CodeSandboxExecutionContext,
@@ -215,7 +216,5 @@ export function sandboxOutputFileName(filePath: string) {
 }
 
 export function shouldPersistSandboxFile(file: CodeSandboxOutputFile) {
-  return Boolean(
-    file.contentBase64 && (!file.fromInput || file.modified !== false),
-  );
+  return Boolean(file.contentBase64 && isSandboxDeliverableFile(file));
 }

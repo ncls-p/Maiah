@@ -6,6 +6,11 @@ import { useEffect } from "react";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson, fetchWorkspacePermissions } from "@/lib/api-client";
 
+const dataPortabilityPaths = new Set([
+  "/admin/settings/data",
+  "/admin/settings/organization-data",
+]);
+
 export function OnboardingRedirect() {
   const router = useRouter();
   const pathname = usePathname();
@@ -14,6 +19,8 @@ export function OnboardingRedirect() {
   useEffect(() => {
     if (isLoading || !workspaceId) return;
     if (pathname === "/setup" || pathname === "/settings") return;
+    // A fresh migration target must reach data import before configuring any AI provider.
+    if (dataPortabilityPaths.has(pathname)) return;
 
     let cancelled = false;
 

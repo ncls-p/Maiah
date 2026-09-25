@@ -8,18 +8,22 @@ export {
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
   isCodeSandboxToolName,
-  shouldShowCodeSandboxToUser,
+  pendingCodeSandboxInput,
 } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
 export {
   chatFileAttachmentFromPartContent,
   chatImageAttachmentFromPartContent,
+  codeSandboxFailureSummary,
+  codeSandboxFileAvailability,
   codeSandboxOutputFromUnknown,
+  codeSandboxOutputHasDeliverableFiles,
   codeSandboxToolVisualState,
   codeWorkspaceArtifactFromPartContent,
   latestChatTodoListFromMessages,
   partitionCodeSandboxFiles,
 } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 export type {
+  CodeSandboxFileAvailability,
   CodeSandboxFileOutput,
   CodeSandboxInputPreview,
   CodeSandboxLanguage,

@@ -32,6 +32,14 @@ import {
   replaceCodeWorkspaceText,
   requireCodeWorkspaceContext,
 } from "./builtin-tools.built-in-tool-execution-context";
+
+function safeResponseUrl(response: Response, fallback: string) {
+  try {
+    return new URL(response.url || fallback);
+  } catch {
+    return null;
+  }
+}
 export const builtInToolsPart1 = [
   {
     id: "00000000-0000-4000-8000-000000000001",
@@ -89,11 +97,18 @@ export const builtInToolsPart1 = [
         bodyBytes: Buffer.byteLength(text),
         bodyPreview: text.slice(0, previewLimit),
         bodyTruncated: text.length > previewLimit,
-        ...(["/api/docs", "/api-docs"].includes(
-          new URL(response.url || url).pathname.replace(/\/$/, ""),
-        )
-          ? { openApiUrl: new URL("/api/openapi", response.url || url).href }
-          : {}),
+        ...(() => {
+          const responseUrl = safeResponseUrl(response, url);
+          if (
+            !responseUrl ||
+            !["/api/docs", "/api-docs"].includes(
+              responseUrl.pathname.replace(/\/$/, ""),
+            )
+          ) {
+            return {};
+          }
+          return { openApiUrl: new URL("/api/openapi", responseUrl).href };
+        })(),
       };
     },
   },
@@ -151,7 +166,7 @@ export const builtInToolsPart1 = [
     name: "run_code_sandbox",
     displayName: "Code sandbox",
     description:
-      "Run Python, Node.js, or Bash in a wiped sandbox with web access and pandas, matplotlib, seaborn, PIL, OpenCV, scikit-image, and CPU PyTorch. Save charts and images as files so they appear in chat.",
+      "Run Python, Node.js, or Bash in a wiped sandbox with web access and pandas, matplotlib, seaborn, PIL, OpenCV, scikit-image, and CPU PyTorch. Write files to provide using paths relative to the current directory; generated files are automatically collected and shown to the user as downloadable cards. Each run starts in a clean directory that is wiped after completion. Do not invent local or sandbox:/ links.",
     riskLevel: "high",
     category: "Code",
     inputSchema: codeSandboxInputSchema,

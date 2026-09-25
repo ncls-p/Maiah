@@ -1,3 +1,5 @@
+import { isSandboxDeliverableFile } from "@/modules/tool/code-sandbox.is-deliverable-file";
+
 import type { SuccessfulToolResult } from "./runtime-executor.heartbeat-ms";
 
 export type AgentVisualOutput = {
@@ -62,10 +64,7 @@ function visualOutputDescriptor(
   if (record.kind === "code_sandbox_result" && Array.isArray(record.files)) {
     const hasProducedFile = record.files.some((file) => {
       const fileRecord = recordFrom(file);
-      return (
-        fileRecord &&
-        (fileRecord.fromInput !== true || fileRecord.modified === true)
-      );
+      return fileRecord !== null && isSandboxDeliverableFile(fileRecord);
     });
     return hasProducedFile
       ? { kind: record.kind, title: "Sandbox output" }
