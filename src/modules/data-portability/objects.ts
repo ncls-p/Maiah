@@ -363,7 +363,8 @@ export async function exportOrganizationObjects(
   for (const prefix of owned) {
     const level = await directoriesUnder(store, `${prefix}/`);
     if (level.objects.length) throw orphan();
-    ownerDirectories.push(...level.directories);
+    // Up to MAX_OBJECT_DIRECTORIES entries: a spread would overflow the call stack.
+    for (const directory of level.directories) ownerDirectories.push(directory);
   }
   for (const directory of ownerDirectories) {
     let metadata;
@@ -393,7 +394,8 @@ export async function exportOrganizationObjects(
   const inventoryOf = async () => {
     const inventory: Listed[] = [];
     for (const prefix of listed)
-      inventory.push(...(await listUnder(store, prefix)));
+      for (const object of await listUnder(store, prefix))
+        inventory.push(object);
     if (inventory.length > 20_000)
       throw new Error("Object inventory limit exceeded");
     return inventory.sort((a, b) => a.key.localeCompare(b.key));

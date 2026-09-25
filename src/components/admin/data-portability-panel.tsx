@@ -33,7 +33,7 @@ type Preview = {
   objects: number;
   objectBytes: number;
   tables: Record<string, number>;
-  scope: { type: string; organizationId?: string };
+  scope: { type: string; organizationId?: string; organizationName?: string };
 };
 export function DataPortabilityPanel({
   organizationId,
@@ -175,7 +175,12 @@ export function DataPortabilityPanel({
               {t("counts", { rows: preview.rows, files: preview.objects })}
             </p>
             <p className="text-sm text-muted-foreground">
-              {t("source")}: {preview.scope.organizationId ?? t("instance")}
+              {t("source")}:{" "}
+              {!preview.scope.organizationId
+                ? t("instance")
+                : preview.scope.organizationName
+                  ? `${preview.scope.organizationName} (${preview.scope.organizationId})`
+                  : preview.scope.organizationId}
             </p>
             <details>
               <summary className="cursor-pointer text-sm font-medium">

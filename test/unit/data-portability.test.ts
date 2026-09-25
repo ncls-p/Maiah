@@ -3,6 +3,7 @@ import {
   digest,
   openSnapshot,
   sealSnapshot,
+  summarize,
   validateSnapshot,
   type Snapshot,
 } from "@/modules/data-portability/archive";
@@ -198,6 +199,43 @@ describe("encrypted data portability", () => {
     });
     expect(data.workspace_token_reservations[0].status).toBe("expired");
     expect(data.scheduled_tasks[0].enabled).toBe(false);
-    expect(data.user[0].role).toBeNull();
+    expect(data.user[0].role).toBe("user");
+  });
+});
+describe("portability preview summary", () => {
+  it("names the archived organization so administrators do not confirm a bare UUID", () => {
+    const archive = snapshot();
+    archive.scope = { type: "organization", organizationId: org };
+    archive.data.organizations = [{ id: org, name: "Acme Corp" }];
+    expect(summarize(archive).scope).toEqual({
+      type: "organization",
+      organizationId: org,
+      organizationName: "Acme Corp",
+    });
+    expect(summarize(snapshot()).scope).toEqual({ type: "instance" });
+  });
+});
+describe("portability object validation", () => {
+  it("validates multi-MiB objects without overflowing the regexp stack", () => {
+    const archive = snapshot();
+    const bytes = Buffer.alloc(5 * 1024 * 1024, 7);
+    archive.objects = [
+      {
+        key: "chat-attachments/big/data.bin",
+        contentType: "application/octet-stream",
+        bytes: bytes.toString("base64"),
+        sha256: digest(bytes),
+      },
+    ];
+    expect(() => validateSnapshot(archive)).not.toThrow();
+  });
+  it("still rejects malformed base64", () => {
+    for (const bytes of ["abc", "ab=c", "a===", "ab c", "abcd="]) {
+      const archive = snapshot();
+      archive.objects[0].bytes = bytes;
+      expect(() => validateSnapshot(archive)).toThrow(
+        "Object integrity check failed",
+      );
+    }
   });
 });

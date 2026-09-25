@@ -87,5 +87,5 @@ export function pauseRestoredData(data: Dataset, scope: Snapshot["scope"]) {
   }
   // An org archive must never promote users into platform administrators.
   if (scope.type === "organization")
-    for (const row of data.user) row.role = null;
+    for (const row of data.user) row.role = "user";
 }

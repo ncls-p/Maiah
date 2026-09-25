@@ -247,7 +247,10 @@ async function prepareChatConversationUnlocked(
     return rejectChatRequest(
       400,
       "no_provider_model",
-      { error: "No provider model configured for this agent version" },
+      {
+        error:
+          "No enabled AI connection and model for this assistant. Enable its connection in AI connections.",
+      },
       {
         agentId,
         workspaceId: agent.workspaceId,

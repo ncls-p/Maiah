@@ -20,9 +20,11 @@ import {
 import { isDefiniteCommitFailure } from "@/modules/data-portability/service";
 import {
   assertReferencesAbsent,
+  INSTANCE_TARGET_REQUIRED,
   prepareTarget,
 } from "@/modules/data-portability/target";
 import { keyedSecretCodec } from "@/modules/data-portability/context";
+import { publicPortabilityError } from "@/modules/data-portability/public-error";
 
 const org = "10000000-0000-4000-8000-000000000001";
 const workspace = "20000000-0000-4000-8000-000000000001";
@@ -245,23 +247,73 @@ describe("portability destination checks", () => {
     });
     expect(data.roles).toHaveLength(0);
     expect(data.role_bindings[0].role_id).toBe("target-role");
-    expect(statements).toHaveLength(4);
+    expect(statements).toHaveLength(3);
     expect(statements.join("\n")).not.toMatch(/to_jsonb\(t\)|limit \$1/);
   });
   it("refuses to merge an archived identity into an existing email", async () => {
     const { client } = fakeClient((sql) =>
-      sql.includes("role = 'admin'") || sql.includes("lower(email)")
-        ? { rowCount: 1, rows: [{}] }
-        : { rowCount: 0, rows: [] },
+      sql.includes("lower(email)")
+        ? { rowCount: 1, rows: [{ email: "admin@example.test" }] }
+        : sql.includes("role = 'admin'")
+          ? { rowCount: 1, rows: [{}] }
+          : { rowCount: 0, rows: [] },
     );
     const data = organizationData();
-    data.user = [{ id: "u", email: "admin@example.test" }];
+    data.user = [{ id: "u", email: "Admin@example.test" }];
+    const failure = prepareTarget(client, data, {
+      type: "organization",
+      organizationId: org,
+    });
+    await expect(failure).rejects.toThrow(
+      "same email (admin@example.test); identities are never merged",
+    );
+    const error = await failure.catch((caught: unknown) => caught);
+    expect(publicPortabilityError(error)).toEqual({
+      status: 409,
+      message: (error as Error).message,
+    });
+  });
+  const lazyRole = (id: string, creator: string, permissions: string[]) => ({
+    id,
+    name: "organization.admin",
+    scope_type: "organization",
+    is_system: true,
+    created_by_user_id: creator,
+    permissions_json: permissions,
+  });
+  function roleTarget(permissions: string[]) {
+    return fakeClient((sql) => {
+      if (sql.includes("role = 'admin'")) return { rowCount: 1, rows: [{}] };
+      if (sql.includes("as used"))
+        return { rowCount: 1, rows: [{ used: true }] };
+      if (sql.includes("r.is_system"))
+        return {
+          rowCount: 1,
+          rows: [{ row: lazyRole("target-role", "target-admin", permissions) }],
+        };
+      return { rowCount: 0, rows: [] };
+    }).client;
+  }
+  it("remaps lazily created built-in roles whose only difference is their creator", async () => {
+    const data = organizationData();
+    data.roles = [lazyRole("archive-role", "source-admin", ["org.read"])];
+    data.role_bindings = [{ id: "b", role_id: "archive-role" }];
+    await prepareTarget(roleTarget(["org.read"]), data, {
+      type: "organization",
+      organizationId: org,
+    });
+    expect(data.roles).toHaveLength(0);
+    expect(data.role_bindings[0].role_id).toBe("target-role");
+  });
+  it("still refuses built-in roles whose permissions differ", async () => {
+    const data = organizationData();
+    data.roles = [lazyRole("archive-role", "source-admin", ["org.write"])];
     await expect(
-      prepareTarget(client, data, {
+      prepareTarget(roleTarget(["org.read"]), data, {
         type: "organization",
         organizationId: org,
       }),
-    ).rejects.toThrow(/never merged/);
+    ).rejects.toThrow(/Built-in role definitions differ/);
   });
   it("refuses crafted references to destination data outside the archive", async () => {
     const foreignAgent = "30000000-0000-4000-8000-000000000001";
@@ -301,6 +353,38 @@ describe("portability destination checks", () => {
     expect(dangling.statements.every((sql) => sql.includes("= any("))).toBe(
       true,
     );
+  });
+  it("refuses an instance archive on a started destination with an actionable message", async () => {
+    const { client, statements } = fakeClient((sql) =>
+      sql.includes("as used")
+        ? { rowCount: 1, rows: [{ used: true }] }
+        : { rowCount: 0, rows: [] },
+    );
+    const data = emptyDataset();
+    data.user = [{ id: "u", email: "alice@example.test" }];
+    const failure = prepareTarget(client, data, { type: "instance" });
+    await expect(failure).rejects.toThrow(INSTANCE_TARGET_REQUIRED);
+    expect(statements.some((sql) => sql.startsWith("delete"))).toBe(false);
+    expect(
+      publicPortabilityError(await failure.catch((error: unknown) => error)),
+    ).toEqual({ status: 409, message: INSTANCE_TARGET_REQUIRED });
+  });
+  it("names only a registry table for unique conflicts", () => {
+    expect(
+      publicPortabilityError(
+        Object.assign(new Error("Key (slug)=(deodis) already exists"), {
+          code: "23505",
+          table: "organizations",
+        }),
+      ).message,
+    ).toBe(
+      "Destination conflict in organizations: existing identities or resources must not be overwritten. Use a clean target.",
+    );
+    expect(
+      publicPortabilityError(
+        Object.assign(new Error("x"), { code: "23505", table: "<script>" }),
+      ).message,
+    ).not.toContain("<script>");
   });
   it("covers every registry table in the destination usage probe", async () => {
     const { client, statements } = fakeClient((sql) =>

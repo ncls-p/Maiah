@@ -19,12 +19,13 @@ function stable(value: unknown): string {
       .join(",")}}`;
   return JSON.stringify(value);
 }
+// Built-in roles are created lazily by whichever user first needs them: the creator
+// differs on every instance and is not part of the permission definition.
+const roleMetadata = ["id", "created_at", "updated_at", "created_by_user_id"];
 function roleDefinition(row: Row) {
   return stable(
     Object.fromEntries(
-      Object.entries(row).filter(
-        ([key]) => !["id", "created_at", "updated_at"].includes(key),
-      ),
+      Object.entries(row).filter(([key]) => !roleMetadata.includes(key)),
     ),
   );
 }
@@ -62,35 +63,9 @@ export async function assertReferencesAbsent(
   }
 }
 
-/** Targeted checks only: the destination may be far larger than any archive. */
-export async function prepareTarget(
-  client: PoolClient,
-  data: Dataset,
-  scope: Scope,
-) {
-  if (scope.type === "organization") {
-    const admin = await client.query(
-      `select 1 from public."user" where role = 'admin' and banned is not true limit 1`,
-    );
-    if (!admin.rowCount)
-      throw new Error(
-        "Initialize a destination platform administrator before importing an organization",
-      );
-  }
-  const emails = data.user
-    .map((user) => user.email)
-    .filter((email): email is string => typeof email === "string")
-    .map((email) => email.toLowerCase());
-  if (emails.length) {
-    const existing = await client.query(
-      `select 1 from public."user" where lower(email) = any($1::text[]) limit 1`,
-      [emails],
-    );
-    if (existing.rowCount)
-      throw new Error(
-        "An archived user already exists on the destination with the same email; identities are never merged",
-      );
-  }
+export const INSTANCE_TARGET_REQUIRED =
+  "Instance archives restore only onto a freshly migrated database that was never started; use the data:portability CLI. Organization archives can be imported here.";
+async function destinationUsed(client: PoolClient) {
   const used = await client.query<{ used: boolean }>(
     `select (${[
       `exists (select 1 from public.roles where is_system is not true or created_by_user_id is not null)`,
@@ -99,11 +74,48 @@ export async function prepareTarget(
         .map((table) => `exists (select 1 from public.${quote(table.name)})`),
     ].join(" or ")}) as used`,
   );
-  if (scope.type === "instance" && !used.rows[0].used) {
+  return used.rows[0].used;
+}
+
+/** Targeted checks only: the destination may be far larger than any archive. */
+export async function prepareTarget(
+  client: PoolClient,
+  data: Dataset,
+  scope: Scope,
+) {
+  if (scope.type === "instance") {
+    // A started instance always holds its bootstrap administrator and default
+    // organization: a complete restore would collide with them.
+    if (await destinationUsed(client))
+      throw new Error(INSTANCE_TARGET_REQUIRED);
     // A freshly migrated DB contains generated system roles/settings. No user data is removed.
     await client.query("delete from public.roles");
     await client.query("delete from public.app_settings");
     return;
+  }
+  const admin = await client.query(
+    `select 1 from public."user" where role = 'admin' and banned is not true limit 1`,
+  );
+  if (!admin.rowCount)
+    throw new Error(
+      "Initialize a destination platform administrator before importing an organization",
+    );
+  const emails = data.user
+    .map((user) => user.email)
+    .filter((email): email is string => typeof email === "string")
+    .map((email) => email.toLowerCase());
+  if (emails.length) {
+    const existing = await client.query<{ email: string }>(
+      `select lower(email) as email from public."user" where lower(email) = any($1::text[]) order by 1 limit 6`,
+      [emails],
+    );
+    if (existing.rowCount) {
+      const listed = existing.rows.slice(0, 5).map((row) => row.email);
+      const more = existing.rows.length > 5 ? ", …" : "";
+      throw new Error(
+        `An archived user already exists on the destination with the same email (${listed.join(", ")}${more}); identities are never merged`,
+      );
+    }
   }
   const systemRoles = (
     await client.query<{ row: Row }>(
@@ -121,7 +133,7 @@ export async function prepareTarget(
     if (!target) return true;
     if (roleDefinition(role) !== roleDefinition(target))
       throw new Error(
-        "Built-in role definitions differ; use a clean instance target instead of merging permissions",
+        "Built-in role definitions differ; run the same Maiah version on both instances instead of merging permissions",
       );
     mapping.set(String(role.id), String(target.id));
     return false;

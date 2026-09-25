@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { tableNames } from "./registry";
+import { INSTANCE_TARGET_REQUIRED } from "./target";
 
 // Only these server-authored messages may cross the HTTP boundary. Storage/SQL/crypto
 // exceptions can contain connection information or arbitrary archive content.
@@ -20,7 +22,7 @@ const safeMessages = new Set([
   "Storage prefixes differ; configure the destination with the archive prefixes before importing",
   "Another portability operation is running",
   "An object already exists on the destination; import aborted without overwriting",
-  "Built-in role definitions differ; use a clean instance target instead of merging permissions",
+  "Built-in role definitions differ; run the same Maiah version on both instances instead of merging permissions",
   "Initialize a destination platform administrator before importing an organization",
   "Database schema differs from the reviewed portability registry; migrate both instances first",
   "Commit outcome is uncertain; inspect the destination before retrying or cleaning objects",
@@ -38,17 +40,30 @@ const safeMessages = new Set([
 // Destination state, not archive validity: the operator must clean the target.
 const conflictMessages = new Set([
   "Archive references existing destination data it does not contain; import refused",
-  "An archived user already exists on the destination with the same email; identities are never merged",
+  INSTANCE_TARGET_REQUIRED,
 ]);
 export function publicPortabilityError(error: unknown) {
   const code = (error as { code?: string } | null)?.code;
-  if (code === "23505")
+  if (code === "23505") {
+    // Only a registry table name is reported: never constraint details or values.
+    const table = (error as { table?: unknown }).table;
+    const where = tableNames.some((name) => name === table)
+      ? ` in ${table}`
+      : "";
     return {
       status: 409,
-      message:
-        "Destination conflict: existing identities or resources must not be overwritten. Use a clean target.",
+      message: `Destination conflict${where}: existing identities or resources must not be overwritten. Use a clean target.`,
     };
+  }
   if (error instanceof Error && conflictMessages.has(error.message))
+    return { status: 409, message: error.message };
+  // Platform administrators only: naming the conflicting accounts is what makes the target fixable.
+  if (
+    error instanceof Error &&
+    /^An archived user already exists on the destination with the same email \([^()]{1,1600}\); identities are never merged$/.test(
+      error.message,
+    )
+  )
     return { status: 409, message: error.message };
   if (error instanceof z.ZodError)
     return {

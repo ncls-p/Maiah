@@ -123,16 +123,28 @@ export async function insertDataset(client: PoolClient, data: Dataset) {
     columns: string[];
   }[] = [];
   while (pending.length) {
-    const index = pending.findIndex((table) =>
+    // Null-then-update only breaks real cycles: a row inserted early with a null
+    // reference can violate a CHECK such as scheduled_tasks_one_target.
+    const ready = pending.findIndex((table) =>
       table.references.every(
         (reference) =>
-          inserted.has(reference.table) ||
-          reference.columns.every(
-            (name) =>
-              table.columns.find((column) => column.name === name)?.nullable,
-          ),
+          inserted.has(reference.table) || reference.table === table.name,
       ),
     );
+    const index =
+      ready >= 0
+        ? ready
+        : pending.findIndex((table) =>
+            table.references.every(
+              (reference) =>
+                inserted.has(reference.table) ||
+                reference.columns.every(
+                  (name) =>
+                    table.columns.find((column) => column.name === name)
+                      ?.nullable,
+                ),
+            ),
+          );
     if (index < 0) throw new Error("Unsupported required foreign-key cycle");
     const [table] = pending.splice(index, 1);
     for (const row of data[table.name]) {

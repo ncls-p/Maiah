@@ -59,8 +59,11 @@ export type Scope = Snapshot["scope"];
 // Snapshots produced by this module are validated once; re-validation would decode
 // every object again.
 const validated = new WeakSet<object>();
-const base64 =
-  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+// A repeated group such as (?:[…]{4})* overflows the regexp stack on multi-MiB
+// objects: check the quantum length and a flat character class instead.
+function isBase64(value: string) {
+  return value.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value);
+}
 
 export function validateSnapshot(value: unknown): Snapshot {
   if (value && typeof value === "object" && validated.has(value))
@@ -92,7 +95,7 @@ export function validateSnapshot(value: unknown): Snapshot {
       throw new Error("Unsafe or duplicate object key");
     keys.add(object.key);
     if (
-      !base64.test(object.bytes) ||
+      !isBase64(object.bytes) ||
       digest(Buffer.from(object.bytes, "base64")) !== object.sha256
     )
       throw new Error("Object integrity check failed");
@@ -181,8 +184,18 @@ export const restorationNotice = [
   "Infrastructure environment variables, Redis queues/caches and external service data are not part of the application archive.",
 ];
 export function summarize(snapshot: Snapshot) {
+  const scope = snapshot.scope;
+  const organization =
+    scope.type === "organization"
+      ? snapshot.data.organizations.find(
+          (row) => row.id === scope.organizationId,
+        )
+      : undefined;
   return {
-    scope: snapshot.scope,
+    scope:
+      typeof organization?.name === "string"
+        ? { ...scope, organizationName: organization.name }
+        : scope,
     createdAt: snapshot.createdAt,
     tables: Object.fromEntries(
       tableNames.map((name) => [name, snapshot.data[name].length]),

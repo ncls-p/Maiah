@@ -96,6 +96,18 @@ Une revue après livraison a corrigé :
 - **Restauration** : transferts Genesys clôturés, approbations d’outils rejetées, liens publics retirés ; un COMMIT explicitement refusé par PostgreSQL n’est plus traité comme ambigu.
 - **Confirmation et audit** : saisie `IMPORT` vérifiée côté serveur ; jeton lié à l’utilisateur, à la session, au panneau et à l’archive, signé par une clé dérivée HKDF ; audit des refus et échecs ; type de ressource `instance` pour l’instance.
 
+## Recette de bout en bout sur données massives (25/09/2026)
+
+Cinq instances production locales (bases, buckets, Redis et clés distincts), source remplie via l’API réelle : 50 utilisateurs, 11 organisations, 18 projets, 160 conversations, 1 151 messages, 530 fichiers (10,9 Mio, dont un binaire de 5 Mio), fournisseurs/MCP/connecteurs chiffrés, workflows publiés, tâches planifiées, équipes et rôles. Corrections issues de cette recette :
+
+- **Rôles système créés à la volée** : leur `created_by_user_id` diffère sur chaque instance et bloquait tout import d’organisation contenant un rôle `organization.admin`/`organization.user`/`workspace.knowledge_editor`. Il n’est plus comparé ; des permissions différentes restent refusées.
+- **Ordre d’insertion** : une table n’est différée (FK nullable mise à `NULL` puis rétablie) qu’en cas de vrai cycle. Une tâche planifiée ciblant un workflow violait sinon `scheduled_tasks_one_target` et bloquait tout import.
+- **Objets de plusieurs Mio** : la validation base64 par regex à groupe répété dépassait la pile au-delà d’environ 3 Mio ; remplacée par un contrôle linéaire. Les `push(...liste)` sur des listes pouvant atteindre 200 000 entrées sont remplacés par des boucles.
+- **Cible démarrée** : une archive d’instance y est refusée avec un message explicite (409) au lieu d’un conflit SQL générique ; un conflit d’unicité indique la table concernée.
+- **Parcours UI** : écrans d’export/import accessibles avant l’onboarding IA ; aperçu affichant le nom de l’organisation ; conflit d’e-mail nommant les comptes ; audit rattaché à la portée réelle de l’archive ; utilisateurs importés en rôle `user` (et non `NULL`) ; message de chat explicite quand le fournisseur est désactivé.
+
+Résultats : exports UI instance (17 Mio) et organisations en moins de 1,5 s ; imports UI d’organisation avec rechiffrement vérifié (clé fournisseur utilisée par le chat, fichier de 5 Mio identique à l’octet) ; import CLI et transfert direct identiques à la source table par table et objet par objet.
+
 Limite volontairement conservée : depuis le panneau d’une organisation, l’archive importée est une **autre** organisation ajoutée sous son propre identifiant (la même organisation existerait déjà et serait en conflit). Le panneau n’accepte que des archives d’organisation et le jeton de confirmation reste lié à ce panneau.
 
 ## Fichiers et exploitation

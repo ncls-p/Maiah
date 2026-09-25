@@ -50,7 +50,7 @@ L’archive conserve les valeurs originales. À la restauration :
 - les transferts Genesys en cours sont clôturés (`resumed`), les appels d’outils en attente d’approbation sont rejetés et ceux en cours marqués en échec ;
 - les liens publics de conversation sont retirés ;
 - les historiques terminés, consommations et credentials restent conservés ;
-- un import d’organisation ne restaure pas le rôle administrateur de plateforme des utilisateurs.
+- un import d’organisation ne restaure pas le rôle administrateur de plateforme : les utilisateurs importés reçoivent le rôle standard `user`.
 
 Ne réactivez les intégrations qu’après revue. Les refresh tokens peuvent être liés au client OAuth, à une URL de callback ou à une politique du fournisseur externe : leur transport ne garantit pas que celui-ci autorisera leur usage sur une autre instance.
 
@@ -59,8 +59,8 @@ Ne réactivez les intégrations qu’après revue. Les refresh tokens peuvent ê
 1. Même version de Maiah et migrations appliquées sur les deux bases.
 2. Arrêter les workers, suspendre les webhooks et bloquer les écritures/utilisateurs concurrents **sur les deux instances**, en laissant l’accès administrateur nécessaire. Le drapeau ci-dessous est une attestation opérateur, pas un mécanisme qui arrête les workers à votre place.
 3. Pour l’interface, activer temporairement `DATA_PORTABILITY_MAINTENANCE=true`, puis redémarrer le service web.
-4. Utiliser des bases, buckets et Redis distincts. La cible d’une migration complète doit être une base fraîchement migrée, **avant démarrage de l’application/bootstrap** ; utiliser la CLI pour cette restauration initiale.
-5. Pour importer une organisation, initialiser au contraire un administrateur plateforme sur la cible. Il conserve son accès ; les utilisateurs importés ne sont pas promus.
+4. Utiliser des bases, buckets et Redis distincts. La cible d’une migration complète doit être une base fraîchement migrée, **avant démarrage de l’application/bootstrap** ; utiliser la CLI pour cette restauration initiale. Une instance démarrée contient toujours son administrateur et son organisation par défaut : une archive d’instance y est refusée explicitement (409), y compris depuis l’interface, qui sert alors à importer des archives d’organisation.
+5. Pour importer une organisation, initialiser au contraire un administrateur plateforme sur la cible. Il conserve son accès ; les utilisateurs importés ne sont pas promus. Les écrans d’export/import restent accessibles avant la configuration d’un fournisseur IA (pas de redirection vers l’onboarding).
 6. Utiliser les mêmes préfixes d’objets sur la cible. Les anciens projets de code encore présents sur disque doivent être migrés vers le stockage objet avant export web ; la CLI opérateur suppose ce contrôle effectué sur les hôtes concernés.
 7. Configurer le reverse proxy pour accepter l’archive et la durée de la requête. Le proxy Next.js du dépôt exclut déjà `/api` de son matcher.
 
@@ -70,9 +70,11 @@ Ne réactivez les intégrations qu’après revue. Les refresh tokens peuvent ê
 
 Aucun utilisateur, ressource ou objet existant n’est écrasé. Les identifiants sont conservés : pas de fusion d’utilisateurs par email, pas de remplacement d’une organisation sélectionnée. L’organisation de l’archive est ajoutée avec son propre identifiant.
 
-Deux exceptions contrôlées : les rôles système équivalents sont remappés par nom/portée **uniquement si leur définition est identique** ; sur une base d’instance ne contenant que les defaults de migration, ces defaults sont remplacés par ceux de l’archive. Les différences de permissions bloquent l’import sur une cible déjà utilisée.
+Deux exceptions contrôlées : lors d’un import d’organisation, les rôles système équivalents sont remappés par nom/portée **uniquement si leur définition est identique** (nom, portée, libellés, permissions ; l’utilisateur qui a créé le rôle à la volée sur chaque instance n’est pas comparé) ; sur une base d’instance ne contenant que les defaults de migration, ces defaults sont remplacés par ceux de l’archive. Des permissions différentes (versions de Maiah différentes) bloquent l’import d’organisation. Un autre conflit d’unicité indique seulement la table concernée, jamais les valeurs.
 
-Un utilisateur de l’archive dont l’e-mail existe déjà sur la cible (sans distinction de casse) bloque l’import avec un message explicite : retirer ce compte de la cible ou utiliser une cible propre. Une archive qui désigne, sans la contenir, une donnée existante de la cible (partage vers une ressource, attribution de rôle à un utilisateur existant, identifiant dans une configuration) est refusée ; les références orphelines de l’historique source restent admises.
+Un utilisateur de l’archive dont l’e-mail existe déjà sur la cible (sans distinction de casse) bloque l’import avec un message explicite qui nomme les comptes concernés : retirer ce compte de la cible ou utiliser une cible propre. Une archive qui désigne, sans la contenir, une donnée existante de la cible (partage vers une ressource, attribution de rôle à un utilisateur existant, identifiant dans une configuration) est refusée ; les références orphelines de l’historique source restent admises.
+
+Conséquence à anticiper : un utilisateur membre de plusieurs organisations (y compris le créateur d’une organisation vide) est inclus dans chacune de leurs archives. Après l’import de la première, les suivantes qui le contiennent sont refusées sur la même cible. Pour déplacer plusieurs organisations qui partagent des membres, utiliser l’export d’instance vers une cible propre.
 
 Un import répété produit un conflit, pas des doublons. La prévisualisation ne réserve pas la cible : les validations sont répétées au moment de la confirmation.
 

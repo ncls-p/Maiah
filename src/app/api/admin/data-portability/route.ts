@@ -52,6 +52,8 @@ export async function POST(request: Request) {
   let action: keyof typeof auditActions | undefined;
   let organizationId: string | undefined;
   let archiveDigest: string | undefined;
+  // Imports are audited against the archive scope, which may differ from the panel.
+  let archiveScope: { type: string; organizationId?: string } | undefined;
   // Every administrator attempt is audited, never with archive content or passphrases.
   const record = (
     outcome: "success" | "denied" | "failed",
@@ -62,8 +64,9 @@ export async function POST(request: Request) {
         actorPrincipalType: "user",
         actorPrincipalId: auth.session.user.id,
         action: action ? auditActions[action] : "data.portability_rejected",
-        resourceType: organizationId ? "organization" : "instance",
-        resourceId: organizationId,
+        resourceType:
+          archiveScope?.type ?? (organizationId ? "organization" : "instance"),
+        resourceId: archiveScope ? archiveScope.organizationId : organizationId,
         organizationId,
         outcome,
         metadata: archiveDigest ? { archiveDigest, ...metadata } : metadata,
@@ -134,6 +137,7 @@ export async function POST(request: Request) {
         );
     }
     const snapshot = await openSnapshot(body.archive, input.passphrase);
+    archiveScope = snapshot.scope;
     // An organization panel only accepts organization archives. They are added under
     // their own identifier: the organization being viewed is never merged or replaced.
     if (organizationId && snapshot.scope.type !== "organization")

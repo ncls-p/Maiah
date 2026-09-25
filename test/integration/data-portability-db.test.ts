@@ -241,9 +241,9 @@ describe.skipIf(!enabled)(
       await restoreSnapshot(clients[2].context, scoped, false);
       const restored = await read(2);
       expect(restored.organizations.map((row) => row.id)).toEqual([ids.org]);
-      expect(
-        restored.user.find((user) => user.id === ids.user)?.role,
-      ).toBeNull();
+      expect(restored.user.find((user) => user.id === ids.user)?.role).toBe(
+        "user",
+      );
       expect(restored.mcp_oauth_credentials).toHaveLength(1);
       expect(restored.usage_events[0].input_tokens).toBe(123);
       expect(restored.role_bindings).toHaveLength(1);

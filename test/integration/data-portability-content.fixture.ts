@@ -106,6 +106,19 @@ export async function seedPortableContent(
     next_run_at: future,
     last_workflow_run_id: id.workflowRun,
   });
+  // One-target CHECK: must never be inserted before its workflow with a null reference.
+  await insert("scheduled_tasks", {
+    id: randomUUID(),
+    workspace_id: id.workspace,
+    user_id: id.user,
+    workflow_id: id.workflow,
+    title: "Scheduled workflow",
+    prompt: "",
+    frequency: "interval",
+    interval_minutes: 60,
+    timezone: "UTC",
+    next_run_at: future,
+  });
   await insert("agent_runs", {
     id: id.run,
     workspace_id: id.workspace,
