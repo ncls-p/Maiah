@@ -8,6 +8,7 @@ import {
   type TableName,
 } from "./registry";
 import type { Scope } from "./archive";
+import { reuseImportedIdentities } from "./identities";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function stable(value: unknown): string {
@@ -65,6 +66,8 @@ export async function assertReferencesAbsent(
 
 export const INSTANCE_TARGET_REQUIRED =
   "Instance archives restore only onto a freshly migrated database that was never started; use the data:portability CLI. Organization archives can be imported here.";
+export const ORGANIZATION_ALREADY_IMPORTED =
+  "This organization already exists on the destination (already imported); it is never replaced or merged";
 async function destinationUsed(client: PoolClient) {
   const used = await client.query<{ used: boolean }>(
     `select (${[
@@ -100,6 +103,12 @@ export async function prepareTarget(
     throw new Error(
       "Initialize a destination platform administrator before importing an organization",
     );
+  const present = await client.query(
+    `select 1 from public.organizations where id = $1::uuid`,
+    [scope.organizationId],
+  );
+  if (present.rowCount) throw new Error(ORGANIZATION_ALREADY_IMPORTED);
+  await reuseImportedIdentities(client, data);
   const emails = data.user
     .map((user) => user.email)
     .filter((email): email is string => typeof email === "string")

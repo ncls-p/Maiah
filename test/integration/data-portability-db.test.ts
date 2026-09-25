@@ -248,6 +248,24 @@ describe.skipIf(!enabled)(
       expect(restored.usage_events[0].input_tokens).toBe(123);
       expect(restored.role_bindings).toHaveLength(1);
       expect(await clients[2].context.objects.list()).toHaveLength(5);
+      // The shared member was imported with the first organization: the second
+      // archive reuses that same identity (same id and email) instead of refusing it.
+      const accounts = restored.account.length;
+      const other = await createSnapshot(clients[0].context, {
+        type: "organization",
+        organizationId: ids.otherOrg,
+      });
+      expect(other.data.user.map((row) => row.id)).toContain(ids.user);
+      await restoreSnapshot(clients[2].context, other, false);
+      const both = await read(2);
+      expect(both.organizations.map((row) => row.id).sort()).toEqual(
+        [ids.org, ids.otherOrg].sort(),
+      );
+      expect(both.user.filter((user) => user.id === ids.user)).toHaveLength(1);
+      expect(both.account).toHaveLength(accounts);
+      expect(
+        both.organization_members.filter((row) => row.user_id === ids.user),
+      ).toHaveLength(2);
     }, 120_000);
     it("reads an organization with scoped queries and yields the same archive content as the full scan", async () => {
       const source = clients[0].context;

@@ -21,6 +21,7 @@ import { isDefiniteCommitFailure } from "@/modules/data-portability/service";
 import {
   assertReferencesAbsent,
   INSTANCE_TARGET_REQUIRED,
+  ORGANIZATION_ALREADY_IMPORTED,
   prepareTarget,
 } from "@/modules/data-portability/target";
 import { keyedSecretCodec } from "@/modules/data-portability/context";
@@ -211,6 +212,8 @@ describe("portability destination checks", () => {
   it("prepares a large destination with targeted queries only", async () => {
     const { client, statements } = fakeClient((sql) => {
       if (sql.includes("role = 'admin'")) return { rowCount: 1, rows: [{}] };
+      if (sql.includes("public.organizations"))
+        return { rowCount: 0, rows: [] };
       if (sql.includes("lower(email)")) return { rowCount: 0, rows: [] };
       if (sql.includes("as used"))
         return { rowCount: 1, rows: [{ used: true }] };
@@ -247,7 +250,7 @@ describe("portability destination checks", () => {
     });
     expect(data.roles).toHaveLength(0);
     expect(data.role_bindings[0].role_id).toBe("target-role");
-    expect(statements).toHaveLength(3);
+    expect(statements).toHaveLength(5);
     expect(statements.join("\n")).not.toMatch(/to_jsonb\(t\)|limit \$1/);
   });
   it("refuses to merge an archived identity into an existing email", async () => {
@@ -314,6 +317,81 @@ describe("portability destination checks", () => {
         organizationId: org,
       }),
     ).rejects.toThrow(/Built-in role definitions differ/);
+  });
+  function identityTarget(existing: { id: string; email: string }[]) {
+    return fakeClient((sql) => {
+      if (sql.includes("role = 'admin'")) return { rowCount: 1, rows: [{}] };
+      if (sql.includes("id = any($1::uuid[])"))
+        return { rowCount: existing.length, rows: existing };
+      return { rowCount: 0, rows: [] };
+    }).client;
+  }
+  it("reuses an identity already imported from the same source (same id and email)", async () => {
+    const data = organizationData();
+    data.user = [
+      { id: "shared", email: "Alice@Source.test" },
+      { id: "new", email: "new@source.test" },
+    ];
+    data.account = [
+      { id: "a1", user_id: "shared" },
+      { id: "a2", user_id: "new" },
+    ];
+    data.session = [{ id: "s1", user_id: "shared" }];
+    data.user_workspace_preferences = [{ user_id: "shared" }];
+    data.user_github_connections = [{ id: "g1", user_id: "shared" }];
+    data.user_github_repositories = [{ id: "r1", connection_id: "g1" }];
+    data.app_settings = [
+      { key: "onboarding.complete:shared" },
+      { key: "onboarding.complete:new" },
+    ];
+    data.organization_members = [
+      { id: "m", organization_id: org, user_id: "shared" },
+    ];
+    await prepareTarget(
+      identityTarget([{ id: "shared", email: "alice@source.test" }]),
+      data,
+      { type: "organization", organizationId: org },
+    );
+    expect(data.user.map((row) => row.id)).toEqual(["new"]);
+    expect(data.account.map((row) => row.id)).toEqual(["a2"]);
+    expect(data.session).toHaveLength(0);
+    expect(data.user_workspace_preferences).toHaveLength(0);
+    expect(data.user_github_connections).toHaveLength(0);
+    expect(data.user_github_repositories).toHaveLength(0);
+    expect(data.app_settings.map((row) => row.key)).toEqual([
+      "onboarding.complete:new",
+    ]);
+    // Memberships still attach the reused identity to the imported organization.
+    expect(data.organization_members).toHaveLength(1);
+  });
+  it("refuses to import an organization that already exists with an explicit message", async () => {
+    const { client } = fakeClient((sql) =>
+      sql.includes("role = 'admin'") || sql.includes("public.organizations")
+        ? { rowCount: 1, rows: [{}] }
+        : { rowCount: 0, rows: [] },
+    );
+    const failure = prepareTarget(client, organizationData(), {
+      type: "organization",
+      organizationId: org,
+    });
+    await expect(failure).rejects.toThrow(ORGANIZATION_ALREADY_IMPORTED);
+    expect(
+      publicPortabilityError(await failure.catch((error: unknown) => error)),
+    ).toEqual({ status: 409, message: ORGANIZATION_ALREADY_IMPORTED });
+  });
+  it("never merges a destination identity whose email differs for the same id", async () => {
+    const data = organizationData();
+    data.user = [{ id: "shared", email: "alice@source.test" }];
+    const failure = prepareTarget(
+      identityTarget([{ id: "shared", email: "mallory@target.test" }]),
+      data,
+      { type: "organization", organizationId: org },
+    );
+    await expect(failure).rejects.toThrow(/another email/);
+    expect(
+      publicPortabilityError(await failure.catch((error: unknown) => error))
+        .status,
+    ).toBe(409);
   });
   it("refuses crafted references to destination data outside the archive", async () => {
     const foreignAgent = "30000000-0000-4000-8000-000000000001";

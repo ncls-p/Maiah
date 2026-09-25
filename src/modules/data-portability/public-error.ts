@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { tableNames } from "./registry";
-import { INSTANCE_TARGET_REQUIRED } from "./target";
+import {
+  INSTANCE_TARGET_REQUIRED,
+  ORGANIZATION_ALREADY_IMPORTED,
+} from "./target";
 
 // Only these server-authored messages may cross the HTTP boundary. Storage/SQL/crypto
 // exceptions can contain connection information or arbitrary archive content.
@@ -41,6 +44,8 @@ const safeMessages = new Set([
 const conflictMessages = new Set([
   "Archive references existing destination data it does not contain; import refused",
   INSTANCE_TARGET_REQUIRED,
+  ORGANIZATION_ALREADY_IMPORTED,
+  "An archived user identifier already exists on the destination with another email; identities are never merged",
 ]);
 export function publicPortabilityError(error: unknown) {
   const code = (error as { code?: string } | null)?.code;

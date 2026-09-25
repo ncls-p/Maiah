@@ -68,13 +68,13 @@ Ne réactivez les intégrations qu’après revue. Les refresh tokens peuvent ê
 
 ## Conflits et limites
 
-Aucun utilisateur, ressource ou objet existant n’est écrasé. Les identifiants sont conservés : pas de fusion d’utilisateurs par email, pas de remplacement d’une organisation sélectionnée. L’organisation de l’archive est ajoutée avec son propre identifiant.
+Aucun utilisateur, ressource ou objet existant n’est écrasé. Les identifiants sont conservés : pas de fusion d’utilisateurs par email (seule la réutilisation d’une identité strictement identique, décrite ci-dessous, est admise), pas de remplacement d’une organisation sélectionnée. L’organisation de l’archive est ajoutée avec son propre identifiant.
 
 Deux exceptions contrôlées : lors d’un import d’organisation, les rôles système équivalents sont remappés par nom/portée **uniquement si leur définition est identique** (nom, portée, libellés, permissions ; l’utilisateur qui a créé le rôle à la volée sur chaque instance n’est pas comparé) ; sur une base d’instance ne contenant que les defaults de migration, ces defaults sont remplacés par ceux de l’archive. Des permissions différentes (versions de Maiah différentes) bloquent l’import d’organisation. Un autre conflit d’unicité indique seulement la table concernée, jamais les valeurs.
 
 Un utilisateur de l’archive dont l’e-mail existe déjà sur la cible (sans distinction de casse) bloque l’import avec un message explicite qui nomme les comptes concernés : retirer ce compte de la cible ou utiliser une cible propre. Une archive qui désigne, sans la contenir, une donnée existante de la cible (partage vers une ressource, attribution de rôle à un utilisateur existant, identifiant dans une configuration) est refusée ; les références orphelines de l’historique source restent admises.
 
-Conséquence à anticiper : un utilisateur membre de plusieurs organisations (y compris le créateur d’une organisation vide) est inclus dans chacune de leurs archives. Après l’import de la première, les suivantes qui le contiennent sont refusées sur la même cible. Pour déplacer plusieurs organisations qui partagent des membres, utiliser l’export d’instance vers une cible propre.
+Plusieurs organisations exportées de la même source partagent souvent des membres (au minimum leur créateur). Un utilisateur de l’archive déjà présent sur la cible avec **le même identifiant et le même e-mail** est cette même identité, importée avec une organisation précédente : il est réutilisé. Ses identifiants, sessions, connexions GitHub, projet actif et rôle plateforme restent ceux de la cible ; seules ses appartenances et ressources de la nouvelle organisation sont ajoutées. Un même identifiant avec un autre e-mail, ou un même e-mail avec un autre identifiant, reste refusé.
 
 Un import répété produit un conflit, pas des doublons. La prévisualisation ne réserve pas la cible : les validations sont répétées au moment de la confirmation.
 
